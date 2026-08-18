@@ -1,0 +1,7 @@
+import { AlertTriangle, Info, XCircle } from "lucide-react";
+import type { DeviceAlert } from "../../types/device";
+
+export function AlertsList({ alerts, onSelect }: { alerts: DeviceAlert[]; onSelect: (id: string) => void }) {
+  const meta = { info: [Info, "bg-blue-50 text-blue-700"], warning: [AlertTriangle, "bg-amber-50 text-amber-700"], critical: [XCircle, "bg-red-50 text-red-700"] } as const;
+  return <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><h3 className="font-black">Alertas recentes</h3><p className="mt-1 text-xs text-zinc-500">Ocorrências que exigem acompanhamento.</p><div className="mt-4 space-y-2">{alerts.map((alert) => { const [Icon, tone] = meta[alert.severidade]; return <button key={alert.id} onClick={() => onSelect(alert.deviceId)} className="flex w-full items-start gap-3 rounded-xl border border-zinc-100 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${tone}`}><Icon size={17} /></span><span className="min-w-0 flex-1"><b className="block truncate text-sm">{alert.tipo}</b><span className="block truncate text-xs text-zinc-500">{alert.hostname} · {alert.municipio}</span></span><span className="shrink-0 text-[10px] font-bold text-zinc-400">{new Date(alert.horario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></button>; })}</div></section>;
+}

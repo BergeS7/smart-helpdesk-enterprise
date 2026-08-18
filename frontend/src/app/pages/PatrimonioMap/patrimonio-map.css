@@ -1,0 +1,33 @@
+.patrimonio-module .leaflet-container { background-color: #b9dcd3; background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,.28) 0 2px, transparent 3px), radial-gradient(circle at 70% 65%, rgba(23,57,74,.08) 0 1px, transparent 2px); background-size: 38px 38px, 24px 24px; font-family: inherit; z-index: 0; }
+.patrimonio-module .leaflet-control-zoom a { color: #334155; border-radius: 8px !important; }
+.patrimonio-module .leaflet-tooltip { border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 14px 35px rgba(15,23,42,.14); padding: 10px 12px; }
+.device-marker-wrapper { background: transparent; border: 0; }
+.device-marker { --device: #22c55e; position: relative; display: grid; width: 28px; height: 28px; place-items: center; border-radius: 999px; }
+.device-marker::before { content: ""; position: absolute; inset: 1px; border-radius: inherit; background: var(--device); opacity: .28; animation: patrimonio-pulse 2.2s ease-out infinite; }
+.device-marker > span { position: relative; display: block; width: 11px; height: 11px; border: 2px solid white; border-radius: 999px; background: var(--device); box-shadow: 0 0 0 3px color-mix(in srgb, var(--device) 24%, transparent), 0 3px 12px color-mix(in srgb, var(--device) 70%, transparent); }
+.device-marker-warning { --device: #f59e0b; }
+.device-marker-offline { --device: #ef4444; }
+.device-marker-selected { --device: #2563eb; transform: scale(1.22); }
+.device-tooltip-online { color: #059669; font-weight: 800; }
+.device-tooltip-warning { color: #d97706; font-weight: 800; }
+.device-tooltip-offline { color: #dc2626; font-weight: 800; }
+.city-dot-wrapper { background: transparent; border: 0; }
+.city-dot { display: grid; width: 34px; height: 34px; place-items: center; border: 3px solid white; border-radius: 999px; background: #16a36a; box-shadow: 0 0 0 4px rgba(22,163,106,.2), 0 5px 15px rgba(15,23,42,.25); transition: transform .18s ease; }
+.city-dot:hover { transform: scale(1.16); }
+.city-dot-alert { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,.2), 0 5px 15px rgba(15,23,42,.25); }
+.city-dot span { color: white; font-size: 11px; font-weight: 950; }
+.reference-city-label { border: 0 !important; border-radius: 5px !important; background: rgba(255,255,255,.78) !important; box-shadow: none !important; color: #475569 !important; font-size: 9px !important; font-weight: 800 !important; padding: 1px 4px !important; }
+.reference-city-label::before { display: none !important; }
+.cartoon-maranhao-map .leaflet-overlay-pane svg { filter: drop-shadow(0 14px 18px rgba(23,57,74,.24)); }
+.city-marker-wrapper { background: transparent; border: 0; overflow: visible !important; }
+.city-marker { position: relative; display: grid; width: 38px; height: 38px; place-items: center; border: 3px solid #fff7de; border-radius: 50% 48% 52% 45%; background: #1f9d68; color: white; box-shadow: 0 0 0 3px #17394a, 0 6px 13px rgba(23,57,74,.28); transform: rotate(-2deg); transition: transform .18s ease, box-shadow .18s ease; }
+.city-marker:hover { transform: scale(1.13) rotate(2deg); box-shadow: 0 0 0 4px #17394a, 0 10px 20px rgba(23,57,74,.35); }
+.city-marker-alert { background: #e88f32; }
+.city-marker > span { font-size: 12px; font-weight: 950; }
+.city-marker > b { position: absolute; left: 43px; top: -3px; width: 118px; color: #17394a; font-size: 11px; font-weight: 950; line-height: 1.05; text-shadow: 0 1px 0 rgba(255,247,222,.9), 1px 0 0 rgba(255,247,222,.9), -1px 0 0 rgba(255,247,222,.9); transform: rotate(2deg); }
+.city-marker > small { position: absolute; left: 43px; top: 24px; width: 118px; color: #704418; font-size: 8px; font-weight: 800; white-space: nowrap; }
+.patrimonio-dark .city-marker > b { color: #f8fafc; text-shadow: 0 1px 0 #0f172a, 1px 0 0 #0f172a, -1px 0 0 #0f172a; }
+.patrimonio-dark .city-marker > small { color: #fde68a; }
+.patrimonio-dark .leaflet-container { filter: brightness(.82) saturate(.82); }
+@keyframes patrimonio-pulse { 0% { transform: scale(.45); opacity: .55; } 70%,100% { transform: scale(1.25); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .device-marker::before { animation: none; } }

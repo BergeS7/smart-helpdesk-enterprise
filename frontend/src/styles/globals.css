@@ -1,0 +1,50 @@
+
+/* Premium UI layer */
+:root {
+  --app-radius: 16px;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f8fafc;
+}
+
+button, input, textarea, select {
+  transition: all .18s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+.rounded-xl, .rounded-2xl, .rounded-3xl {
+  border-radius: var(--app-radius) !important;
+}
+
+.shadow-sm {
+  box-shadow: 0 4px 18px rgba(15, 23, 42, .06) !important;
+}
+
+.shadow-lg {
+  box-shadow: 0 18px 45px rgba(15, 23, 42, .10) !important;
+}
+
+/* Cards with product feel */
+.bg-white {
+  border: 1px solid rgba(148, 163, 184, .18);
+}
+
+/* Better tables */
+table tbody tr {
+  transition: background .15s ease;
+}
+
+table tbody tr:hover {
+  background: rgba(37, 99, 235, .035);
+}
+
+/* Mobile usability */
+@media (max-width: 768px) {
+  .p-6 { padding: 1rem !important; }
+  .gap-6 { gap: 1rem !important; }
+}

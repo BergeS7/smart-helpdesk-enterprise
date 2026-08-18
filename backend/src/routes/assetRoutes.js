@@ -1,0 +1,13 @@
+const router=require("express").Router();
+const auth=require("../middlewares/authMiddleware"); const {exigirPerfis,exigirPermissao}=require("../middlewares/authMiddleware");
+const c=require("../controllers/assetController");
+const {agentEnrollmentLimiter}=require("../middlewares/securityMiddleware");
+router.get("/agent/locations",agentEnrollmentLimiter,c.locations); router.post("/agent/enroll",agentEnrollmentLimiter,c.enroll); router.post("/agent/heartbeat",c.authenticateAgent,c.heartbeat);
+router.post("/admin/invites",auth,exigirPerfis(["admin","desenvolvedor"]),c.createInvite);
+router.get("/admin/locations",auth,exigirPerfis(["admin","desenvolvedor"]),c.adminLocations);
+router.get("/",auth,exigirPermissao("visualizar_patrimonio"),c.list);
+router.get("/:id/history",auth,exigirPermissao("visualizar_patrimonio"),c.history);
+router.patch("/:id/location",auth,exigirPerfis(["admin","desenvolvedor"]),c.updateLocation);
+router.patch("/:id/status",auth,exigirPerfis(["tecnico","admin","desenvolvedor"]),c.updateStatus);
+router.post("/admin/locations",auth,exigirPerfis(["admin","desenvolvedor"]),c.saveLocation);
+module.exports=router;

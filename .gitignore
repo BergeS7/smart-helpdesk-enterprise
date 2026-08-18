@@ -1,0 +1,35 @@
+node_modules/
+.env
+*.env
+backend/.env.backup
+dist/
+coverage/
+*.log
+
+# Segredos locais (preservar somente modelos versionáveis)
+.env.*
+!.env.example
+!.env.docker.example
+!.env.production.example
+!.env.test.example
+.codex-login-reference/
+
+# Dados operacionais, backups e arquivos gerados
+backend/uploads/
+tmp/
+output/
+outputs/
+*.dump
+*.backup
+*.zip
+*.tar
+*.tar.gz
+
+# Pacotes legados do agente; o código oficial fica em agent/
+SmartHelpDesk-Agent-v*/
+
+# Chaves e certificados privados
+*.pem
+*.key
+*.pfx
+*.p12

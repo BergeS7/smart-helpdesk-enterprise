@@ -1,0 +1,115 @@
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: smart-helpdesk-database
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-smart_helpdesk}"
+      POSTGRES_USER: "${POSTGRES_USER:-smart_helpdesk}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" &&
+          test "$$(psql -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('usuarios','configuracoes_sistema','avisos_sistema')")" -eq 3
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 25s
+
+    networks:
+      - smart_helpdesk_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: smart-helpdesk-backend
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+
+      DB_HOST: database
+      DB_PORT: "5432"
+      DB_NAME: "${POSTGRES_DB:-smart_helpdesk}"
+      DB_USER: "${POSTGRES_USER:-smart_helpdesk}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}"
+
+      JWT_SECRET: "${JWT_SECRET:?Defina JWT_SECRET no arquivo .env}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:?Defina ALLOWED_ORIGINS no arquivo .env}"
+
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_SECURE: "${SMTP_SECURE:-false}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASS: "${SMTP_PASS:-}"
+      SMTP_FROM: "${SMTP_FROM:-}"
+
+    volumes:
+      - backend_uploads:/app/uploads
+
+    depends_on:
+      database:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3001/api/health')
+          .then(r => {
+            if (!r.ok) process.exit(1);
+          })
+          .catch(() => process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    networks:
+      - smart_helpdesk_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+
+    container_name: smart-helpdesk-frontend
+    restart: unless-stopped
+
+    ports:
+      - "0.0.0.0:8090:80"
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    networks:
+      - smart_helpdesk_network
+
+volumes:
+  postgres_data:
+    name: smart-helpdesk-postgres-data
+
+  backend_uploads:
+    name: smart-helpdesk-uploads
+
+networks:
+  smart_helpdesk_network:
+    name: smart-helpdesk-network
+    driver: bridge
