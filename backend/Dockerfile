@@ -8,7 +8,6 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --chown=node:node server.js ./server.js
 COPY --chown=node:node src ./src
-COPY --chown=node:node uploads ./uploads
 
 RUN mkdir -p /app/uploads/perfis /app/uploads/sistema /app/uploads/chamados \
     && chown -R node:node /app/uploads
