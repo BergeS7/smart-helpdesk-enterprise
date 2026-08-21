@@ -6,6 +6,22 @@ dist/
 coverage/
 *.log
 
+# Configuracoes locais de editores e sistema operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Credenciais locais de gerenciadores de pacotes
+.npmrc
+.yarnrc
+
+# Bancos e dados locais de desenvolvimento
+*.sqlite
+*.sqlite3
+*.db
+
 # Segredos locais (preservar somente modelos versionáveis)
 .env.*
 !.env.example
@@ -33,3 +49,7 @@ SmartHelpDesk-Agent-v*/
 *.key
 *.pfx
 *.p12
+*.crt
+*.cer
+*.jks
+*.keystore

@@ -14,10 +14,12 @@ const teamRoutes = require("./routes/teamRoutes");
 const performanceRoutes = require("./routes/performanceRoutes");
 const assetRoutes = require("./routes/assetRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
+const systemRoutes = require("./routes/systemRoutes");
 const { ensureAssetSchema } = require("./services/assetSchemaService");
 const { ensurePrioritySchema } = require("./services/prioritySchemaService");
 const { ensurePermissionSchema } = require("./services/permissionService");
 const { ensurePrivacyComplianceSchema, startPrivacyRetentionSchedule } = require("./services/privacyComplianceService");
+const { ensureSlaPauseSchema } = require("./services/slaPauseSchemaService");
 
 const app = express();
 
@@ -49,13 +51,8 @@ app.get("/", (req, res) => {
   res.json({ message: "API funcionando" });
 });
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    ok: true,
-    message: "Backend online",
-    timestamp: new Date().toISOString(),
-  });
-});
+app.use("/api/system", systemRoutes);
+app.get("/api/health", require("./controllers/systemController").health);
 
 app.use("/api/usuarios", userRoutes);
 app.use("/api/chamados", chamadoRoutes);
@@ -75,6 +72,7 @@ app.use(errorHandler);
 ensureAssetSchema().catch((error) => console.error("Erro ao preparar módulo de ativos:", error));
 ensurePrioritySchema().catch((error) => console.error("Erro ao preparar IA de prioridades:", error));
 ensurePermissionSchema().catch((error) => console.error("Erro ao preparar permissões:", error));
+ensureSlaPauseSchema().catch((error) => console.error("Erro ao preparar pausa de SLA:", error));
 ensurePrivacyComplianceSchema()
   .then(startPrivacyRetentionSchedule)
   .catch((error) => console.error("Erro ao preparar conformidade LGPD:", error));

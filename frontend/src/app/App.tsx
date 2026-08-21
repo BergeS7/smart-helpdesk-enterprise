@@ -6,7 +6,6 @@ import type {
   ReactNode,
   SetStateAction,
 } from "react";
-import { OperationalDashboard } from "./pages/Dashboard/OperationalDashboard";
 import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
 import { ProfileCenter } from "./components/ProfileCenter";
 import { PermissionDialog } from "./components/PermissionDialog";
@@ -16,8 +15,8 @@ import {
 } from "./components/LegalComplianceLayer";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { LoginMotorcycleLoader } from "./components/LoginMotorcycleLoader";
-import { SettingsWorkspace } from "./pages/Settings/SettingsWorkspace";
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   BarChart3,
@@ -36,6 +35,7 @@ import {
   FileText,
   Filter,
   History,
+  Headphones,
   KeyRound,
   LayoutDashboard,
   ListChecks,
@@ -72,11 +72,14 @@ import {
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import smartHelpdeskLogo from "../assets/smart-helpdesk-logo.png";
-import smartHelpdeskLoginLogo from "../assets/smart-helpdesk-login-logo.png";
 import { PerformanceRatingCard } from "./components/PerformanceRatingCard";
-import { ReportsWorkspace } from "./components/ReportsWorkspace";
 import { municipiosMaranhao } from "./data/municipiosMaranhao";
 import { TICKET_STATUS, canonicalTicketStatus, ticketStatusLabel, type TicketStatus } from "./domain/ticketStatus";
+import { PORTAL_ROUTES, useModuleRoute } from "./routes/useModuleRoute";
+import { ADMIN_ROUTES, buildAdminNavigation, type AdminRouteKey } from "./navigation/adminNavigation";
+import { WorkspaceNavigation } from "./components/WorkspaceNavigation";
+import { TicketWorkspaceToolbar } from "./components/TicketWorkspaceToolbar";
+import { Badge, Button, Card, Field, Input, Modal, Select, Textarea } from "./components/shared/FormPrimitives";
 
 const PatrimonioMapPage = lazy(() =>
   import("./pages/PatrimonioMap/PatrimonioMapPage").then((module) => ({
@@ -90,6 +93,18 @@ const SatisfactionAnalyticsPage = lazy(() =>
 );
 const MySatisfactionPage = lazy(
   () => import("./components/MySatisfactionPage"),
+);
+const OperationalDashboard = lazy(() => import("./pages/Dashboard/OperationalDashboard").then(module => ({ default:module.OperationalDashboard })));
+const ReportsWorkspace = lazy(() => import("./components/ReportsWorkspace").then(module => ({ default:module.ReportsWorkspace })));
+const SettingsWorkspace = lazy(() => import("./pages/Settings/SettingsWorkspace").then(module => ({ default:module.SettingsWorkspace })));
+const PermissionMatrixPage = lazy(() => import("./components/PermissionMatrixPage").then(module => ({ default:module.PermissionMatrixPage })));
+const FilaChamadosView = lazy(() => import("./modules/fila/FilaChamadosView").then(module => ({ default:module.FilaChamadosView })));
+const KanbanWorkspace = lazy(() => import("./modules/kanban/KanbanWorkspace").then(module => ({ default:module.KanbanWorkspace })));
+const ChamadosListModule = lazy(() => import("./modules/chamados/ChamadosListModule").then(module => ({ default:module.ChamadosListModule })));
+const UsersModule = lazy(() => import("./modules/usuarios/UsersModule").then(module => ({ default:module.UsersModule })));
+const IndicatorsWorkspace = lazy(() => import("./modules/indicadores/IndicatorsWorkspace").then(module => ({ default:module.IndicatorsWorkspace })));
+const SystemDiagnosticsPage = lazy(() =>
+  import("./components/SystemDiagnosticsPage").then((module) => ({ default: module.SystemDiagnosticsPage })),
 );
 
 import {
@@ -169,24 +184,17 @@ import {
 
 type LoginMode = "usuario" | "admin";
 type TelaAuth = "login" | "cadastro" | "recuperar";
-type AdminTab =
-  | "dashboard"
-  | "satisfacao"
-  | "fila"
-  | "kanban"
-  | "carteira"
-  | "chamados"
-  | "historico"
-  | "usuarios"
-  | "teams"
-  | "catalogos"
-  | "base"
-  | "relatorios"
-  | "patrimonio"
-  | "configuracoes"
-  | "manutencao";
+type AdminTab = AdminRouteKey;
 type UsuarioTab =
   "home" | "chamados" | "base" | "avisos" | "dashboard" | "relatorios";
+
+function ticketFiltersFromUrl():FiltrosChamados{
+  const params=new URLSearchParams(window.location.search),result:FiltrosChamados={};
+  const textKeys=(['q','status','prioridade','departamento','municipio','unidade','team_id','usuario','data_inicio','data_fim','responsavel','responsavel_id','tipo_chamado','categoria'] as const);
+  textKeys.forEach(key=>{const value=params.get(key);if(value)result[key]=value});
+  (['vencidos','sem_responsavel','meus','fila','closed','historico'] as const).forEach(key=>{if(params.get(key)==='true')result[key]=true});
+  return result;
+}
 
 type AdminStatus = TicketStatus;
 
@@ -675,135 +683,6 @@ function ResponsavelAtendimentoCard({
   );
 }
 
-function Badge({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Card({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`shd-card rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-zinc-500">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className={`h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 ${props.className ?? ""}`}
-    />
-  );
-}
-
-function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...props}
-      className={`h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 ${props.className ?? ""}`}
-    />
-  );
-}
-
-function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      {...props}
-      className={`min-h-[110px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 ${props.className ?? ""}`}
-    />
-  );
-}
-
-function Button({
-  children,
-  variant = "primary",
-  className = "",
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "danger" | "ghost";
-}) {
-  const styles = {
-    primary:
-      "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-100",
-    secondary:
-      "bg-white text-zinc-700 border border-zinc-200 hover:border-blue-200 hover:text-blue-700",
-    danger: "bg-red-600 text-white hover:bg-red-700",
-    ghost: "bg-transparent text-zinc-600 hover:bg-zinc-100",
-  };
-  return (
-    <button
-      {...props}
-      className={`shd-button inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${styles[variant]} ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Modal({
-  title,
-  children,
-  onClose,
-  wide = false,
-  readOnly = false,
-}: {
-  title: string;
-  children: ReactNode;
-  onClose: () => void;
-  wide?: boolean;
-  readOnly?: boolean;
-}) {
-  return (
-    <div className="shd-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div
-        className={`shd-modal-panel max-h-[92vh] w-full overflow-auto rounded-3xl bg-white shadow-2xl ${readOnly ? "[&_form]:hidden" : ""} ${wide ? "max-w-6xl" : "max-w-3xl"}`}
-      >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-100 bg-white p-5">
-          <h2 className="text-lg font-black text-zinc-800">{title}</h2>
-          <button
-            onClick={onClose}
-            className="rounded-xl p-2 hover:bg-zinc-100"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div className="p-5">{children}</div>
-      </div>
-    </div>
-  );
-}
-
 function AvisosSistemaBanner({
   avisos,
   dark = false,
@@ -1009,11 +888,7 @@ function LoginScreen({
     try {
       if (!recuperar.codigo) {
         const resp = await solicitarRecuperacaoSenha(recuperar.email);
-        toast.success(
-          resp.codigo_demo
-            ? `Código gerado: ${resp.codigo_demo}`
-            : resp.mensagem,
-        );
+        toast.success(resp.mensagem);
       } else {
         await redefinirSenha(
           recuperar.email,
@@ -1038,7 +913,7 @@ function LoginScreen({
 
   return (
     <div
-      className="smart-helpdesk-config-theme flex min-h-screen items-center justify-center overflow-hidden bg-[#10214f] p-0 sm:p-5 lg:p-8"
+      className="smart-helpdesk-config-theme min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1682f2] via-[#4059e8] to-[#8244d6] lg:flex lg:items-center lg:justify-center lg:p-8"
       style={variaveisTemaSistema(configSistema)}
     >
       <SystemThemeStyle />
@@ -1046,10 +921,10 @@ function LoginScreen({
       <div className="fixed inset-x-0 top-4 z-40 mx-auto w-[min(920px,calc(100vw-32px))]">
         <AvisosSistemaBanner avisos={avisosSistema} />
       </div>
-      <div className="grid h-screen w-full max-w-[1180px] grid-cols-1 overflow-y-auto bg-white shadow-[0_30px_90px_rgba(2,12,40,0.45)] sm:h-[calc(100vh-40px)] sm:rounded-[30px] lg:max-h-[780px] lg:grid-cols-[48%_52%] lg:overflow-hidden">
-        <section className="relative order-2 flex min-h-[660px] items-center justify-center overflow-y-auto bg-white px-6 py-10 sm:px-10 lg:min-h-0 lg:px-16">
-          <div className="w-full max-w-[420px]">
-            <div className="mb-12 flex items-center justify-center gap-3 text-center">
+      <div className="grid min-h-screen w-full grid-cols-1 lg:min-h-0 lg:h-[min(780px,calc(100vh-64px))] lg:max-w-[1180px] lg:grid-cols-[46%_54%] lg:overflow-hidden lg:rounded-[34px] lg:bg-white lg:shadow-[0_30px_90px_rgba(2,12,40,0.45)]">
+        <section className="relative z-10 order-2 -mt-10 flex min-h-[calc(100vh-270px)] items-start justify-center rounded-t-[42px] bg-white px-6 pb-10 pt-12 shadow-[0_-18px_45px_rgba(21,42,100,.16)] sm:px-10 lg:mt-0 lg:min-h-0 lg:items-center lg:overflow-y-auto lg:rounded-none lg:px-16 lg:py-10 lg:shadow-none">
+          <div className="w-full max-w-[440px]">
+            <div className="mb-7 flex items-center justify-center gap-3 text-center lg:mb-10">
               <div className="flex h-12 w-12 items-center justify-center">
                 <img
                   src={sistemaLogo}
@@ -1058,7 +933,7 @@ function LoginScreen({
                 />
               </div>
               <div>
-                <h1 className="text-xl font-black tracking-tight text-slate-900">
+                <h1 className="text-2xl font-black tracking-tight text-slate-900">
                   {sistemaNome}
                 </h1>
                 <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
@@ -1069,9 +944,8 @@ function LoginScreen({
 
             {tela === "login" && (
               <>
-                <div className="mb-8 text-center">
-                  <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-900" />
-                  <h2 className="text-3xl font-black tracking-tight text-slate-900">
+                <div className="mb-7 text-center">
+                  <h2 className="text-[28px] font-black tracking-tight text-slate-950 sm:text-3xl">
                     Olá, seja bem-vindo!
                   </h2>
                   <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
@@ -1115,8 +989,8 @@ function LoginScreen({
                       />
                     </div>
                   </Field>
-                  <Button disabled={loading} className="w-full">
-                    {loading ? "Entrando..." : "Prosseguir"}
+                  <Button disabled={loading} className="h-14 w-full rounded-2xl text-base shadow-[0_12px_25px_rgba(37,99,235,.22)]">
+                    {loading ? "Entrando..." : "Avançar"}
                     <ArrowRight size={18} />
                   </Button>
                 </form>
@@ -1320,7 +1194,7 @@ function LoginScreen({
             </p>
           </div>
         </section>
-        <section className="relative order-1 flex min-h-[250px] items-center justify-center overflow-hidden bg-gradient-to-b from-[#152d69] via-[#234d9b] to-[#102a67] px-8 py-10 text-white lg:min-h-0 lg:px-12">
+        <section className="relative order-1 flex min-h-[310px] items-center justify-center overflow-hidden bg-gradient-to-br from-[#1682f2] via-[#3d60e9] to-[#8244d6] px-7 pb-20 pt-10 text-white lg:min-h-0 lg:px-12 lg:py-10">
           <div
             className="absolute inset-0"
             style={{
@@ -1360,19 +1234,11 @@ function LoginScreen({
               strokeWidth="4"
             />
           </svg>
-          <div className="relative z-10 -mt-14 flex max-w-md flex-col items-center text-center lg:-mt-28">
-            <img
-              src={smartHelpdeskLoginLogo}
-              alt={`${sistemaNome} — Suporte, agilidade e resultados`}
-              className="h-auto w-72 object-contain drop-shadow-[0_12px_22px_rgba(0,0,0,.28)] lg:w-80"
-            />
-            <h2 className="mt-5 text-2xl font-black tracking-tight lg:text-4xl">
-              Suporte que acompanha você
-            </h2>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-blue-100/80">
-              Abra chamados, acompanhe cada etapa e converse com a equipe em um
-              único ambiente.
-            </p>
+          <div className="relative z-10 -mt-8 flex max-w-md flex-col items-center text-center lg:-mt-16">
+            <p className="text-xl font-medium tracking-tight text-white/95 lg:text-3xl">A plataforma</p>
+            <h2 className="mt-1 text-4xl font-black tracking-tight lg:text-6xl">ALL IN ONE</h2>
+            <p className="mt-1 text-xl font-medium tracking-tight text-white/95 lg:text-3xl">de atendimento e suporte</p>
+            <div className="mt-7 hidden max-w-sm rounded-2xl border border-white/20 bg-white/10 p-5 text-sm leading-6 text-blue-50 backdrop-blur-sm lg:block">Abra chamados, acompanhe cada etapa e converse com a equipe em um único ambiente.</div>
           </div>
         </section>
       </div>
@@ -1393,7 +1259,7 @@ function UserPortal({
   configSistema: ConfiguracoesSistema;
   avisosSistema: ApiAvisoSistema[];
 }) {
-  const [tab, setTab] = useState<UsuarioTab>("home");
+  const [tab, setTab] = useModuleRoute<UsuarioTab>(PORTAL_ROUTES, "home");
   const [chamados, setChamados] = useState<ApiChamado[]>([]);
   const [perfil, setPerfil] = useState<ApiUsuario | null>(null);
   const [tipos, setTipos] = useState<CatalogoItem[]>([]);
@@ -1596,7 +1462,7 @@ function UserPortal({
           },
         ]
       : []),
-    ...(permissoesUsuario.includes("baixar_relatorios")
+    ...(permissoesUsuario.includes("visualizar_relatorios") || permissoesUsuario.includes("baixar_relatorios")
       ? [
           {
             key: "relatorios" as UsuarioTab,
@@ -1857,12 +1723,12 @@ function UserPortal({
       permissoesUsuario.includes("visualizar_dashboard")
     ) {
       return dashboardPermitido ? (
-        <OperationalDashboard
+        <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando dashboard…</strong></div>}><OperationalDashboard
           initial={dashboardPermitido}
           dark={temaEscuroUsuario}
           onNavigate={() => {}}
           onOpenTicket={(id) => abrirDetalhe(id)}
-        />
+        /></Suspense>
       ) : (
         <Card>
           <p className="p-8 text-center text-sm text-zinc-500">
@@ -1873,7 +1739,7 @@ function UserPortal({
     }
     if (
       tab === "relatorios" &&
-      permissoesUsuario.includes("baixar_relatorios")
+      (permissoesUsuario.includes("visualizar_relatorios") || permissoesUsuario.includes("baixar_relatorios"))
     ) {
       return (
         <Card>
@@ -2236,7 +2102,7 @@ function UserPortal({
                 onSubmit={executarPesquisa}
                 className="hidden min-w-[240px] max-w-[560px] flex-1 md:flex"
               >
-                <div className="flex h-10 w-full items-center overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm shadow-slate-200/50 transition focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-500/10">
+                <div className="ds-search flex h-10 w-full items-center overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm shadow-slate-200/50 transition focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-500/10">
                   <button
                     type="submit"
                     className="grid h-full w-14 shrink-0 place-items-center text-zinc-400 transition hover:text-blue-600"
@@ -2407,7 +2273,7 @@ function UserPortal({
           <div className="border-b border-zinc-200 bg-white px-4 py-3 md:hidden">
             <form
               onSubmit={executarPesquisa}
-              className="flex h-10 items-center overflow-hidden rounded-full border border-zinc-200 bg-white shadow-sm"
+              className="ds-search flex h-10 items-center overflow-hidden rounded-full border border-zinc-200 bg-white shadow-sm"
             >
               <button
                 type="submit"
@@ -2433,7 +2299,7 @@ function UserPortal({
             </form>
           </div>
 
-          <main className="h-[calc(100vh-64px)] overflow-auto px-4 pb-24 pt-3 lg:overflow-hidden lg:px-5 lg:py-4">
+          <main className="h-[calc(100vh-64px)] overflow-auto px-0 pb-24 pt-0 lg:overflow-hidden lg:px-0 lg:py-0">
             {renderConteudo()}
           </main>
         </div>
@@ -3075,7 +2941,7 @@ function UsuarioBaseConhecimento({
               Pesquise soluções antes de abrir um chamado.
             </p>
           </div>
-          <div className="flex h-10 min-w-[280px] items-center overflow-hidden rounded-full border border-zinc-200 bg-white shadow-sm">
+          <div className="ds-search flex h-10 min-w-[280px] items-center overflow-hidden rounded-full border border-zinc-200 bg-white shadow-sm">
             <Search size={17} className="ml-4 text-zinc-400" />
             <input
               value={busca}
@@ -3463,6 +3329,8 @@ function UsuarioNovoChamadoModal({
               value={perfil.telefone || "-"}
             />
             <UsuarioCampoReadOnly label="Cargo" value={perfil.cargo || "-"} />
+            <UsuarioCampoReadOnly label="Cidade / área de atuação" value={perfil.municipio || "Atualize seu perfil"} />
+            <UsuarioCampoReadOnly label="Unidade / local padrão" value={perfil.unidade || "Atualize seu perfil"} />
           </div>
 
           <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -3586,7 +3454,7 @@ function AdminPanel({
   avisosSistema: ApiAvisoSistema[];
   onAvisosSistemaChange: (avisos: ApiAvisoSistema[]) => void;
 }) {
-  const [tab, setTab] = useState<AdminTab>("kanban");
+  const [tab, setTab] = useModuleRoute<AdminTab>(ADMIN_ROUTES, "fila");
   const [dark, setDark] = useState(
     () => localStorage.getItem("smart_helpdesk_admin_theme") === "dark",
   );
@@ -3640,19 +3508,11 @@ function AdminPanel({
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [notificacoesAberta, setNotificacoesAberta] = useState(false);
   const [carregandoNotificacoes, setCarregandoNotificacoes] = useState(false);
-  const [filtros, setFiltros] = useState<FiltrosChamados>({});
+  const [filtros, setFiltros] = useState<FiltrosChamados>(ticketFiltersFromUrl);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [selecionado, setSelecionado] = useState<ApiChamado | null>(null);
   const [detalheSomenteLeitura, setDetalheSomenteLeitura] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
-  const [novoTecnico, setNovoTecnico] = useState({
-    nome: "",
-    email: "",
-    senha: "",
-    perfil: "tecnico",
-    departamento: "TI",
-    cargo: "Atendente",
-  });
   const [usuarioEditando, setUsuarioEditando] = useState<ApiUsuario | null>(
     null,
   );
@@ -3663,6 +3523,8 @@ function AdminPanel({
     status: "ativo",
     telefone: "",
     departamento: "",
+    municipio: "",
+    unidade: "",
     cargo: "",
     senha: "",
   });
@@ -3691,6 +3553,7 @@ function AdminPanel({
     cargo: usuario.cargo || "",
   });
   const [permissoesAtuais, setPermissoesAtuais] = useState<PermissionKey[]>([]);
+  const [permissoesCarregadas, setPermissoesCarregadas] = useState(false);
   const [usuarioPermissoes, setUsuarioPermissoes] = useState<ApiUsuario | null>(
     null,
   );
@@ -3797,9 +3660,9 @@ function AdminPanel({
     ] = await Promise.all([
       obterDashboard().catch(() => null),
       listarChamados({ ...filtros, meus: true }),
-      listarChamados({ fila: true }),
+      listarChamados({ ...filtros, fila: true }),
       administrador ? listarChamados(filtros) : Promise.resolve([]),
-      listarChamados({ historico: true, closed: true }),
+      listarChamados({ ...filtros, historico: true, closed: true }),
       listarChamados({ closed: true }),
       listarUsuariosAdmin().catch(() => []),
       listarCatalogo("departamentos").catch(() => []),
@@ -3880,21 +3743,34 @@ function AdminPanel({
   useEffect(() => {
     obterMinhasPermissoes()
       .then(({ permissions }) => setPermissoesAtuais(permissions))
-      .catch(() => setPermissoesAtuais([]));
+      .catch(() => setPermissoesAtuais([]))
+      .finally(() => setPermissoesCarregadas(true));
   }, []);
   useEffect(() => {
-    if (
-      tecnico &&
-      tab === "dashboard" &&
-      !permissoesAtuais.includes("visualizar_dashboard")
-    )
-      setTab("fila");
-  }, [permissoesAtuais, tecnico, tab]);
+    if(!permissoesCarregadas)return;
+    const teamTabs:AdminTab[]=["usuarios","acessos","carteira","teams"];
+    const developerTabs:AdminTab[]=["configuracoes","config_sla","config_integracoes","manutencao","diagnostico"];
+    const analyticsTabs:AdminTab[]=["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos","relatorios"];
+    const deniedDashboard=tab==="dashboard"&&!permissoesAtuais.includes("visualizar_dashboard");
+    const deniedTeam=teamTabs.includes(tab)&&!administrador;
+    const deniedDeveloper=developerTabs.includes(tab)&&!desenvolvedor;
+    const deniedCatalog=tab==="catalogos"&&!administrador;
+    const deniedAnalytics=analyticsTabs.includes(tab)&&!administrador&&!permissoesAtuais.includes("visualizar_relatorios")&&!permissoesAtuais.includes("baixar_relatorios");
+    const deniedAssets=tab==="patrimonio"&&!permissoesAtuais.includes("visualizar_patrimonio");
+    const deniedKnowledge=tab==="base"&&!permissoesAtuais.includes("gerenciar_base");
+    if(deniedDashboard||deniedTeam||deniedDeveloper||deniedCatalog||deniedAnalytics||deniedAssets||deniedKnowledge)setTab("fila");
+  }, [administrador,desenvolvedor,permissoesAtuais,permissoesCarregadas,tab]);
 
   useEffect(() => {
     const timer = window.setInterval(() => carregarNotificacoes(), 30000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if(!["fila","kanban","chamados","historico"].includes(tab))return;
+    const timer=window.setInterval(()=>void carregar(),20000);
+    return()=>window.clearInterval(timer);
+  },[tab]);
 
   useEffect(() => {
     localStorage.setItem("smart_helpdesk_admin_theme", dark ? "dark" : "light");
@@ -3907,11 +3783,22 @@ function AdminPanel({
     );
   }, [modoCompacto]);
 
-  async function aplicarFiltros(event?: FormEvent) {
+  useEffect(()=>{
+    if(!["fila","kanban","chamados","historico"].includes(tab))return;
+    const params=new URLSearchParams();
+    Object.entries(filtros).forEach(([key,value])=>{if(value!==undefined&&value!==null&&value!==""&&value!==false)params.set(key,String(value))});
+    const search=params.toString();
+    window.history.replaceState(window.history.state,"",`${window.location.pathname}${search?`?${search}`:""}`);
+  },[filtros,tab]);
+
+  async function aplicarFiltros(event?: FormEvent,override?:FiltrosChamados) {
     event?.preventDefault();
+    const applied=override??filtros;
     try {
-      setChamados(await listarChamados({ ...filtros, meus: true }));
-      if (administrador) setCarteiraEquipe(await listarChamados(filtros));
+      setChamados(await listarChamados({ ...applied, meus: true }));
+      setFilaChamados(await listarChamados({...applied,fila:true}));
+      setHistoricoEquipe(await listarChamados({...applied,historico:true,closed:true}));
+      if (administrador) setCarteiraEquipe(await listarChamados(applied));
       setDashboard(await obterDashboard());
       setMostrarFiltros(false);
     } catch (e) {
@@ -4194,25 +4081,6 @@ function AdminPanel({
     }
   }
 
-  async function criarTecnico(event: FormEvent) {
-    event.preventDefault();
-    try {
-      await criarUsuarioAdmin(novoTecnico);
-      toast.success("Atendente criado.");
-      setNovoTecnico({
-        nome: "",
-        email: "",
-        senha: "",
-        perfil: "tecnico",
-        departamento: "TI",
-        cargo: "Atendente",
-      });
-      await carregar();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao criar atendente.");
-    }
-  }
-
   function abrirEdicaoUsuario(u: ApiUsuario) {
     setUsuarioEditando(u);
     setUsuarioForm({
@@ -4222,6 +4090,8 @@ function AdminPanel({
       status: u.status || "ativo",
       telefone: u.telefone || "",
       departamento: u.departamento || "",
+      municipio: u.municipio || "",
+      unidade: u.unidade || "",
       cargo: u.cargo || "",
       senha: "",
     });
@@ -4239,6 +4109,8 @@ function AdminPanel({
         status: usuarioForm.status,
         telefone: usuarioForm.telefone,
         departamento: usuarioForm.departamento,
+        municipio: usuarioForm.municipio,
+        unidade: usuarioForm.unidade,
         cargo: usuarioForm.cargo,
       };
       if (usuarioForm.senha.trim()) payload.senha = usuarioForm.senha.trim();
@@ -4352,6 +4224,13 @@ function AdminPanel({
   }
 
   const adminTabs = [
+    ...(["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos"] as AdminTab[]).map((key)=>({
+      key,
+      icon: BarChart3,
+      label: key.replace("indicadores_", ""),
+      title: "Indicadores",
+      show: administrador || permissoesAtuais.includes("visualizar_relatorios"),
+    })),
     {
       key: "satisfacao" as AdminTab,
       icon: Star,
@@ -4409,6 +4288,13 @@ function AdminPanel({
       show: administrador,
     },
     {
+      key: "acessos" as AdminTab,
+      icon: ShieldCheck,
+      label: "Acessos",
+      title: "Matriz de acessos",
+      show: administrador,
+    },
+    {
       key: "teams" as AdminTab,
       icon: Users,
       label: "Equipes",
@@ -4434,7 +4320,7 @@ function AdminPanel({
       icon: Download,
       label: "Relatórios",
       title: "Relatórios",
-      show: permissoesAtuais.includes("baixar_relatorios"),
+      show: permissoesAtuais.includes("visualizar_relatorios") || permissoesAtuais.includes("baixar_relatorios"),
     },
     {
       key: "patrimonio" as AdminTab,
@@ -4444,10 +4330,31 @@ function AdminPanel({
       show: permissoesAtuais.includes("visualizar_patrimonio"),
     },
     {
+      key: "diagnostico" as AdminTab,
+      icon: Activity,
+      label: "Diagnóstico",
+      title: "Saúde do sistema",
+      show: desenvolvedor,
+    },
+    {
       key: "configuracoes" as AdminTab,
       icon: Settings,
       label: "Ajustes",
       title: "Configurações",
+      show: desenvolvedor,
+    },
+    {
+      key: "config_sla" as AdminTab,
+      icon: Clock3,
+      label: "SLA",
+      title: "SLA e prioridades",
+      show: desenvolvedor,
+    },
+    {
+      key: "config_integracoes" as AdminTab,
+      icon: Settings,
+      label: "Integrações",
+      title: "Integrações",
       show: desenvolvedor,
     },
     {
@@ -4459,19 +4366,20 @@ function AdminPanel({
     },
   ].filter((item) => item.show);
 
-  const sidebarTabs = adminTabs.filter(
-    (item) =>
-      item.key !== "manutencao" &&
-      !(administrador && item.key === "satisfacao") &&
-      !(desenvolvedor && ["teams", "catalogos"].includes(item.key)),
-  );
+  const navigationAreas = buildAdminNavigation({
+    administrador,
+    desenvolvedor,
+    tecnico,
+    permissions: permissoesAtuais,
+  });
+  const activeArea = navigationAreas.find((area) => area.tabs.includes(tab));
 
   const activeTab = adminTabs.find((item) => item.key === tab) ?? adminTabs[1];
   const sistemaNome = nomeSistema(configSistema);
   const sistemaLogo1 = logoSistema1(configSistema);
   // Alias somente para o renderer antigo já oculto; a aplicação possui uma única logo configurável.
   const sistemaLogo2 = sistemaLogo1;
-  const ActiveIcon = activeTab.icon;
+  const ActiveIcon = activeArea?.icon ?? activeTab.icon;
   const unread = notificacoes.filter((n) => !n.lida).length;
   const filtrosAtivos = useMemo(
     () =>
@@ -4496,7 +4404,7 @@ function AdminPanel({
 
   return (
     <div
-      className={`smart-helpdesk-config-theme ${rootClass}`}
+      className={`shd-app nectar-shell smart-helpdesk-config-theme ${rootClass}`}
       style={variaveisTemaSistema(configSistema)}
     >
       <SystemThemeStyle />
@@ -4515,32 +4423,32 @@ function AdminPanel({
         <AvisosSistemaBanner avisos={avisosSistema} dark={dark} />
       </div>
       <div className="flex h-screen overflow-hidden">
-        <aside className="hidden w-[78px] shrink-0 flex-col bg-[#1f2b33] text-white shadow-xl lg:flex">
-          <div className="grid h-14 shrink-0 place-items-center border-b border-white/10">
+        <aside className="nectar-sidebar hidden w-14 shrink-0 flex-col border-r lg:flex">
+          <div className="grid h-14 shrink-0 place-items-center border-b">
             <img
               src={sistemaLogo1}
               alt={sistemaNome}
-              className="h-10 w-12 object-contain"
+              className="h-8 w-9 object-contain"
             />
           </div>
 
           <nav className="min-h-0 flex-1 overflow-y-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {sidebarTabs.map((item) => {
+            {navigationAreas.map((item) => {
               const Icon = item.icon;
-              const ativo = tab === item.key;
+              const ativo = item.tabs.includes(tab);
               return (
                 <button
-                  key={item.key}
+                  key={item.id}
                   type="button"
-                  onClick={() => setTab(item.key)}
+                  onClick={() => setTab(item.defaultTab)}
                   title={item.title}
-                  className={`relative flex h-[clamp(52px,7vh,66px)] min-h-[52px] w-full flex-col items-center justify-center gap-1 text-[10px] font-semibold transition ${ativo ? "bg-[#111a20] text-white" : "text-white/65 hover:bg-white/5 hover:text-white"}`}
+                  className={`nectar-nav-button relative flex h-12 min-h-12 w-full items-center justify-center transition ${ativo ? "is-active" : ""}`}
                 >
                   {ativo && (
                     <span className="absolute left-0 top-0 h-full w-[3px] bg-blue-500" />
                   )}
                   <Icon size={19} strokeWidth={2.1} />
-                  <span className="max-w-[68px] truncate px-1 text-center leading-tight">
+                  <span className="sr-only">
                     {item.label}
                   </span>
                 </button>
@@ -4551,14 +4459,14 @@ function AdminPanel({
           <div className="shrink-0 border-t border-white/10 py-1">
             <button
               onClick={() => setDark(!dark)}
-              className="flex h-10 w-full items-center justify-center text-white/65 transition hover:bg-white/5 hover:text-white"
+              className="nectar-nav-button flex h-10 w-full items-center justify-center transition"
               title={dark ? "Tema claro" : "Tema escuro"}
             >
               {dark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <button
               onClick={onLogout}
-              className="flex h-10 w-full items-center justify-center text-white/65 transition hover:bg-red-500/15 hover:text-red-200"
+              className="nectar-nav-button flex h-10 w-full items-center justify-center transition hover:!text-red-500"
               title="Sair"
             >
               <LogOut size={18} />
@@ -4568,18 +4476,22 @@ function AdminPanel({
 
         <div className="min-w-0 flex-1">
           <header
-            className={`sticky top-0 z-30 h-16 border-b shadow-sm ${headerClass}`}
+            className={`nectar-topbar sticky top-0 z-[60] h-14 overflow-visible border-b ${headerClass}`}
           >
-            <div className="flex h-full items-center gap-4 px-4 lg:px-6">
+            <div className="relative flex h-full items-center gap-4 px-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                  <h1 className="truncate text-lg font-black tracking-tight">
+                  <h1 className="truncate text-sm font-bold tracking-tight">
                     {sistemaNome}
                   </h1>
-                  <p className={`hidden text-xs sm:block ${mutedText}`}>
+                  <p className={`hidden text-xs ${mutedText}`}>
                     Painel administrativo
                   </p>
                 </div>
+              </div>
+
+              <div className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 text-sm font-semibold text-sky-500 lg:block">
+                {activeArea?.title || "Dashboard"}
               </div>
 
               <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-3">
@@ -4588,10 +4500,10 @@ function AdminPanel({
                     event.preventDefault();
                     setBuscaGlobalAberta(true);
                   }}
-                  className="hidden w-[430px] max-w-[42vw] items-center md:flex"
+                  className={`${["service","assets"].includes(activeArea?.id||"") ? "hidden" : "hidden md:flex"} w-[430px] max-w-[42vw] items-center`}
                 >
                   <div
-                    className={`flex h-10 w-full items-center overflow-hidden rounded-full border shadow-sm transition focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
+                    className={`ds-search flex h-10 w-full items-center overflow-hidden rounded-full border shadow-sm transition focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
                   >
                     <button
                       type="submit"
@@ -4625,8 +4537,8 @@ function AdminPanel({
                   </div>
                 </form>
 
-                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                  <button
+                <div className="nectar-top-actions flex shrink-0 items-center gap-1.5 sm:gap-2">
+                  {!["service","assets"].includes(activeArea?.id||"") && <button
                     type="button"
                     onClick={() => {
                       setTab("kanban");
@@ -4644,14 +4556,14 @@ function AdminPanel({
                         {filtrosAtivos}
                       </span>
                     )}
-                  </button>
-                  <button
+                  </button>}
+                  {!["service","assets"].includes(activeArea?.id||"") && <button
                     onClick={() => carregar()}
                     className={`rounded-xl p-2.5 transition ${dark ? "text-white/70 hover:bg-white/10 hover:text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"}`}
                     title="Atualizar"
                   >
                     <RefreshCw size={20} />
-                  </button>
+                  </button>}
                   <button
                     onClick={() => setModoCompacto((valor) => !valor)}
                     className={`hidden rounded-xl p-2.5 transition sm:grid ${modoCompacto ? "bg-blue-50 text-blue-700" : dark ? "text-white/70 hover:bg-white/10 hover:text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"}`}
@@ -4666,13 +4578,13 @@ function AdminPanel({
                       <button
                         type="button"
                         aria-label="Fechar notificações"
-                        className="fixed inset-0 z-40 cursor-default bg-transparent"
+                        className="notification-dismiss fixed inset-0 z-[61] cursor-default bg-slate-950/5"
                         onClick={() => setNotificacoesAberta(false)}
                       />
                     )}
                     <button
                       onClick={abrirPainelNotificacoes}
-                      className={`relative z-50 rounded-xl p-2.5 transition ${notificacoesAberta ? "bg-blue-50 text-blue-700" : dark ? "text-white/70 hover:bg-white/10 hover:text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"}`}
+                      className={`relative z-[63] rounded-xl p-2.5 transition ${notificacoesAberta ? "bg-blue-50 text-blue-700" : dark ? "text-white/70 hover:bg-white/10 hover:text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"}`}
                       title="Notificações"
                     >
                       <Bell size={20} />
@@ -4685,7 +4597,7 @@ function AdminPanel({
 
                     {notificacoesAberta && (
                       <div
-                        className={`absolute right-0 top-12 z-50 w-[min(380px,calc(100vw-24px))] overflow-hidden rounded-2xl border shadow-2xl ${dark ? "border-white/10 bg-[#101827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`}
+                        className={`notification-popover absolute right-0 top-[calc(100%+8px)] z-[63] w-[min(400px,calc(100vw-24px))] overflow-hidden rounded-2xl border shadow-2xl ${dark ? "border-white/10 bg-[#101827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`}
                       >
                         <div
                           className={`flex items-center justify-between gap-3 border-b p-4 ${dark ? "border-white/10" : "border-zinc-100"}`}
@@ -4710,7 +4622,7 @@ function AdminPanel({
                           </div>
                         </div>
 
-                        <div className="max-h-[430px] overflow-auto p-2">
+                        <div className="max-h-[min(520px,calc(100vh-88px))] overflow-auto overscroll-contain p-2">
                           {carregandoNotificacoes &&
                             notificacoes.length === 0 && (
                               <div
@@ -4778,7 +4690,7 @@ function AdminPanel({
                   <button
                     type="button"
                     onClick={() => {
-                      setMostrarPerfil(true);
+                      setMostrarPerfil((aberto) => !aberto);
                       setMostrarFiltros(false);
                       setNotificacoesAberta(false);
                     }}
@@ -4804,23 +4716,17 @@ function AdminPanel({
           </header>
 
           <main
-            className={`h-[calc(100vh-64px)] overflow-auto p-4 pb-24 lg:p-5 ${tab === "configuracoes" ? "settings-workspace" : ""}`}
+            className={`h-[calc(100vh-56px)] overflow-auto px-4 pb-24 pt-0 lg:pb-5 ${["configuracoes","config_sla"].includes(tab) ? "settings-workspace" : ""}`}
           >
-            {tab !== "kanban" && tab !== "patrimonio" && (
-              <section className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl border border-zinc-200 bg-white text-blue-600 shadow-sm">
-                    <ActiveIcon size={20} />
-                  </div>
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                    <div className="flex items-center gap-2">
-                      <h2 className="truncate text-xl font-black text-inherit">
-                        {activeTab.title}
-                      </h2>
-                    </div>
-                  </div>
-                </div>
-              </section>
+            {activeArea && (
+              <WorkspaceNavigation
+                area={activeArea}
+                current={tab}
+                onNavigate={setTab}
+                onRefresh={activeArea.id === "service" ? ()=>void carregar() : undefined}
+                tools={activeArea.id === "service" ? <TicketWorkspaceToolbar filters={filtros} onChange={setFiltros} onApply={next=>void aplicarFiltros(undefined,next)} dark={dark} embedded/> : activeArea.id === "assets" ? <div className="flex items-center justify-end gap-2"><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-invite"))} className="ds-button ds-button--primary whitespace-nowrap">Gerar convite do agente</button><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-filters"))} className="ds-button ds-button--secondary inline-flex items-center gap-2 whitespace-nowrap"><Filter size={16}/>Filtros</button><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-refresh"))} className="ds-button ds-button--secondary grid !w-10 place-items-center !px-0" title="Atualizar ativos" aria-label="Atualizar ativos"><RefreshCw size={16}/></button></div> : undefined}
+                dark={dark}
+              />
             )}
 
             {filtrosAtivos > 0 &&
@@ -4868,12 +4774,12 @@ function AdminPanel({
               )}
 
             {tab === "dashboard" && dashboard && (
-              <OperationalDashboard
+              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando dashboard…</strong></div>}><OperationalDashboard
                 initial={dashboard}
                 dark={dark}
                 onNavigate={setTab}
                 onOpenTicket={abrirDetalhe}
-              />
+              /></Suspense>
             )}
 
             {tab === "satisfacao" && (
@@ -4895,6 +4801,16 @@ function AdminPanel({
                     onBack={() => setTab("dashboard")}
                   />
                 )}
+              </Suspense>
+            )}
+
+            {["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos"].includes(tab) && (
+              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando indicadores…</strong></div>}>
+                <IndicatorsWorkspace
+                  section={tab==="indicadores_sla"?"sla":tab==="indicadores_tecnicos"?"technicians":tab==="indicadores_ativos"?"assets":"operation"}
+                  chamados={dadosRelatorio}
+                  onOpen={abrirDetalhe}
+                />
               </Suspense>
             )}
 
@@ -5004,7 +4920,7 @@ function AdminPanel({
             )}
 
             {tab === "fila" && (
-              <FilaChamadosView
+              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando fila…</strong></div>}><FilaChamadosView
                 chamados={filaChamados}
                 carteira={carteiraEquipe}
                 equipe={equipe}
@@ -5014,7 +4930,7 @@ function AdminPanel({
                 onAbrir={abrirDetalhe}
                 onAssumir={assumirChamadoAdmin}
                 onAtualizar={() => carregar()}
-              />
+              /></Suspense>
             )}
 
             {tab === "carteira" && administrador && (
@@ -5142,74 +5058,17 @@ function AdminPanel({
             )}
 
             {tab === "kanban" && (
-              <KanbanWorkspace
+              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando Kanban…</strong></div>}><KanbanWorkspace
                 chamados={chamados}
                 dark={dark}
                 dragId={dragId}
                 setDragId={setDragId}
                 onMover={moverChamado}
                 onAbrir={abrirDetalhe}
-              />
+              /></Suspense>
             )}
 
-            {tab === "chamados" && (
-              <Card>
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <h3 className="text-base font-black">Lista de chamados</h3>
-                  </div>
-                  <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-600">
-                    {chamados.length} chamado(s)
-                  </span>
-                </div>
-                <div className="divide-y divide-zinc-100">
-                  {chamados.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => abrirDetalhe(c.id)}
-                      className="flex w-full items-start gap-3 py-4 text-left transition hover:bg-zinc-50"
-                    >
-                      <SolicitanteAvatar chamado={c} size="md" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-black text-blue-700">
-                          {c.numero_chamado || `#${c.id}`}
-                        </span>
-                        <span className="mt-1 block line-clamp-1 font-bold text-zinc-900">
-                          {c.titulo}
-                        </span>
-                        <span className="mt-1 block line-clamp-2 text-xs text-zinc-500">
-                          {c.descricao}
-                        </span>
-                        <span className="mt-2 flex flex-wrap gap-2">
-                          <Badge className={statusClass(c.status)}>
-                            {ticketStatusLabel(c.status)}
-                          </Badge>
-                          <Badge className={prioridadeClass(c.prioridade)}>
-                            {c.prioridade}
-                          </Badge>
-                          {!nomeResponsavelChamado(c) && (
-                            <Badge className="border-dashed border-zinc-300 bg-zinc-50 text-zinc-500">
-                              Sem responsável
-                            </Badge>
-                          )}
-                        </span>
-                      </span>
-                      <ArrowRight
-                        size={17}
-                        className="mt-1 shrink-0 text-zinc-400"
-                      />
-                    </button>
-                  ))}
-                  {chamados.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-zinc-200 p-8 text-center text-sm text-zinc-500">
-                      Nenhum chamado encontrado.
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
+            {tab === "chamados" && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando chamados…</strong></div>}><ChamadosListModule chamados={chamados} onOpen={abrirDetalhe} dark={dark}/></Suspense>}
             {tab === "historico" && (
               <HistoricoEquipeView
                 chamados={historicoEquipe}
@@ -5218,219 +5077,7 @@ function AdminPanel({
               />
             )}
 
-            {tab === "usuarios" && administrador && (
-              <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
-                <Card>
-                  <h3 className="mb-4 flex items-center gap-2 font-black">
-                    <UserCog size={18} />
-                    Criar usuário do sistema
-                  </h3>
-                  <form onSubmit={criarTecnico} className="space-y-3">
-                    <Field label="Nome">
-                      <Input
-                        required
-                        value={novoTecnico.nome}
-                        onChange={(e) =>
-                          setNovoTecnico({
-                            ...novoTecnico,
-                            nome: e.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="E-mail">
-                      <Input
-                        required
-                        type="email"
-                        value={novoTecnico.email}
-                        onChange={(e) =>
-                          setNovoTecnico({
-                            ...novoTecnico,
-                            email: e.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Senha inicial">
-                      <Input
-                        required
-                        minLength={12}
-                        value={novoTecnico.senha}
-                        onChange={(e) =>
-                          setNovoTecnico({
-                            ...novoTecnico,
-                            senha: e.target.value,
-                          })
-                        }
-                        placeholder="12+ caracteres, maiúscula, número e símbolo"
-                      />
-                    </Field>
-                    <Field label="Tipo de usuário">
-                      <Select
-                        value={novoTecnico.perfil}
-                        onChange={(e) =>
-                          setNovoTecnico({
-                            ...novoTecnico,
-                            perfil: e.target.value,
-                          })
-                        }
-                      >
-                        {(desenvolvedor ? PERFIS : ["usuario", "tecnico"]).map(
-                          (p) => (
-                            <option key={p} value={p}>
-                              {perfilLabel(p)}
-                            </option>
-                          ),
-                        )}
-                      </Select>
-                    </Field>
-                    <Field label="Departamento">
-                      <Input
-                        value={novoTecnico.departamento}
-                        onChange={(e) =>
-                          setNovoTecnico({
-                            ...novoTecnico,
-                            departamento: e.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Cargo">
-                      <Input
-                        value={novoTecnico.cargo}
-                        onChange={(e) =>
-                          setNovoTecnico({
-                            ...novoTecnico,
-                            cargo: e.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Button className="w-full">
-                      <UserPlus size={16} />
-                      Criar usuário
-                    </Button>
-                  </form>
-                </Card>
-
-                <Card>
-                  <h3 className="mb-4 flex items-center gap-2 font-black">
-                    <Users size={18} />
-                    Usuários cadastrados
-                  </h3>
-                  {pendentes.length > 0 && (
-                    <div className="mb-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">
-                      <b>{pendentes.length} usuário(s) aguardando aprovação</b>
-                    </div>
-                  )}
-                  <div className="space-y-3">
-                    {usuarios.map((u) => {
-                      const alvoDev = isDevApp(u.perfil);
-                      const alvoAdmin =
-                        normalizarPerfilApp(u.perfil) === "admin";
-                      const podeExcluir =
-                        desenvolvedor && Number(u.id) !== Number(usuario.id);
-                      const podeAprovar =
-                        u.status === "pendente" &&
-                        (desenvolvedor || (!alvoDev && !alvoAdmin));
-                      return (
-                        <div
-                          key={u.id}
-                          className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
-                        >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <UsuarioSistemaAvatar
-                              usuario={u}
-                              size="md"
-                              dark={dark}
-                            />
-                            <div className="min-w-0">
-                              <p className="font-black">{u.nome}</p>
-                              <p className={`text-sm ${mutedText}`}>
-                                {u.email} •{" "}
-                                {u.departamento || "Sem departamento"}
-                              </p>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <Badge>{perfilLabel(u.perfil)}</Badge>
-                                <Badge
-                                  className={
-                                    u.status === "ativo"
-                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                      : "border-amber-200 bg-amber-50 text-amber-700"
-                                  }
-                                >
-                                  {u.status}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {!alvoDev && !alvoAdmin && (
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={() => setUsuarioPermissoes(u)}
-                              >
-                                <ShieldCheck size={16} />
-                                Permissões
-                              </Button>
-                            )}
-                            {desenvolvedor &&
-                              Number(u.id) !== Number(usuario.id) && (
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  onClick={() => abrirEdicaoUsuario(u)}
-                                >
-                                  <UserCog size={16} />
-                                  Editar
-                                </Button>
-                              )}
-                            {podeAprovar && (
-                              <>
-                                <Button
-                                  onClick={async () => {
-                                    await aprovarUsuario(u.id);
-                                    await carregar();
-                                  }}
-                                >
-                                  Aprovar
-                                </Button>
-                                <Button
-                                  variant="danger"
-                                  onClick={async () => {
-                                    await rejeitarUsuario(u.id);
-                                    await carregar();
-                                  }}
-                                >
-                                  Rejeitar
-                                </Button>
-                              </>
-                            )}
-                            {podeExcluir && (
-                              <Button
-                                variant="danger"
-                                onClick={async () => {
-                                  if (!confirm(`Apagar o usuário ${u.nome}?`))
-                                    return;
-                                  await excluirUsuarioAdmin(u.id);
-                                  toast.success("Usuário apagado.");
-                                  await carregar();
-                                }}
-                              >
-                                <Trash2 size={16} />
-                                Apagar
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              </div>
-            )}
-
+            {["usuarios","acessos"].includes(tab) && administrador && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando usuários…</strong></div>}><UsersModule users={usuarios} currentUser={usuario} developer={desenvolvedor} initialMode={tab==="acessos"?"access":"list"} onModeChange={mode=>setTab(mode==="access"?"acessos":"usuarios")} onRefresh={carregar} onEdit={abrirEdicaoUsuario} onPermissions={setUsuarioPermissoes} onApprove={async id=>{await aprovarUsuario(id);await carregar()}} onReject={async id=>{await rejeitarUsuario(id);await carregar()}} onDelete={async id=>{await excluirUsuarioAdmin(id);await carregar();toast.success("Usuário apagado.")}}/></Suspense>}
             {tab === "catalogos" && (
               <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
                 <Card>
@@ -5902,10 +5549,11 @@ function AdminPanel({
               </div>
             )}
 
-            {tab === "configuracoes" && (
-              <SettingsWorkspace
+            {["configuracoes","config_sla"].includes(tab) && (
+              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando configurações…</strong></div>}><SettingsWorkspace
                 config={configSistema}
                 setConfig={setConfigSistema}
+                initialSection={tab==="config_sla"?"sla":"identidade"}
                 logo={sistemaLogo1}
                 uploading={enviandoLogoSistema === "logo1"}
                 onLogo={(event) => trocarLogoSistema(event, "logo1")}
@@ -5915,7 +5563,11 @@ function AdminPanel({
                 onCreateQuick={criarRespostaRapidaAdmin}
                 responses={respostasRapidas}
                 onNavigate={setTab}
-              />
+              /></Suspense>
+            )}
+
+            {tab === "config_integracoes" && desenvolvedor && (
+              <section className="ds-card p-6"><h3 className="font-black">Integrações</h3><p className="mt-2 text-sm text-slate-500">Nenhuma integração externa está configurada. Esta área permanece reservada para conexões autenticadas e auditáveis.</p></section>
             )}
 
             {tab === "manutencao" && desenvolvedor && (
@@ -6076,14 +5728,15 @@ function AdminPanel({
             )}
 
             {tab === "relatorios" && (
-              <ReportsWorkspace
+              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando relatórios…</strong></div>}><ReportsWorkspace
                 chamados={dadosRelatorio}
                 dark={dark}
                 onDownload={(format, filtrosRelatorio) =>
                   baixarRelatorio(format, filtrosRelatorio)
                 }
-              />
+              /></Suspense>
             )}
+            {tab === "diagnostico" && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando diagnóstico…</strong></div>}><SystemDiagnosticsPage dark={dark} /></Suspense>}
           </main>
         </div>
       </div>
@@ -6102,9 +5755,9 @@ function AdminPanel({
             }}
           />
           <MobileNavButton
-            icon={<Bell size={21} />}
-            label="Fila"
-            active={tab === "fila"}
+            icon={<Headphones size={21} />}
+            label="Atendimento"
+            active={["fila","kanban","chamados","historico"].includes(tab)}
             dark={dark}
             onClick={() => {
               setTab("fila");
@@ -6114,31 +5767,11 @@ function AdminPanel({
               filaChamados.length ? String(filaChamados.length) : undefined
             }
           />
-          <MobileNavButton
-            icon={<ListChecks size={21} />}
-            label="Kanban"
-            active={tab === "kanban"}
-            dark={dark}
-            onClick={() => {
-              setTab("kanban");
-              setMenuMaisAdmin(false);
-            }}
-          />
-          <MobileNavButton
-            icon={<Ticket size={21} />}
-            label="Chamados"
-            active={tab === "chamados"}
-            dark={dark}
-            onClick={() => {
-              setTab("chamados");
-              setMenuMaisAdmin(false);
-            }}
-          />
           {administrador ? (
             <MobileNavButton
               icon={<Users size={21} />}
-              label="Usuários"
-              active={tab === "usuarios"}
+              label="Equipe"
+              active={["usuarios","acessos","carteira","teams"].includes(tab)}
               dark={dark}
               onClick={() => {
                 setTab("usuarios");
@@ -6147,28 +5780,49 @@ function AdminPanel({
             />
           ) : (
             <MobileNavButton
-              icon={<BookOpen size={21} />}
-              label="Base"
-              active={tab === "base"}
+              icon={<Star size={21} />}
+              label="Avaliação"
+              active={tab === "satisfacao"}
               dark={dark}
               onClick={() => {
-                setTab("base");
+                setTab("satisfacao");
                 setMenuMaisAdmin(false);
               }}
             />
           )}
+          <MobileNavButton
+            icon={<BarChart3 size={21} />}
+            label="Indicadores"
+            active={["relatorios","satisfacao","indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos"].includes(tab)}
+            dark={dark}
+            onClick={() => {
+              setTab(tecnico?"satisfacao":"indicadores_operacao");
+              setMenuMaisAdmin(false);
+            }}
+          />
+          <MobileNavButton
+            icon={<BookOpen size={21} />}
+            label="Base"
+            active={tab === "base"}
+            dark={dark}
+            onClick={() => {
+              setTab("base");
+              setMenuMaisAdmin(false);
+            }}
+          />
           <MobileNavButton
             icon={<Menu size={21} />}
             label="Mais"
             active={
               menuMaisAdmin ||
               [
-                "relatorios",
                 "patrimonio",
                 "catalogos",
-                "base",
                 "configuracoes",
+                "config_sla",
+                "config_integracoes",
                 "manutencao",
+                "diagnostico",
               ].includes(tab)
             }
             dark={dark}
@@ -6204,45 +5858,19 @@ function AdminPanel({
             }}
           />
           <MobileMoreAction
-            icon={<Download size={18} />}
-            label="Relatórios"
-            onClick={() => {
-              setTab("relatorios");
-              setMenuMaisAdmin(false);
-            }}
-          />
-          <MobileMoreAction
             icon={<MapPinned size={18} />}
-            label="Monitoramento de Ativos"
+            label="Ativos"
             onClick={() => {
               setTab("patrimonio");
               setMenuMaisAdmin(false);
             }}
           />
-          {administrador && (
-            <MobileMoreAction
-              icon={<Building2 size={18} />}
-              label="Catálogos"
-              onClick={() => {
-                setTab("catalogos");
-                setMenuMaisAdmin(false);
-              }}
-            />
-          )}
-          <MobileMoreAction
-            icon={<BookOpen size={18} />}
-            label="Base de Conhecimento"
-            onClick={() => {
-              setTab("base");
-              setMenuMaisAdmin(false);
-            }}
-          />
-          {desenvolvedor && (
+          {(administrador||desenvolvedor) && (
             <MobileMoreAction
               icon={<Settings size={18} />}
-              label="Configurações"
+              label="Ajustes"
               onClick={() => {
-                setTab("configuracoes");
+                setTab(desenvolvedor?"configuracoes":"catalogos");
                 setMenuMaisAdmin(false);
               }}
             />
@@ -6278,7 +5906,7 @@ function AdminPanel({
       )}
 
       {mostrarFiltros && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-x-0 bottom-0 top-14 z-50 flex justify-end">
           <button
             type="button"
             aria-label="Fechar filtros"
@@ -6813,6 +6441,18 @@ function AdminPanel({
               />
             </Field>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Cidade / área de atuação">
+                <Select required value={usuarioForm.municipio} onChange={(e)=>{const municipio=e.target.value;setUsuarioForm({...usuarioForm,municipio,unidade:municipio?`Maranhão Motos - ${municipio}`:""})}}>
+                  <option value="">Selecione</option>
+                  {municipiosMaranhao.map((item)=><option key={item.nome} value={item.nome}>{item.nome}</option>)}
+                </Select>
+              </Field>
+              <Field label="Unidade / local padrão">
+                <Input readOnly value={usuarioForm.unidade} placeholder="Definida pela cidade" />
+              </Field>
+            </div>
+
             <Field label="Nova senha opcional">
               <Input
                 type="password"
@@ -7016,6 +6656,7 @@ function CarteiraEquipeView({
 }) {
   const [arrastando, setArrastando] = useState<number | null>(null);
   const capacidade = 8;
+  const cargaDe = (id: number) => chamados.filter((chamado) => Number(chamado.responsavel_id) === Number(id) && ![TICKET_STATUS.RESOLVED,TICKET_STATUS.CLOSED,TICKET_STATUS.CANCELED].some((status) => status === canonicalTicketStatus(chamado.status))).length;
 
   function presenca(membro: ApiUsuario) {
     if (!membro.ultimo_login_em)
@@ -7053,15 +6694,21 @@ function CarteiraEquipeView({
             Math.round((itens.length / capacidade) * 100),
           );
           const situacao = presenca(membro);
+          const excedentes = Math.max(0, itens.length - capacidade);
+          const recomendado = equipe
+            .filter((candidato) => Number(candidato.id) !== Number(membro.id) && cargaDe(candidato.id) < capacidade)
+            .sort((a, b) => cargaDe(a.id) - cargaDe(b.id))[0];
           return (
             <section
               key={membro.id}
               onDragOver={(e) => e.preventDefault()}
               onDrop={async () => {
-                if (arrastando) await onRedistribuir(arrastando, membro.id);
+                if (arrastando && itens.length >= capacidade) {
+                  toast.error(`${membro.nome} atingiu ${capacidade}/${capacidade}.${recomendado ? ` Sugestão: ${recomendado.nome} (${cargaDe(recomendado.id)}/${capacidade}).` : " Nenhum técnico disponível."}`);
+                } else if (arrastando) await onRedistribuir(arrastando, membro.id);
                 setArrastando(null);
               }}
-              className={`rounded-2xl border p-4 shadow-sm transition ${arrastando ? "border-blue-300 ring-2 ring-blue-100" : dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
+              className={`rounded-2xl border p-4 shadow-sm transition ${excedentes ? "border-red-300 bg-red-50/30 ring-2 ring-red-100" : arrastando ? "border-blue-300 ring-2 ring-blue-100" : dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -7099,6 +6746,7 @@ function CarteiraEquipeView({
                   style={{ width: `${ocupacao}%` }}
                 />
               </div>
+              {excedentes > 0 && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700"><b className="flex items-center gap-2"><AlertTriangle size={15}/>{excedentes} chamado(s) acima da capacidade</b><p className="mt-1">Novas atribuições estão bloqueadas para este técnico.</p>{recomendado&&<button type="button" onClick={async()=>{const chamado=itens[itens.length-1];if(chamado)await onRedistribuir(chamado.id,recomendado.id)}} className="mt-2 w-full rounded-lg bg-white px-3 py-2 font-black text-red-700 shadow-sm">Mover 1 excedente para {recomendado.nome} · {cargaDe(recomendado.id)}/{capacidade}</button>}</div>}
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-xl bg-blue-50 p-2 text-blue-700">
                   <b className="block text-lg">{itens.length}</b>
@@ -7153,854 +6801,6 @@ function CarteiraEquipeView({
         })}
       </div>
     </div>
-  );
-}
-
-function FilaChamadosView({
-  chamados,
-  carteira,
-  equipe,
-  teams,
-  dark,
-  administrador,
-  onAbrir,
-  onAssumir,
-  onAtualizar,
-}: {
-  chamados: ApiChamado[];
-  carteira: ApiChamado[];
-  equipe: ApiUsuario[];
-  teams: ApiTeam[];
-  dark: boolean;
-  administrador: boolean;
-  onAbrir: (id: number) => void;
-  onAssumir: (id: number) => void;
-  onAtualizar: () => void | Promise<void>;
-}) {
-  const [visao, setVisao] = useState<"recebidos" | "alerta" | "atrasados">(
-    "recebidos",
-  );
-  const [buscaFila, setBuscaFila] = useState("");
-  const [atualizando, setAtualizando] = useState(false);
-  const [filtrosFila, setFiltrosFila] = useState({
-    prioridade: "",
-    departamento: "",
-    tipo: "",
-    periodo: "",
-    sla: "",
-    criticos: false,
-  });
-  const [mostrarFiltrosFila, setMostrarFiltrosFila] = useState(false);
-  const [selecionados, setSelecionados] = useState<number[]>([]);
-  const [menuDelegar, setMenuDelegar] = useState<number | null>(null);
-  const [detalheFila, setDetalheFila] = useState<ApiChamado | null>(null);
-  const [novosIds, setNovosIds] = useState<number[]>([]);
-  const [somAtivo, setSomAtivo] = useState(
-    () => localStorage.getItem("smart_helpdesk_queue_sound") === "on",
-  );
-  const idsAnteriores = useRef<Set<number> | null>(null);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      onAtualizar();
-    }, 20000);
-    return () => window.clearInterval(timer);
-  }, [onAtualizar]);
-
-  useEffect(() => {
-    const atuais = new Set(chamados.map((chamado) => chamado.id));
-    if (idsAnteriores.current) {
-      const chegaram = chamados
-        .filter((chamado) => !idsAnteriores.current?.has(chamado.id))
-        .map((chamado) => chamado.id);
-      if (chegaram.length) {
-        setNovosIds(chegaram);
-        toast.info(`${chegaram.length} novo(s) chamado(s) recebido(s).`);
-        if (somAtivo) {
-          try {
-            const AudioContextClass =
-              window.AudioContext ||
-              (
-                window as typeof window & {
-                  webkitAudioContext?: typeof AudioContext;
-                }
-              ).webkitAudioContext;
-            if (AudioContextClass) {
-              const ctx = new AudioContextClass();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.frequency.value = 740;
-              gain.gain.value = 0.04;
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start();
-              osc.stop(ctx.currentTime + 0.16);
-            }
-          } catch {
-            /* alerta visual permanece disponível */
-          }
-        }
-        window.setTimeout(() => setNovosIds([]), 8000);
-      }
-    }
-    idsAnteriores.current = atuais;
-  }, [chamados, somAtivo]);
-
-  const emAlerta = chamados.filter(
-    (chamado) => chamado.sla_status === "alerta",
-  ).length;
-  const atrasados = chamados.filter(
-    (chamado) =>
-      chamado.vencido ||
-      chamado.sla_status === "vencido" ||
-      Number(chamado.sla_minutos_restantes) < 0,
-  ).length;
-
-  const chamadosVisiveis = useMemo(() => {
-    const termo = buscaFila.trim().toLowerCase();
-    return chamados
-      .filter((chamado) => {
-        if (visao === "alerta") return chamado.sla_status === "alerta";
-        if (visao === "atrasados")
-          return (
-            chamado.vencido ||
-            chamado.sla_status === "vencido" ||
-            Number(chamado.sla_minutos_restantes) < 0
-          );
-        return true;
-      })
-      .filter(
-        (chamado) =>
-          !termo ||
-          [
-            chamado.numero_chamado,
-            chamado.titulo,
-            chamado.descricao,
-            chamado.solicitante_nome,
-            chamado.solicitante,
-            chamado.setor,
-            chamado.tipo_chamado,
-          ].some((valor) =>
-            String(valor || "")
-              .toLowerCase()
-              .includes(termo),
-          ),
-      )
-      .filter(
-        (chamado) =>
-          !filtrosFila.prioridade ||
-          chamado.prioridade === filtrosFila.prioridade,
-      )
-      .filter(
-        (chamado) =>
-          !filtrosFila.departamento ||
-          chamado.setor === filtrosFila.departamento,
-      )
-      .filter(
-        (chamado) =>
-          !filtrosFila.tipo || chamado.tipo_chamado === filtrosFila.tipo,
-      )
-      .filter(
-        (chamado) =>
-          !filtrosFila.sla ||
-          (filtrosFila.sla === "vencido"
-            ? chamado.vencido || chamado.sla_status === "vencido"
-            : chamado.sla_status === filtrosFila.sla),
-      )
-      .filter(
-        (chamado) =>
-          !filtrosFila.criticos ||
-          String(chamado.prioridade).toLowerCase() === "alta",
-      )
-      .filter((chamado) => {
-        if (!filtrosFila.periodo || !chamado.criado_em) return true;
-        const horas =
-          (Date.now() - new Date(chamado.criado_em).getTime()) / 3600000;
-        return horas <= Number(filtrosFila.periodo);
-      })
-      .sort((a, b) => {
-        const slaA =
-          a.sla_minutos_restantes == null
-            ? Number.MAX_SAFE_INTEGER
-            : Number(a.sla_minutos_restantes);
-        const slaB =
-          b.sla_minutos_restantes == null
-            ? Number.MAX_SAFE_INTEGER
-            : Number(b.sla_minutos_restantes);
-        return slaA - slaB;
-      });
-  }, [buscaFila, chamados, filtrosFila, visao]);
-
-  function statusFila(chamado: ApiChamado) {
-    if (
-      chamado.vencido ||
-      chamado.sla_status === "vencido" ||
-      Number(chamado.sla_minutos_restantes) < 0
-    ) {
-      return {
-        label: "Atrasado",
-        dot: "bg-red-500",
-        text: "text-red-600",
-        bg: "bg-red-50",
-      };
-    }
-    if (chamado.sla_status === "alerta")
-      return {
-        label: "Em alerta",
-        dot: "bg-amber-500",
-        text: "text-amber-600",
-        bg: "bg-amber-50",
-      };
-    if (String(chamado.prioridade).toLowerCase() === "alta")
-      return {
-        label: "Prioritário",
-        dot: "bg-violet-500",
-        text: "text-violet-600",
-        bg: "bg-violet-50",
-      };
-    return {
-      label: "Novo",
-      dot: "bg-emerald-500",
-      text: "text-emerald-600",
-      bg: "bg-emerald-50",
-    };
-  }
-
-  function tempoSla(chamado: ApiChamado) {
-    if (chamado.sla_minutos_restantes == null) return "SLA não informado";
-    const minutos = Number(chamado.sla_minutos_restantes);
-    const absoluto = Math.abs(minutos);
-    const tempo =
-      absoluto >= 1440
-        ? `${Math.ceil(absoluto / 1440)} dia(s)`
-        : absoluto >= 60
-          ? `${Math.ceil(absoluto / 60)}h`
-          : `${absoluto}min`;
-    return minutos < 0 || chamado.vencido
-      ? `Atraso: ${tempo}`
-      : `SLA: ${tempo}`;
-  }
-
-  async function atualizarFila() {
-    setAtualizando(true);
-    try {
-      await onAtualizar();
-    } finally {
-      setAtualizando(false);
-    }
-  }
-
-  async function abrirPainel(id: number) {
-    try {
-      setDetalheFila(await buscarChamado(id));
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Erro ao abrir chamado.",
-      );
-    }
-  }
-
-  async function delegarChamado(chamadoId: number, tecnicoId: number) {
-    try {
-      await atualizarChamado(chamadoId, { responsavel_id: tecnicoId });
-      setMenuDelegar(null);
-      toast.success("Chamado delegado.");
-      await onAtualizar();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Erro ao delegar chamado.",
-      );
-    }
-  }
-
-  function alternarSelecionado(id: number) {
-    setSelecionados((atuais) =>
-      atuais.includes(id)
-        ? atuais.filter((item) => item !== id)
-        : [...atuais, id],
-    );
-  }
-
-  async function executarLote(dados: Partial<ApiChamado>, mensagem: string) {
-    if (!selecionados.length) return;
-    setAtualizando(true);
-    const resultados = await Promise.allSettled(
-      selecionados.map((id) => atualizarChamado(id, dados)),
-    );
-    const falhas = resultados.filter(
-      (resultado) => resultado.status === "rejected",
-    ).length;
-    if (falhas)
-      toast.error(`${falhas} chamado(s) não puderam ser atualizados.`);
-    if (falhas < selecionados.length) toast.success(mensagem);
-    setSelecionados([]);
-    await onAtualizar();
-    setAtualizando(false);
-  }
-
-  const departamentosFila = Array.from(
-    new Set(
-      chamados.map((chamado) => chamado.setor).filter(Boolean) as string[],
-    ),
-  ).sort();
-  const tiposFila = Array.from(
-    new Set(
-      chamados
-        .map((chamado) => chamado.tipo_chamado)
-        .filter(Boolean) as string[],
-    ),
-  ).sort();
-  const cargaTecnico = (id: number) =>
-    carteira.filter(
-      (chamado) =>
-        Number(chamado.responsavel_id) === Number(id) &&
-        normalizeStatus(chamado.status) !== TICKET_STATUS.CLOSED,
-    ).length;
-
-  const abas = [
-    { id: "recebidos" as const, label: "Recebidos", total: chamados.length },
-    { id: "alerta" as const, label: "Em alerta", total: emAlerta },
-    { id: "atrasados" as const, label: "Atrasados", total: atrasados },
-  ];
-
-  return (
-    <section
-      className={`overflow-hidden rounded-2xl border shadow-sm ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
-    >
-      <div
-        className={`border-b px-4 pt-4 sm:px-5 ${dark ? "border-white/10" : "border-zinc-200"}`}
-      >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <MessageSquare size={20} className="text-blue-600" />
-              <h3 className="text-lg font-black">Chamados recebidos</h3>
-            </div>
-            <p
-              className={`mt-1 text-sm ${dark ? "text-white/50" : "text-zinc-500"}`}
-            >
-              Atenda ou delegue os chamados sem responsável.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <label
-              className={`flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border px-3 sm:w-72 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-zinc-50"}`}
-            >
-              <Search
-                size={16}
-                className={dark ? "text-white/40" : "text-zinc-400"}
-              />
-              <input
-                value={buscaFila}
-                onChange={(e) => setBuscaFila(e.target.value)}
-                placeholder="Buscar na fila..."
-                className="min-w-0 flex-1 border-0 bg-transparent text-sm font-semibold outline-none"
-              />
-              {buscaFila && (
-                <button
-                  type="button"
-                  onClick={() => setBuscaFila("")}
-                  aria-label="Limpar busca"
-                >
-                  <X size={15} />
-                </button>
-              )}
-            </label>
-            <button
-              type="button"
-              onClick={() => setMostrarFiltrosFila((valor) => !valor)}
-              className={`relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${mostrarFiltrosFila ? "border-blue-300 bg-blue-50 text-blue-700" : dark ? "border-white/10 hover:bg-white/10" : "border-zinc-200 hover:bg-zinc-50"}`}
-              title="Filtros da fila"
-            >
-              <Filter size={17} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const proximo = !somAtivo;
-                setSomAtivo(proximo);
-                localStorage.setItem(
-                  "smart_helpdesk_queue_sound",
-                  proximo ? "on" : "off",
-                );
-              }}
-              className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${somAtivo ? "border-emerald-300 bg-emerald-50 text-emerald-700" : dark ? "border-white/10 hover:bg-white/10" : "border-zinc-200 hover:bg-zinc-50"}`}
-              title={
-                somAtivo ? "Desativar alerta sonoro" : "Ativar alerta sonoro"
-              }
-            >
-              <Bell size={17} />
-            </button>
-            <button
-              type="button"
-              onClick={atualizarFila}
-              disabled={atualizando}
-              className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${dark ? "border-white/10 hover:bg-white/10" : "border-zinc-200 hover:bg-zinc-50"}`}
-              title="Atualizar fila"
-            >
-              <RefreshCw
-                size={17}
-                className={atualizando ? "animate-spin" : ""}
-              />
-            </button>
-          </div>
-        </div>
-
-        {mostrarFiltrosFila && (
-          <div
-            className={`mt-4 grid gap-2 rounded-xl border p-3 sm:grid-cols-2 xl:grid-cols-6 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-zinc-50"}`}
-          >
-            <Select
-              value={filtrosFila.prioridade}
-              onChange={(e) =>
-                setFiltrosFila({ ...filtrosFila, prioridade: e.target.value })
-              }
-            >
-              <option value="">Prioridade</option>
-              {PRIORIDADES.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </Select>
-            <Select
-              value={filtrosFila.departamento}
-              onChange={(e) =>
-                setFiltrosFila({ ...filtrosFila, departamento: e.target.value })
-              }
-            >
-              <option value="">Departamento</option>
-              {departamentosFila.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </Select>
-            <Select
-              value={filtrosFila.tipo}
-              onChange={(e) =>
-                setFiltrosFila({ ...filtrosFila, tipo: e.target.value })
-              }
-            >
-              <option value="">Tipo</option>
-              {tiposFila.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </Select>
-            <Select
-              value={filtrosFila.periodo}
-              onChange={(e) =>
-                setFiltrosFila({ ...filtrosFila, periodo: e.target.value })
-              }
-            >
-              <option value="">Período</option>
-              <option value="24">Últimas 24h</option>
-              <option value="72">Últimos 3 dias</option>
-              <option value="168">Últimos 7 dias</option>
-              <option value="720">Últimos 30 dias</option>
-            </Select>
-            <Select
-              value={filtrosFila.sla}
-              onChange={(e) =>
-                setFiltrosFila({ ...filtrosFila, sla: e.target.value })
-              }
-            >
-              <option value="">SLA</option>
-              <option value="normal">No prazo</option>
-              <option value="alerta">Em alerta</option>
-              <option value="vencido">Vencido</option>
-            </Select>
-            <label className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-black text-red-700">
-              <input
-                type="checkbox"
-                checked={filtrosFila.criticos}
-                onChange={(e) =>
-                  setFiltrosFila({ ...filtrosFila, criticos: e.target.checked })
-                }
-              />
-              Somente críticos
-            </label>
-          </div>
-        )}
-
-        <div className="mt-4 flex gap-5 overflow-x-auto">
-          {abas.map((aba) => (
-            <button
-              key={aba.id}
-              type="button"
-              onClick={() => setVisao(aba.id)}
-              className={`relative flex shrink-0 items-center gap-1.5 pb-3 text-sm font-black transition ${visao === aba.id ? "text-blue-600" : dark ? "text-white/50 hover:text-white" : "text-zinc-500 hover:text-zinc-800"}`}
-            >
-              {aba.label}{" "}
-              <span
-                className={`rounded-full px-2 py-0.5 text-[11px] ${visao === aba.id ? "bg-blue-50 text-blue-700" : dark ? "bg-white/10" : "bg-zinc-100"}`}
-              >
-                {aba.total}
-              </span>
-              {visao === aba.id && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-blue-600" />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {selecionados.length > 0 && (
-        <div
-          className={`flex flex-wrap items-center gap-2 border-b px-4 py-3 ${dark ? "border-white/10 bg-blue-500/10" : "border-blue-100 bg-blue-50"}`}
-        >
-          <b className="mr-2 text-sm">{selecionados.length} selecionado(s)</b>
-          <Select
-            className="h-9 w-auto min-w-44"
-            defaultValue=""
-            onChange={(e) => {
-              if (e.target.value)
-                executarLote(
-                  { responsavel_id: Number(e.target.value) },
-                  "Chamados delegados.",
-                );
-            }}
-          >
-            <option value="">Delegar para...</option>
-            {equipe.map((membro) => (
-              <option key={membro.id} value={membro.id}>
-                {membro.nome}
-              </option>
-            ))}
-          </Select>
-          <Select
-            className="h-9 w-auto min-w-40"
-            defaultValue=""
-            onChange={(e) => {
-              if (e.target.value)
-                executarLote(
-                  {
-                    prioridade: e.target.value,
-                    prioridade_manual_motivo: "Alteração em lote pela fila",
-                  },
-                  "Prioridade atualizada.",
-                );
-            }}
-          >
-            <option value="">Prioridade...</option>
-            {PRIORIDADES.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </Select>
-          <Select
-            className="h-9 w-auto min-w-40"
-            defaultValue=""
-            onChange={(e) => {
-              if (e.target.value)
-                executarLote(
-                  { team_id: Number(e.target.value) },
-                  "Chamados movidos para a equipe.",
-                );
-            }}
-          >
-            <option value="">Mover para equipe...</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </Select>
-          <button
-            type="button"
-            onClick={() =>
-              executarLote(
-                {
-                  prioridade: "Alta",
-                  prioridade_manual_motivo: "Marcado como crítico na fila",
-                },
-                "Chamados marcados como críticos.",
-              )
-            }
-            className="h-9 rounded-lg bg-red-600 px-3 text-xs font-black text-white"
-          >
-            Marcar crítico
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelecionados([])}
-            className="ml-auto p-2"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
-      <div className="max-h-[calc(100vh-270px)] min-h-[360px] overflow-y-auto">
-        {chamadosVisiveis.map((chamado) => {
-          const indicador = statusFila(chamado);
-          const data = chamado.criado_em ? new Date(chamado.criado_em) : null;
-          return (
-            <article
-              key={chamado.id}
-              className={`group relative border-b px-4 py-3 transition last:border-b-0 sm:px-5 ${novosIds.includes(chamado.id) ? "bg-emerald-50 ring-1 ring-inset ring-emerald-200" : dark ? "border-white/10 hover:bg-white/5" : "border-zinc-100 hover:bg-blue-50/40"}`}
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={selecionados.includes(chamado.id)}
-                  onChange={() => alternarSelecionado(chamado.id)}
-                  className="mt-3 h-4 w-4 shrink-0 accent-blue-600"
-                  aria-label={`Selecionar ${chamado.numero_chamado || chamado.id}`}
-                />
-                <SolicitanteAvatar chamado={chamado} size="lg" />
-                <button
-                  type="button"
-                  onClick={() => abrirPainel(chamado.id)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className={`h-2.5 w-2.5 shrink-0 rounded-sm ${indicador.dot}`}
-                    />
-                    <span
-                      className={`shrink-0 text-xs font-black ${indicador.text}`}
-                    >
-                      {indicador.label}
-                    </span>
-                    <span
-                      className={`truncate text-xs font-bold ${dark ? "text-white/35" : "text-zinc-400"}`}
-                    >
-                      {chamado.numero_chamado || `#${chamado.id}`}
-                    </span>
-                    <Badge
-                      className={`${prioridadeClass(chamado.prioridade)} hidden sm:inline-flex`}
-                    >
-                      {chamado.prioridade}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 truncate text-sm font-black">
-                    {nomeSolicitanteChamado(chamado)}
-                  </p>
-                  <p
-                    className={`mt-0.5 truncate text-xs ${dark ? "text-white/45" : "text-zinc-500"}`}
-                  >
-                    {chamado.setor || "Departamento não informado"}
-                    {chamado.tipo_chamado ? ` · ${chamado.tipo_chamado}` : ""}
-                  </p>
-                  <p
-                    className={`mt-1.5 truncate text-sm font-semibold ${dark ? "text-white/75" : "text-zinc-700"}`}
-                  >
-                    {chamado.titulo}
-                  </p>
-                </button>
-
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <span className={`text-xs font-black ${indicador.text}`}>
-                    {tempoSla(chamado)}
-                  </span>
-                  <span
-                    className={`text-xs ${dark ? "text-white/40" : "text-zinc-400"}`}
-                  >
-                    {data
-                      ? data.toLocaleString("pt-BR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "-"}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {(chamado.total_comentarios || 0) > 0 && (
-                      <span
-                        className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-black ${dark ? "bg-white/10 text-white/60" : "bg-zinc-100 text-zinc-500"}`}
-                      >
-                        <MessageSquare size={12} />
-                        {chamado.total_comentarios}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onAssumir(chamado.id)}
-                      className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-black text-white opacity-100 transition hover:bg-blue-700 sm:opacity-0 sm:group-hover:opacity-100"
-                    >
-                      <span className="hidden sm:inline">Assumir</span>
-                      <UserCheck size={14} className="sm:hidden" />
-                    </button>
-                    {administrador && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setMenuDelegar(
-                            menuDelegar === chamado.id ? null : chamado.id,
-                          )
-                        }
-                        className={`rounded-lg border p-1.5 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 ${dark ? "border-white/10 hover:bg-white/10" : "border-zinc-200 hover:bg-white"}`}
-                        title="Delegar"
-                      >
-                        <UserCog size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {menuDelegar === chamado.id && (
-                <div
-                  className={`absolute right-4 top-[82px] z-30 w-72 overflow-hidden rounded-xl border p-2 shadow-2xl ${dark ? "border-white/10 bg-[#101827]" : "border-zinc-200 bg-white"}`}
-                >
-                  <p className="px-2 pb-2 pt-1 text-xs font-black uppercase tracking-wide text-zinc-400">
-                    Delegar chamado
-                  </p>
-                  <div className="max-h-64 space-y-1 overflow-y-auto">
-                    {equipe.map((membro) => (
-                      <button
-                        key={membro.id}
-                        type="button"
-                        onClick={() => delegarChamado(chamado.id, membro.id)}
-                        className={`flex w-full items-center gap-2 rounded-lg p-2 text-left ${dark ? "hover:bg-white/10" : "hover:bg-zinc-50"}`}
-                      >
-                        <UsuarioSistemaAvatar
-                          usuario={membro}
-                          size="sm"
-                          dark={dark}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-black">
-                            {membro.nome}
-                          </span>
-                          <span className="block truncate text-[11px] text-zinc-500">
-                            {membro.departamento || perfilLabel(membro.perfil)}
-                          </span>
-                        </span>
-                        <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black text-blue-700">
-                          {cargaTecnico(membro.id)} ativos
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </article>
-          );
-        })}
-
-        {chamadosVisiveis.length === 0 && (
-          <div className="grid min-h-[360px] place-items-center p-8 text-center">
-            <div>
-              <CheckCircle2
-                size={38}
-                className="mx-auto mb-3 text-emerald-500"
-              />
-              <p className="font-black">Nenhum chamado nesta visão</p>
-              <p
-                className={`mt-1 text-sm ${dark ? "text-white/45" : "text-zinc-500"}`}
-              >
-                A fila está em dia ou nenhum resultado corresponde à busca.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-      {detalheFila && (
-        <div className="fixed inset-0 z-[70] flex justify-end">
-          <button
-            type="button"
-            aria-label="Fechar detalhes"
-            onClick={() => setDetalheFila(null)}
-            className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]"
-          />
-          <aside
-            className={`relative z-10 h-full w-full max-w-xl overflow-y-auto border-l p-5 shadow-2xl ${dark ? "border-white/10 bg-[#101827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`}
-          >
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-black text-blue-600">
-                  {detalheFila.numero_chamado || `#${detalheFila.id}`}
-                </p>
-                <h3 className="mt-1 text-xl font-black">
-                  {detalheFila.titulo}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDetalheFila(null)}
-                className="rounded-xl p-2 hover:bg-zinc-100"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge className={statusClass(detalheFila.status)}>
-                {ticketStatusLabel(detalheFila.status)}
-              </Badge>
-              <Badge className={prioridadeClass(detalheFila.prioridade)}>
-                {detalheFila.prioridade}
-              </Badge>
-              <Badge>{detalheFila.tipo_chamado || "Chamado"}</Badge>
-            </div>
-            <div
-              className={`mt-5 rounded-2xl border p-4 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-zinc-50"}`}
-            >
-              <div className="flex items-center gap-3">
-                <SolicitanteAvatar chamado={detalheFila} size="lg" />
-                <div>
-                  <p className="font-black">
-                    {nomeSolicitanteChamado(detalheFila)}
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {detalheFila.setor || "Departamento não informado"}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-5">
-              <h4 className="mb-2 font-black">Descrição</h4>
-              <p
-                className={`whitespace-pre-wrap text-sm leading-6 ${dark ? "text-white/65" : "text-zinc-600"}`}
-              >
-                {detalheFila.descricao}
-              </p>
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Button onClick={() => onAssumir(detalheFila.id)}>
-                <UserCheck size={16} />
-                Assumir
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setDetalheFila(null);
-                  onAbrir(detalheFila.id);
-                }}
-              >
-                Abrir detalhes completos
-              </Button>
-            </div>
-            {administrador && (
-              <div className="mt-6">
-                <h4 className="mb-2 font-black">Delegação rápida</h4>
-                <div className="grid gap-2">
-                  {equipe.map((membro) => (
-                    <button
-                      key={membro.id}
-                      onClick={() => {
-                        delegarChamado(detalheFila.id, membro.id);
-                        setDetalheFila(null);
-                      }}
-                      className={`flex items-center gap-3 rounded-xl border p-3 text-left ${dark ? "border-white/10 hover:bg-white/10" : "border-zinc-200 hover:bg-zinc-50"}`}
-                    >
-                      <UsuarioSistemaAvatar
-                        usuario={membro}
-                        size="sm"
-                        dark={dark}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <b className="block truncate">{membro.nome}</b>
-                        <span className="text-xs text-zinc-500">
-                          {membro.departamento || "Sem departamento"}
-                        </span>
-                      </span>
-                      <Badge>{cargaTecnico(membro.id)} ativos</Badge>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </aside>
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -8233,471 +7033,6 @@ function DashboardView({
   );
 }
 
-type KanbanViewMode = "kanban" | "list" | "detailed";
-
-function KanbanWorkspace({
-  chamados: todosChamados,
-  dark,
-  dragId,
-  setDragId,
-  onMover,
-  onAbrir,
-}: {
-  chamados: ApiChamado[];
-  dark: boolean;
-  dragId: number | null;
-  setDragId: Dispatch<SetStateAction<number | null>>;
-  onMover: (id: number, status: string) => void | Promise<void>;
-  onAbrir: (id: number) => void;
-}) {
-  // A janela de permanência é aplicada pela API. O histórico usa consulta própria
-  // e nunca depende desta lista operacional.
-  const chamados = todosChamados;
-  const [preferredView, setPreferredView] = useState<KanbanViewMode>(() => {
-    const saved = localStorage.getItem("smart_helpdesk_kanban_view");
-    return saved === "list" || saved === "detailed" ? saved : "kanban";
-  });
-  const [mobile, setMobile] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(max-width: 767px)").matches,
-  );
-  useEffect(() => {
-    const query = window.matchMedia("(max-width: 767px)");
-    const update = () => setMobile(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-  const view: KanbanViewMode = mobile ? "list" : preferredView;
-  const chooseView = (next: KanbanViewMode) => {
-    setPreferredView(next);
-    localStorage.setItem("smart_helpdesk_kanban_view", next);
-  };
-  const modes = [
-    { id: "kanban" as const, label: "Kanban", icon: Columns3 },
-    { id: "list" as const, label: "Lista", icon: List },
-    { id: "detailed" as const, label: "Detalhado", icon: Rows3 },
-  ];
-
-  return (
-    <div className="space-y-3">
-      <div
-        className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 shadow-sm ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
-      >
-        <div>
-          <h3 className="text-sm font-black">Visualização dos chamados</h3>
-          <p className={`text-xs ${dark ? "text-white/45" : "text-zinc-500"}`}>
-            {mobile
-              ? "No celular, os chamados são organizados automaticamente em lista."
-              : "Kanban é o modo principal. Concluídos permanecem por 24 horas."}
-          </p>
-        </div>
-        <div className="hidden items-center rounded-xl border border-zinc-200 bg-zinc-50 p-1 md:flex">
-          {modes.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => chooseView(id)}
-              aria-pressed={view === id}
-              className={`flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-black transition ${view === id ? "bg-blue-600 text-white shadow-sm" : "text-zinc-500 hover:bg-white hover:text-zinc-800"}`}
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
-        </div>
-        {mobile && (
-          <span className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700">
-            <List size={14} />
-            Lista para celular
-          </span>
-        )}
-      </div>
-
-      {view === "kanban" && (
-        <div className="overflow-x-auto pb-4">
-          <div className="grid min-w-[1180px] grid-cols-4 gap-3">
-            {STATUS_COLUNAS.map((coluna) => {
-              const itens = chamados.filter(
-                (c) => normalizeStatus(c.status) === coluna.status,
-              );
-              return (
-                <section
-                  key={coluna.status}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => {
-                    if (dragId) onMover(dragId, coluna.status);
-                    setDragId(null);
-                  }}
-                  className={`min-h-[610px] rounded-lg border shadow-sm ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
-                >
-                  <div className="overflow-hidden rounded-t-lg border-b border-zinc-200">
-                    <div className={`h-1.5 ${coluna.accent}`} />
-                    <div
-                      className={`${dark ? "bg-white/5" : "bg-[#eef2f6]"} flex items-center justify-between px-3 py-3`}
-                    >
-                      <h3 className="flex min-w-0 items-center gap-2 text-sm font-black">
-                        <span className={coluna.tone}>{coluna.icon}</span>
-                        <span className="truncate">{coluna.titulo}</span>
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`grid h-7 min-w-7 place-items-center rounded-full px-2 text-xs font-black ${coluna.count}`}
-                        >
-                          {itens.length}
-                        </span>
-                        <span className={coluna.tone}>◆</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3 p-3">
-                    {itens.map((c) => (
-                      <AdminTicketCard
-                        key={c.id}
-                        chamado={c}
-                        onOpen={() => onAbrir(c.id)}
-                        onDrag={() => setDragId(c.id)}
-                      />
-                    ))}
-                    {itens.length === 0 && (
-                      <div
-                        className={`rounded-lg border border-dashed p-6 text-center text-sm ${dark ? "border-white/10 text-white/45" : "border-zinc-200 text-zinc-400"}`}
-                      >
-                        Nenhum chamado nesta coluna.
-                      </div>
-                    )}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {view === "list" && (
-        <section
-          className={`overflow-hidden rounded-2xl border shadow-sm ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
-        >
-          <div
-            className={`hidden grid-cols-[130px_minmax(260px,1fr)_170px_140px_150px_28px] gap-3 border-b px-4 py-3 text-[10px] font-black uppercase tracking-wide lg:grid ${dark ? "border-white/10 text-white/40" : "border-zinc-100 bg-zinc-50 text-zinc-400"}`}
-          >
-            <span>Chamado</span>
-            <span>Assunto</span>
-            <span>Solicitante</span>
-            <span>Status</span>
-            <span>Prioridade / SLA</span>
-            <span />
-          </div>
-          <div
-            className={
-              dark ? "divide-y divide-white/10" : "divide-y divide-zinc-100"
-            }
-          >
-            {chamados.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onAbrir(c.id)}
-                className={`grid w-full gap-2 px-4 py-4 text-left transition lg:grid-cols-[130px_minmax(260px,1fr)_170px_140px_150px_28px] lg:items-center lg:gap-3 ${dark ? "hover:bg-white/5" : "hover:bg-blue-50/50"}`}
-              >
-                <span className="text-xs font-black text-blue-600">
-                  {c.numero_chamado || `#${c.id}`}
-                </span>
-                <span className="min-w-0">
-                  <b className="block truncate text-sm">{c.titulo}</b>
-                  <small
-                    className={`block truncate ${dark ? "text-white/45" : "text-zinc-500"}`}
-                  >
-                    {c.tipo_chamado || "Chamado"} · {formatDate(c.criado_em)}
-                  </small>
-                </span>
-                <span className="flex min-w-0 items-center gap-2">
-                  <SolicitanteAvatar chamado={c} size="sm" />
-                  <span className="truncate text-xs font-bold">
-                    {nomeSolicitanteChamado(c)}
-                  </span>
-                </span>
-                <span>
-                  <Badge className={statusClass(c.status)}>{ticketStatusLabel(c.status)}</Badge>
-                </span>
-                <span className="flex flex-wrap gap-1">
-                  <Badge className={prioridadeClass(c.prioridade)}>
-                    {c.prioridade}
-                  </Badge>
-                  {(c.vencido || c.sla_status === "alerta") && (
-                    <AlertTriangle
-                      size={15}
-                      className={c.vencido ? "text-red-500" : "text-amber-500"}
-                    />
-                  )}
-                </span>
-                <ArrowRight
-                  size={16}
-                  className="hidden text-zinc-400 lg:block"
-                />
-              </button>
-            ))}
-          </div>
-          {chamados.length === 0 && <KanbanEmpty dark={dark} />}
-        </section>
-      )}
-
-      {view === "detailed" && (
-        <div className="grid gap-4 xl:grid-cols-2">
-          {chamados.map((c) => (
-            <article
-              key={c.id}
-              className={`rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${c.vencido ? "border-red-300 ring-2 ring-red-100" : dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
-            >
-              <button
-                type="button"
-                onClick={() => onAbrir(c.id)}
-                className="w-full text-left"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-blue-600">
-                      {c.numero_chamado || `#${c.id}`} ·{" "}
-                      {c.tipo_chamado || "Chamado"}
-                    </p>
-                    <h3 className="mt-1 line-clamp-2 text-base font-black">
-                      {c.titulo}
-                    </h3>
-                  </div>
-                  <SolicitanteAvatar chamado={c} size="lg" />
-                </div>
-                <p
-                  className={`mt-3 line-clamp-3 text-sm leading-6 ${dark ? "text-white/60" : "text-zinc-600"}`}
-                >
-                  {c.descricao}
-                </p>
-                <div className="mt-4 grid gap-3 rounded-xl bg-zinc-500/5 p-3 sm:grid-cols-2">
-                  <KanbanDetail
-                    label="Solicitante"
-                    value={nomeSolicitanteChamado(c)}
-                  />
-                  <KanbanDetail
-                    label="Departamento"
-                    value={c.setor || "Não informado"}
-                  />
-                  <KanbanDetail
-                    label="Responsável"
-                    value={nomeResponsavelChamado(c) || "Sem responsável"}
-                  />
-                  <KanbanDetail
-                    label="Criado em"
-                    value={formatDate(c.criado_em)}
-                  />
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Badge className={statusClass(c.status)}>{ticketStatusLabel(c.status)}</Badge>
-                  <Badge className={prioridadeClass(c.prioridade)}>
-                    {c.prioridade}
-                  </Badge>
-                  {c.categoria_ia && <Badge>{c.categoria_ia}</Badge>}
-                  {c.vencido && (
-                    <Badge className="border-red-200 bg-red-50 text-red-700">
-                      SLA vencido
-                    </Badge>
-                  )}
-                  <span className="ml-auto flex items-center gap-3 text-xs text-zinc-400">
-                    <span className="flex items-center gap-1">
-                      <MessageSquare size={14} />
-                      {c.total_comentarios || 0}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Paperclip size={14} />
-                      {c.total_anexos || 0}
-                    </span>
-                    <ArrowRight size={17} />
-                  </span>
-                </div>
-              </button>
-            </article>
-          ))}
-          {chamados.length === 0 && (
-            <div className="xl:col-span-2">
-              <KanbanEmpty dark={dark} />
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function KanbanDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-400">
-        {label}
-      </p>
-      <p className="truncate text-xs font-bold">{value}</p>
-    </div>
-  );
-}
-function KanbanEmpty({ dark }: { dark: boolean }) {
-  return (
-    <div
-      className={`p-12 text-center ${dark ? "text-white/45" : "text-zinc-400"}`}
-    >
-      <CheckCircle2 size={34} className="mx-auto mb-3 text-emerald-500" />
-      <p className="font-black">Nenhum chamado nesta visualização</p>
-    </div>
-  );
-}
-
-function AdminTicketCard({
-  chamado,
-  onOpen,
-  onDrag,
-}: {
-  chamado: ApiChamado;
-  onOpen: () => void;
-  onDrag: () => void;
-}) {
-  const tipo =
-    chamado.tipo_chamado ||
-    (chamado.categoria_ia ? "Incident Request" : "Service Request");
-  const identificador = chamado.numero_chamado || `#${chamado.id}`;
-  const solicitante = nomeSolicitanteChamado(chamado);
-  const prioridade = chamado.prioridade || chamado.prioridade_ia || "Media";
-  const mensagens = Number(chamado.total_comentarios || 0);
-  const anexos = Number(chamado.total_anexos || 0);
-  const respostaPendente = chamado.ultimo_comentario_perfil === "usuario";
-
-  return (
-    <article
-      draggable
-      onDragStart={onDrag}
-      onClick={onOpen}
-      className={`group cursor-grab rounded-md border bg-white p-3 text-[#202a33] shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md active:cursor-grabbing ${chamado.vencido ? "border-red-300 ring-2 ring-red-100" : "border-zinc-200"}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <p className="truncate text-[11px] font-semibold text-zinc-500">
-            {tipo} ID: {identificador}
-          </p>
-          <div className="mt-2 flex items-start gap-2">
-            <span
-              className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg text-white ${tipo.toLowerCase().includes("incident") ? "bg-orange-400" : "bg-cyan-500"}`}
-            >
-              <Ticket size={14} />
-            </span>
-            <h4 className="line-clamp-2 text-sm font-black leading-snug text-zinc-800 group-hover:text-blue-700">
-              {chamado.titulo}
-            </h4>
-          </div>
-        </div>
-        <SolicitanteAvatar chamado={chamado} size="md" />
-      </div>
-
-      <div className="mt-3 flex min-w-0 items-center gap-2 text-xs text-zinc-600">
-        <span className="truncate font-semibold">{solicitante}</span>
-        <span className="text-zinc-300">|</span>
-        <span className="shrink-0">{formatDate(chamado.criado_em)}</span>
-      </div>
-
-      <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-500">
-        {chamado.descricao}
-      </p>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {(chamado.sla_status || chamado.vencido) && (
-          <Badge
-            className={slaBadgeClass(
-              chamado.sla_status || (chamado.vencido ? "vencido" : "normal"),
-            )}
-          >
-            <AlertTriangle size={12} />{" "}
-            {chamado.sla_status === "alerta"
-              ? "SLA em alerta"
-              : chamado.vencido
-                ? "Vencido"
-                : "SLA ok"}
-          </Badge>
-        )}
-        {chamado.categoria_ia && (
-          <Badge className="border-blue-100 bg-blue-50 text-blue-700">
-            {chamado.categoria_ia}
-          </Badge>
-        )}
-        {chamado.responsavel || chamado.ia_responsavel_sugerido ? (
-          <Badge className="border-zinc-200 bg-zinc-50 text-zinc-600">
-            {chamado.responsavel || chamado.ia_responsavel_sugerido}
-          </Badge>
-        ) : null}
-      </div>
-
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1 text-zinc-400">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen();
-            }}
-            className={`relative flex h-7 items-center gap-1 rounded-lg px-1.5 transition hover:bg-blue-50 hover:text-blue-700 ${respostaPendente ? "bg-red-50 text-red-600" : ""}`}
-            title={
-              respostaPendente
-                ? "Nova mensagem do usuário aguardando resposta"
-                : mensagens
-                  ? `${mensagens} mensagem(ns) no chamado`
-                  : "Nenhuma mensagem"
-            }
-            aria-label={
-              respostaPendente
-                ? "Nova mensagem do usuário"
-                : `${mensagens} mensagens`
-            }
-          >
-            <MessageSquare size={15} />
-            {mensagens > 0 && (
-              <span className="text-[10px] font-black">{mensagens}</span>
-            )}
-            {respostaPendente && (
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen();
-            }}
-            disabled={!anexos}
-            className="flex h-7 items-center gap-1 rounded-lg px-1.5 transition enabled:hover:bg-blue-50 enabled:hover:text-blue-700 disabled:opacity-35"
-            title={anexos ? `Abrir ${anexos} anexo(s)` : "Nenhum anexo"}
-            aria-label={`${anexos} anexos`}
-          >
-            <Paperclip size={15} />
-            {anexos > 0 && (
-              <span className="text-[10px] font-black">{anexos}</span>
-            )}
-          </button>
-          <span
-            className={`grid h-7 w-7 place-items-center rounded-lg ${chamado.vencido ? "bg-red-50 text-red-600" : chamado.sla_status === "alerta" ? "bg-amber-50 text-amber-600" : ""}`}
-            title={
-              chamado.vencido
-                ? `SLA vencido há ${formatarMinutos(Math.abs(Number(chamado.sla_minutos_restantes || 0)))}`
-                : `Tempo restante do SLA: ${formatarMinutos(chamado.sla_minutos_restantes)}`
-            }
-            aria-label="Situação do SLA"
-          >
-            <Clock3 size={15} />
-          </span>
-        </div>
-        <Badge
-          className={`${prioridadeClass(prioridade)} rounded-full px-3 py-1 text-[11px]`}
-        >
-          {prioridade}
-        </Badge>
-      </div>
-    </article>
-  );
-}
-
 function ChamadoDetalhe({
   chamado,
   usuario,
@@ -8746,7 +7081,9 @@ function ChamadoDetalhe({
   ].includes(chamado.status);
   const slaTexto = concluido
     ? "SLA encerrado"
-    : chamado.vencido
+    : chamado.sla_status === "pausado"
+      ? "SLA pausado · aguardando usuário"
+      : chamado.vencido
       ? `Vencido há ${formatarMinutos(Math.abs(Number(chamado.sla_minutos_restantes || 0)))}`
       : chamado.sla_minutos_restantes != null
         ? `${formatarMinutos(chamado.sla_minutos_restantes)} restantes`
@@ -8874,6 +7211,18 @@ function ChamadoDetalhe({
                     {chamado.setor || "Não informado"}
                   </b>
                 </div>
+                <div>
+                  <span className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">Origem do solicitante / área</span>
+                  <b className="mt-1 block text-zinc-800">{[chamado.municipio_solicitante,chamado.unidade_solicitante].filter(Boolean).join(" · ")||"Não informada"}</b>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">Local do atendimento</span>
+                  <b className="mt-1 block text-zinc-800">{[chamado.ativo_municipio||chamado.municipio_solicitante,chamado.ativo_unidade||chamado.unidade_solicitante].filter(Boolean).join(" · ")||"Não informado"}</b>
+                </div>
+                {chamado.ativo_id&&<div>
+                  <span className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">Ativo / máquina</span>
+                  <b className="mt-1 block text-emerald-700">{chamado.ativo_hostname||"Ativo"} · {chamado.ativo_patrimonio||`#${chamado.ativo_id}`}</b>
+                </div>}
                 <div>
                   <span className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">
                     Tipo

@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "check:jsx": "node scripts/check-jsx-bindings.mjs",
+    "build": "npm run check:jsx && vite build",
     "dev": "vite"
   },
   "dependencies": {

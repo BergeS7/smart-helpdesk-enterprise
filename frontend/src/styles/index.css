@@ -1,6 +1,7 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import './design-system.css';
 
 
 /* Smart HelpDesk — dark mode, compact mode and mobile polish */
@@ -107,7 +108,7 @@
 .usuario-theme-dark .shadow-lg,
 .usuario-theme-dark .shadow-xl,
 .usuario-theme-dark .shadow-2xl {
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28) !important;
 }
 
 .admin-theme-dark .dashboard-tone-blue { background: rgba(37,99,235,.16); color: #93c5fd; }
@@ -238,7 +239,7 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
   background-color: rgba(255,255,255,.86) !important;
   backdrop-filter: blur(18px) saturate(150%);
   -webkit-backdrop-filter: blur(18px) saturate(150%);
-  box-shadow: 0 1px 0 rgba(15,23,42,.06), 0 8px 30px rgba(15,23,42,.035);
+  box-shadow: 0 1px 0 rgba(15,23,42,.08);
 }
 
 .admin-theme-dark header[class*="sticky"],
@@ -246,7 +247,7 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 
 .smart-helpdesk-config-theme aside[class*="bg-[#1f2b33]"] {
   background: linear-gradient(180deg, #1e2b34 0%, #17232b 100%) !important;
-  box-shadow: 10px 0 30px rgba(15,23,42,.09);
+  box-shadow: 1px 0 0 rgba(15,23,42,.16);
 }
 
 .smart-helpdesk-config-theme aside nav button::after {
@@ -265,12 +266,12 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 .shd-card:hover,
 .smart-helpdesk-config-theme .dashboard-card:hover {
   border-color: color-mix(in srgb, var(--shd-primary, #2563eb) 22%, #d4d4d8) !important;
-  box-shadow: var(--shd-shadow-hover) !important;
+  box-shadow: var(--shd-shadow) !important;
 }
 
 .smart-helpdesk-config-theme button:not(:disabled) { transition: color .16s ease, background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
 .smart-helpdesk-config-theme button:not(:disabled):active { transform: translateY(1px) scale(.985); }
-.shd-button:not(:disabled):hover { transform: translateY(-1px); }
+.shd-button:not(:disabled):hover { transform: none; }
 
 .smart-helpdesk-config-theme input,
 .smart-helpdesk-config-theme textarea,
@@ -312,7 +313,7 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 @keyframes shd-page-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: no-preference) {
-  .smart-helpdesk-config-theme main > section,
+  .smart-helpdesk-config-theme main > section:not(.workspace-navigation),
   .smart-helpdesk-config-theme main > div { animation: shd-page-in .24s ease-out both; }
 }
 
@@ -321,7 +322,6 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 }
 
 @media (max-width: 640px) {
-  .smart-helpdesk-config-theme main { padding-left: .75rem !important; padding-right: .75rem !important; }
   .shd-modal-panel { border-radius: 1.25rem !important; }
 }
 
@@ -395,4 +395,285 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
   .login-animated-moto { width: 215px !important; height: 145px !important; }
 }
 @media (prefers-reduced-motion: reduce) {
+}
+
+/* Interface plana: conteúdo contínuo separado por linhas, sem cartões flutuantes. */
+.shd-app main .ds-card,
+.shd-app main .ds-panel,
+.shd-app main .shd-card,
+.shd-app main .dashboard-card,
+.shd-app main .queue-workspace,
+.shd-app main .kanban-workspace section,
+.shd-app main .patrimonio-module aside,
+.shd-app main .patrimonio-module .map-stage,
+.shd-app main .patrimonio-module details,
+.shd-app main .reports-workspace article,
+.shd-app main .reports-workspace section,
+.shd-app main .settings-subpages > aside,
+.shd-app main .settings-subpages > section,
+.shd-app main .settings-subpages article,
+.shd-app main .dashboard-modern article,
+.shd-app main .user-ticket-card,
+.shd-app main .user-summary-card,
+.shd-app main .user-kanban-column {
+  border-radius: 0 !important;
+  border-color: var(--ds-border) !important;
+  box-shadow: none !important;
+}
+
+.shd-app main article[class*="rounded-2xl"]:not(.fixed):not([role="dialog"]),
+.shd-app main section[class*="rounded-2xl"]:not(.fixed):not([role="dialog"]),
+.shd-app main details[class*="rounded-2xl"] {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.shd-app main .ds-card--interactive:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Geometria mais reta e técnica em todo o produto. */
+.shd-app [class~="rounded-3xl"] { border-radius: 8px !important; }
+.shd-app [class~="rounded-2xl"] { border-radius: 6px !important; }
+.shd-app [class~="rounded-xl"] { border-radius: 6px !important; }
+.shd-app [class~="rounded-lg"] { border-radius: 4px !important; }
+.shd-app [class~="rounded-md"] { border-radius: 4px !important; }
+.shd-app [class~="rounded-full"] { border-radius: 9999px !important; }
+
+/* Professional workspace: ritmo consistente e hierarquia orientada a dados. */
+.shd-app main { min-width:0; }
+.shd-app main > .workspace-navigation {
+  position:sticky;
+  top:0;
+  z-index:30;
+  opacity:1 !important;
+}
+.shd-app main table { width:100%; font-variant-numeric:tabular-nums; }
+.shd-app main thead { background:var(--ds-surface-subtle); }
+.shd-app main thead th { height:38px; color:var(--ds-text-muted)!important; font-size:10px!important; font-weight:800!important; letter-spacing:.065em!important; }
+.shd-app main tbody td { border-color:var(--ds-border); }
+.shd-app main tbody tr:hover { background:color-mix(in srgb,var(--ds-brand-50) 58%,transparent)!important; }
+.shd-app main section > header,.shd-app main article > header { border-color:var(--ds-border); }
+.shd-app main .ticket-list-workspace { background:var(--ds-surface); color:var(--ds-text); }
+.shd-app main .ticket-list-workspace > header { position:sticky; top:104px; z-index:18; }
+.shd-app main .ticket-list-workspace aside { background:var(--ds-surface); color:var(--ds-text); border-color:var(--ds-border); }
+.shd-app main .ticket-list-workspace aside > div > header { background:var(--ds-surface); border-color:var(--ds-border); }
+.shd-app main .ticket-list-workspace .divide-y > * { border-color:var(--ds-border); }
+.admin-theme-dark .ticket-list-workspace .bg-zinc-50,.admin-theme-dark .ticket-list-workspace .bg-blue-50 { background:var(--ds-surface-subtle)!important; }
+.admin-theme-dark .ticket-list-workspace .bg-zinc-200\/70 { background:var(--ds-border)!important; }
+
+@media (max-width:1279px) {
+  .shd-app main .ticket-list-workspace aside { border-top:1px solid var(--ds-border); border-left:0; }
+}
+@media (max-width:767px) {
+  .shd-app main > .workspace-navigation { position:relative; }
+  .shd-app main .ticket-list-workspace > header { position:relative; top:auto; }
+  .shd-app main .ticket-list-workspace > header .ds-search { min-width:100%; order:5; }
+}
+
+/* Linguagem visual Nectar: estrutura leve, cartões discretos e navegação orientada por ícones. */
+.nectar-shell { background:#f5f5f8 !important; color:var(--ds-text); }
+.nectar-shell .nectar-sidebar {
+  border-color:#edf0f4 !important;
+  background:#fff !important;
+  color:#0a0a0a !important;
+  box-shadow:none !important;
+}
+.nectar-shell .nectar-sidebar > div { border-color:#edf0f4 !important; }
+.nectar-shell .nectar-nav-button { color:#0a0a0a; background:transparent; }
+.nectar-shell .nectar-sidebar nav svg { width:21px; height:21px; stroke-width:2.25; }
+.nectar-shell .nectar-sidebar > div:last-child svg { width:20px; height:20px; stroke-width:2.2; }
+.nectar-shell .nectar-nav-button:hover { color:#12a8ed; background:#f3fbff; }
+.nectar-shell .nectar-nav-button.is-active { color:#12a8ed; background:#eefaff; }
+.nectar-shell .nectar-nav-button.is-active > span:first-child { width:2px; background:#12a8ed; }
+.nectar-shell .nectar-topbar {
+  border-color:#dff0f8 !important;
+  background:linear-gradient(90deg,#f7fbfe 0%,#e6f6fd 56%,#d5f2fd 100%) !important;
+  color:#596170 !important;
+  box-shadow:none !important;
+}
+.nectar-shell .nectar-top-actions > button,
+.nectar-shell .nectar-top-actions > div > button:not(.notification-dismiss) { border-radius:999px !important; }
+.nectar-shell .nectar-top-actions > button:hover,
+.nectar-shell .nectar-top-actions > div > button:not(.notification-dismiss):hover { background:#dff3fc !important; color:#079bdd !important; }
+.nectar-shell .notification-dismiss,
+.nectar-shell .notification-dismiss:hover {
+  border-radius:0 !important;
+  background:rgba(15,23,42,.05) !important;
+  color:transparent !important;
+  transform:none !important;
+}
+.nectar-shell .notification-popover button { border-radius:8px !important; }
+.nectar-shell main { background:#f5f5f8 !important; }
+.nectar-shell .workspace-navigation {
+  border-color:#eceff3 !important;
+  background:#fff !important;
+  isolation:isolate;
+}
+.nectar-shell .workspace-navigation .ds-button { min-height:34px; }
+.nectar-shell:not(.admin-theme-dark) .workspace-navigation [role="tab"]:not([aria-selected="true"]) { color:#64748b !important; }
+.nectar-shell .workspace-navigation [role="tab"] { min-height:40px; font-size:13px !important; }
+.nectar-shell:not(.admin-theme-dark) .text-slate-400 { color:#64748b !important; }
+.nectar-shell:not(.admin-theme-dark) .text-slate-500 { color:#526174 !important; }
+.nectar-shell:not(.admin-theme-dark) .text-zinc-400 { color:#64748b !important; }
+.nectar-shell:not(.admin-theme-dark) .text-zinc-500 { color:#526174 !important; }
+.nectar-shell:not(.admin-theme-dark) ::placeholder { color:#7b8798 !important; opacity:1; }
+.nectar-shell:not(.admin-theme-dark),
+.nectar-shell:not(.admin-theme-dark) main,
+.nectar-shell:not(.admin-theme-dark) header,
+.nectar-shell:not(.admin-theme-dark) aside { color:#0a0a0a; }
+.nectar-shell:not(.admin-theme-dark) .text-slate-300,
+.nectar-shell:not(.admin-theme-dark) .text-slate-400,
+.nectar-shell:not(.admin-theme-dark) .text-slate-500,
+.nectar-shell:not(.admin-theme-dark) .text-slate-600,
+.nectar-shell:not(.admin-theme-dark) .text-slate-700,
+.nectar-shell:not(.admin-theme-dark) .text-zinc-300,
+.nectar-shell:not(.admin-theme-dark) .text-zinc-400,
+.nectar-shell:not(.admin-theme-dark) .text-zinc-500,
+.nectar-shell:not(.admin-theme-dark) .text-zinc-600,
+.nectar-shell:not(.admin-theme-dark) .text-zinc-700,
+.nectar-shell:not(.admin-theme-dark) .text-gray-400,
+.nectar-shell:not(.admin-theme-dark) .text-gray-500,
+.nectar-shell:not(.admin-theme-dark) .text-gray-600 { color:#0a0a0a !important; }
+.nectar-shell:not(.admin-theme-dark) svg { color:#0a0a0a !important; stroke:#0a0a0a !important; }
+.nectar-shell:not(.admin-theme-dark) .nectar-nav-button,
+.nectar-shell:not(.admin-theme-dark) .nectar-nav-button.is-active,
+.nectar-shell:not(.admin-theme-dark) .workspace-navigation [role="tab"],
+.nectar-shell:not(.admin-theme-dark) .nectar-topbar [class*="text-sky"],
+.nectar-shell:not(.admin-theme-dark) .nectar-topbar [class*="text-blue"] { color:#0a0a0a !important; }
+.nectar-shell:not(.admin-theme-dark) .nectar-sidebar .nectar-nav-button { color:#0a0a0a !important; }
+.nectar-shell:not(.admin-theme-dark) .nectar-sidebar .nectar-nav-button:hover,
+.nectar-shell:not(.admin-theme-dark) .nectar-sidebar .nectar-nav-button.is-active { color:#12a8ed !important; }
+.nectar-shell:not(.admin-theme-dark) .nectar-sidebar svg { color:currentColor !important; stroke:currentColor !important; }
+.nectar-shell:not(.admin-theme-dark) .ds-button--primary,
+.nectar-shell:not(.admin-theme-dark) .ds-button--danger,
+.nectar-shell:not(.admin-theme-dark) button[class*="bg-blue-6"],
+.nectar-shell:not(.admin-theme-dark) button[class*="bg-red-6"] { color:#fff !important; }
+.nectar-shell:not(.admin-theme-dark) .ds-button--primary svg,
+.nectar-shell:not(.admin-theme-dark) .ds-button--danger svg,
+.nectar-shell:not(.admin-theme-dark) button[class*="bg-blue-6"] svg,
+.nectar-shell:not(.admin-theme-dark) button[class*="bg-red-6"] svg { color:#fff !important; stroke:#fff !important; }
+.nectar-shell main .ds-card,
+.nectar-shell main .ds-panel,
+.nectar-shell main .shd-card,
+.nectar-shell main .dashboard-card,
+.nectar-shell main .queue-workspace,
+.nectar-shell main .kanban-workspace section,
+.nectar-shell main .patrimonio-module aside,
+.nectar-shell main .patrimonio-module .map-stage,
+.nectar-shell main .patrimonio-module details,
+.nectar-shell main .reports-workspace article,
+.nectar-shell main .reports-workspace section,
+.nectar-shell main .settings-subpages > aside,
+.nectar-shell main .settings-subpages > section,
+.nectar-shell main .settings-subpages article,
+.nectar-shell main .dashboard-modern article,
+.nectar-shell main .user-ticket-card,
+.nectar-shell main .user-summary-card,
+.nectar-shell main .user-kanban-column,
+.nectar-shell main article[class*="rounded-2xl"]:not(.fixed):not([role="dialog"]),
+.nectar-shell main section[class*="rounded-2xl"]:not(.fixed):not([role="dialog"]),
+.nectar-shell main details[class*="rounded-2xl"] {
+  border-color:#eceff3 !important;
+  border-radius:8px !important;
+  background:#fff;
+  box-shadow:none !important;
+}
+.nectar-shell main h1,.nectar-shell main h2,.nectar-shell main h3 { color:#535966; font-weight:650; }
+.nectar-shell main [class*="font-black"] { font-weight:700; }
+.nectar-shell .ds-button--primary { border-color:#12a8ed !important; background:#12a8ed !important; }
+.nectar-shell .ds-button--primary:hover { border-color:#079bdd !important; background:#079bdd !important; }
+.nectar-shell .ds-search { border-color:#edf0f4 !important; background:#fff !important; }
+
+.admin-theme-dark.nectar-shell { background:#111827 !important; }
+.admin-theme-dark.nectar-shell .nectar-sidebar { border-color:#263448 !important; background:#111b2b !important; color:#93a4b8 !important; }
+.admin-theme-dark.nectar-shell .nectar-nav-button:hover,.admin-theme-dark.nectar-shell .nectar-nav-button.is-active { background:#152b3b; color:#38bdf8; }
+.admin-theme-dark.nectar-shell .nectar-topbar { border-color:#263448 !important; background:linear-gradient(90deg,#111b2b,#102536) !important; color:#e5edf7 !important; }
+.admin-theme-dark.nectar-shell main { background:var(--ds-canvas) !important; }
+.admin-theme-dark.nectar-shell .workspace-navigation {
+  border-color:var(--ds-border) !important;
+  background:var(--ds-surface) !important;
+  color:var(--ds-text) !important;
+}
+.admin-theme-dark.nectar-shell .workspace-navigation h1,
+.admin-theme-dark.nectar-shell .workspace-navigation p { color:var(--ds-text) !important; }
+.admin-theme-dark.nectar-shell .workspace-navigation p { color:var(--ds-text-muted) !important; }
+.admin-theme-dark.nectar-shell .workspace-navigation [role="tab"]:not([aria-selected="true"]) { color:var(--ds-text-muted) !important; }
+.admin-theme-dark.nectar-shell .workspace-navigation [role="tab"][aria-selected="true"] { color:#38bdf8 !important; border-color:#38bdf8 !important; }
+.admin-theme-dark.nectar-shell .ds-search,
+.admin-theme-dark.nectar-shell .ticket-workspace-search,
+.admin-theme-dark.nectar-shell .ticket-workspace-search > div {
+  border-color:var(--ds-border) !important;
+  background:var(--ds-surface-subtle) !important;
+  color:var(--ds-text) !important;
+}
+.admin-theme-dark.nectar-shell .ds-search input,
+.admin-theme-dark.nectar-shell .ticket-workspace-search input {
+  color:var(--ds-text) !important;
+  background:transparent !important;
+}
+.admin-theme-dark.nectar-shell .ds-search:focus-within,
+.admin-theme-dark.nectar-shell .ticket-workspace-search:focus-within { border-color:#38bdf8 !important; background:var(--ds-surface) !important; }
+.admin-theme-dark.nectar-shell .ds-button--secondary {
+  border-color:var(--ds-border) !important;
+  background:var(--ds-surface-subtle) !important;
+  color:var(--ds-text) !important;
+}
+.admin-theme-dark.nectar-shell .ds-button--secondary:hover { border-color:#38bdf8 !important; background:#152b3b !important; color:#7dd3fc !important; }
+.admin-theme-dark.nectar-shell main .ds-card,
+.admin-theme-dark.nectar-shell main .ds-panel,
+.admin-theme-dark.nectar-shell main .shd-card,
+.admin-theme-dark.nectar-shell main .dashboard-card,
+.admin-theme-dark.nectar-shell main .queue-workspace,
+.admin-theme-dark.nectar-shell main .kanban-workspace section,
+.admin-theme-dark.nectar-shell main .patrimonio-module aside,
+.admin-theme-dark.nectar-shell main .patrimonio-module .map-stage,
+.admin-theme-dark.nectar-shell main .patrimonio-module details,
+.admin-theme-dark.nectar-shell main .reports-workspace article,
+.admin-theme-dark.nectar-shell main .reports-workspace section,
+.admin-theme-dark.nectar-shell main .settings-subpages > aside,
+.admin-theme-dark.nectar-shell main .settings-subpages > section,
+.admin-theme-dark.nectar-shell main .settings-subpages article,
+.admin-theme-dark.nectar-shell main .dashboard-modern article,
+.admin-theme-dark.nectar-shell main .user-ticket-card,
+.admin-theme-dark.nectar-shell main .user-summary-card,
+.admin-theme-dark.nectar-shell main .user-kanban-column,
+.admin-theme-dark.nectar-shell main article[class*="rounded-2xl"]:not(.fixed):not([role="dialog"]),
+.admin-theme-dark.nectar-shell main section[class*="rounded-2xl"]:not(.fixed):not([role="dialog"]) { border-color:var(--ds-border)!important; background:var(--ds-surface)!important; }
+.admin-theme-dark.nectar-shell main h1,.admin-theme-dark.nectar-shell main h2,.admin-theme-dark.nectar-shell main h3 { color:var(--ds-text); }
+
+/* Satisfação em uma única tela: síntese no topo e três painéis analíticos. */
+.satisfaction-page .satisfaction-content {
+  display:grid;
+  grid-template-columns:minmax(220px,.68fr) minmax(720px,1.9fr) minmax(260px,.78fr);
+  grid-template-rows:auto minmax(0,1fr);
+  grid-template-areas:
+    "privacy privacy privacy"
+    "distribution ranking comments";
+  gap:10px;
+}
+.satisfaction-page .satisfaction-filters { grid-area:filters; }
+.satisfaction-page .satisfaction-privacy { grid-area:privacy; }
+.satisfaction-page .satisfaction-summary { grid-area:summary; }
+.satisfaction-page .satisfaction-distribution { grid-area:distribution; overflow:hidden; }
+.satisfaction-page .satisfaction-ranking { grid-area:ranking; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--ds-border); border-radius:8px; padding:12px; background:var(--ds-surface); }
+.satisfaction-page .satisfaction-comments { grid-area:comments; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--ds-border); border-radius:8px; padding:12px; background:var(--ds-surface); }
+.satisfaction-page .satisfaction-ranking-list,.satisfaction-page .satisfaction-comments-list { min-height:0; flex:1; overflow:hidden!important; }
+.satisfaction-page .satisfaction-summary > div { min-height:0; padding:10px 14px; }
+.satisfaction-page .satisfaction-summary > div > span:first-child { float:left; margin-right:10px; }
+.satisfaction-page .satisfaction-summary > div > b { margin-top:0; font-size:20px; }
+.satisfaction-page .satisfaction-summary > div > span:last-child { margin-top:2px; }
+.satisfaction-page .satisfaction-distribution .space-y-2 { margin-top:10px; }
+.satisfaction-page .satisfaction-distribution .space-y-2 > * + * { margin-top:5px; }
+.satisfaction-page .satisfaction-ranking article { padding:10px; }
+.satisfaction-page .satisfaction-ranking article [class*="mt-4"] { margin-top:8px; }
+.satisfaction-page .satisfaction-ranking article [class*="mt-3"] { margin-top:6px; }
+.satisfaction-page .satisfaction-comments article { padding:10px; }
+
+@media (max-width:1279px) {
+  .satisfaction-page { height:calc(100vh - 137px); }
+  .satisfaction-page .satisfaction-content { display:block; overflow-y:auto; }
+  .satisfaction-page .satisfaction-content > * + * { margin-top:10px; }
+  .satisfaction-page .satisfaction-ranking-list,.satisfaction-page .satisfaction-comments-list { max-height:320px; }
 }

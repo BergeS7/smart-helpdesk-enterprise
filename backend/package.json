@@ -7,7 +7,7 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "test": "node --test test/*.test.js",
-    "check": "node --check server.js && node --check src/app.js"
+    "check": "node scripts/check-syntax.js"
   },
   "keywords": [],
   "author": "",

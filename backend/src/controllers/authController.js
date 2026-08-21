@@ -305,7 +305,6 @@ const solicitarRecuperacaoSenha = async (req, res) => {
 
     return res.json({
       mensagem: "Se o e-mail estiver cadastrado, enviaremos as instruções de recuperação.",
-      codigo_demo: process.env.NODE_ENV === "production" ? undefined : codigo,
     });
   } catch (error) {
     console.error(error);

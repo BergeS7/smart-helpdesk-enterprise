@@ -362,7 +362,7 @@ async function listarUsuarios(req, res) {
 
     if (q) {
       params.push(`%${String(q).trim()}%`);
-      where.push(`(nome ILIKE $${params.length} OR email ILIKE $${params.length} OR departamento ILIKE $${params.length} OR cargo ILIKE $${params.length})`);
+      where.push(`(nome ILIKE $${params.length} OR email ILIKE $${params.length} OR departamento ILIKE $${params.length} OR cargo ILIKE $${params.length} OR municipio ILIKE $${params.length} OR unidade ILIKE $${params.length})`);
     }
 
     const result = await pool.query(
@@ -374,6 +374,8 @@ async function listarUsuarios(req, res) {
           COALESCE(status, 'ativo') AS status,
           telefone,
           departamento,
+          municipio,
+          unidade,
           cargo,
           criado_em,
           aprovado_em,

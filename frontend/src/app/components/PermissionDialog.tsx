@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Check, Download, FilePenLine, MapPinned, ShieldCheck, Ticket, X } from "lucide-react";
+import { BarChart3, Check, Download, FilePenLine, MapPinned, Settings, ShieldCheck, Ticket, UserCog, X } from "lucide-react";
 import { atualizarPermissoesUsuario, listarCatalogoPermissoes, obterPermissoesUsuario, type ApiUsuario, type PermissionDefinition, type PermissionKey } from "../services/api";
 
-const icons = { visualizar_dashboard: BarChart3, baixar_relatorios: Download, visualizar_patrimonio: MapPinned, gerenciar_chamados: Ticket, gerenciar_base: FilePenLine };
+const icons: Record<PermissionKey, typeof ShieldCheck> = { visualizar_dashboard: BarChart3, visualizar_relatorios: BarChart3, exportar_dados: Download, baixar_relatorios: Download, visualizar_patrimonio: MapPinned, administrar_ativos: MapPinned, gerenciar_chamados: Ticket, assumir_chamados: Ticket, delegar_chamados: UserCog, alterar_prioridade: Ticket, encerrar_chamados: Ticket, gerenciar_usuarios: UserCog, alterar_configuracoes: Settings, gerenciar_base: FilePenLine };
 
 export function PermissionDialog({ user, dark, onClose, onSaved }: { user: ApiUsuario; dark?: boolean; onClose: () => void; onSaved?: () => void }) {
   const [catalog, setCatalog] = useState<PermissionDefinition[]>([]);

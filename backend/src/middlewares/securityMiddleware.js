@@ -62,7 +62,7 @@ function notFound(req, res) { res.status(404).json({ erro: "Recurso não encontr
 function errorHandler(error, req, res, _next) {
   const status = Number(error.status || error.statusCode) || 500;
   const safeStatus = status >= 400 && status < 600 ? status : 500;
-  console.error(JSON.stringify({ level: "error", requestId: req.id, method: req.method, path: req.originalUrl, status: safeStatus, message: error.message }));
+  require("../services/systemDiagnosticsService").recordError({ source: "backend", requestId: req.id, path: req.originalUrl, message: error.message, context: { method: req.method, status: safeStatus } });
   const message = error.expose || safeStatus < 500 ? error.message : "Ocorreu um erro interno. Informe o código da solicitação ao suporte.";
   res.status(safeStatus).json({ erro: message, requestId: req.id });
 }

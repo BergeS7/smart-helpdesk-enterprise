@@ -4,7 +4,7 @@ const { carregarConfiguracoesObjeto } = require("./settingsController");
 const { enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
 const { normalizarPerfil, ehAdmin, ehEquipe, ehDesenvolvedor } = require("../utils/permissoes");
-const { distributeTicket } = require("../services/distributionService");
+const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../services/distributionService");
 const { generateExcelReport, generatePdfReport } = require("../services/reportService");
 const { buildReportMetrics } = require("../domain/reportMetrics");
 const fs = require("fs");
@@ -113,21 +113,22 @@ async function criarNotificacao(usuarioId, titulo, mensagem, tipo = "info", link
 }
 
 
-function minutosRestantes(dataLimite) {
+function minutosRestantes(dataLimite, referencia = new Date()) {
   if (!dataLimite) return null;
-  const diff = new Date(dataLimite).getTime() - Date.now();
+  const diff = new Date(dataLimite).getTime() - new Date(referencia).getTime();
   return Math.round(diff / 60000);
 }
 
 function calcularIndicadoresSla(row) {
-  const restante = minutosRestantes(row.sla_limite_resolucao);
+  const pausado = canonicalizeStatus(row.status) === STATUS.WAITING_USER;
+  const restante = minutosRestantes(row.sla_limite_resolucao, pausado && row.sla_pausado_em ? row.sla_pausado_em : new Date());
   const resolucao = Number(row.sla_resolucao_minutos || 0);
-  let sla_status = "normal";
-  if (row.status && !statusFinalizado(row.status)) {
+  let sla_status = pausado ? "pausado" : "normal";
+  if (!pausado && row.status && !statusFinalizado(row.status)) {
     if (restante !== null && restante < 0) sla_status = "vencido";
     else if (restante !== null && resolucao > 0 && restante <= Math.max(30, resolucao * 0.2)) sla_status = "alerta";
   }
-  return { ...row, sla_minutos_restantes: restante, sla_status };
+  return { ...row, vencido: pausado ? false : row.vencido, sla_minutos_restantes: restante, sla_status };
 }
 
 async function escolherResponsavelAutomatico({ departamento, categoria }) {
@@ -163,7 +164,7 @@ async function verificarAlertasSla(req = null) {
             COALESCE(sla_alerta_enviado, FALSE) AS sla_alerta_enviado,
             COALESCE(sla_escalado, FALSE) AS sla_escalado
      FROM chamados
-     WHERE status NOT IN ('RESOLVED','CLOSED','CANCELED')
+     WHERE status NOT IN ('RESOLVED','CLOSED','CANCELED','WAITING_USER')
        AND sla_limite_resolucao IS NOT NULL
        AND (
          (COALESCE(sla_alerta_enviado, FALSE) = FALSE AND sla_limite_resolucao <= CURRENT_TIMESTAMP + INTERVAL '30 minutes')
@@ -311,9 +312,11 @@ async function carregarDetalhesChamado(req, chamado) {
 
   return {
     ...adicionarFotosParticipantes(req, calcularIndicadoresSla(chamado)),
-    vencido: chamado.status && !statusFinalizado(chamado.status) && chamado.sla_limite_resolucao
-      ? new Date(chamado.sla_limite_resolucao) < new Date()
-      : Boolean(chamado.vencido),
+    vencido: canonicalizeStatus(chamado.status) === STATUS.WAITING_USER
+      ? false
+      : chamado.status && !statusFinalizado(chamado.status) && chamado.sla_limite_resolucao
+        ? new Date(chamado.sla_limite_resolucao) < new Date()
+        : Boolean(chamado.vencido),
     comentarios: comentarios.rows,
     anexos: anexos.rows.map((anexo) => ({ ...anexo, url: montarUrlAnexo(req, anexo) })),
     movimentacoes: movimentacoes.rows,
@@ -371,13 +374,24 @@ async function detectarDuplicidade({ setor, titulo, descricao, categoria }) {
 
 const criarChamado = async (req, res) => {
   try {
-    const { titulo, descricao, tipo_chamado } = req.body;
+    const { titulo, descricao, tipo_chamado, ativo_id } = req.body;
     const usuario = await obterUsuarioAtual(req);
     if (!usuario) return res.status(404).json({ erro: "Usuário não encontrado" });
 
     const erros = validarCamposCriacao({ titulo, descricao, usuario });
     if (erros.length > 0) {
       return res.status(400).json({ erro: "Preencha todos os campos obrigatórios", detalhes: erros });
+    }
+
+    let ativo = null;
+    if (ativo_id !== undefined && ativo_id !== null && ativo_id !== "") {
+      const ativoResult = await pool.query(
+        `SELECT id, hostname, COALESCE(patrimonio,serial_number,device_id) AS patrimonio, municipio, unidade
+         FROM ativos WHERE id=$1`,
+        [Number(ativo_id)]
+      );
+      ativo = ativoResult.rows[0] || null;
+      if (!ativo) return res.status(404).json({ erro: "Ativo informado não foi encontrado" });
     }
 
     const analiseIA = decidirPrioridadeChamado({ setor: usuario.departamento, titulo, descricao });
@@ -401,13 +415,15 @@ const criarChamado = async (req, res) => {
         telefone_solicitante, cargo_solicitante, municipio_solicitante, unidade_solicitante,
         responsavel_id, responsavel, ia_responsavel_sugerido, ia_resposta_inicial,
         ia_duplicado_de, ia_duplicidade_motivo, sla, sla_resposta_minutos, sla_resolucao_minutos,
-        sla_limite_resposta, sla_limite_resolucao)
+        sla_limite_resposta, sla_limite_resolucao,
+        ativo_id, ativo_hostname, ativo_patrimonio, ativo_municipio, ativo_unidade)
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $7, $8, 'OPEN',
         $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25,
         CURRENT_TIMESTAMP + ($24::integer * INTERVAL '1 minute'),
-        CURRENT_TIMESTAMP + ($25::integer * INTERVAL '1 minute')
+        CURRENT_TIMESTAMP + ($25::integer * INTERVAL '1 minute'),
+        $26, $27, $28, $29, $30
       )
       RETURNING *`,
       [
@@ -436,6 +452,11 @@ const criarChamado = async (req, res) => {
         sla.label,
         sla.respostaMinutos,
         sla.resolucaoMinutos,
+        ativo?.id || null,
+        ativo?.hostname || null,
+        ativo?.patrimonio || null,
+        ativo?.municipio || null,
+        ativo?.unidade || null,
       ]
     );
 
@@ -520,6 +541,8 @@ function montarFiltrosChamados(query, req) {
   if (query.departamento) add("LOWER(COALESCE(c.setor, '')) LIKE LOWER(?)", `%${query.departamento}%`);
   if (query.municipio) add("LOWER(COALESCE(c.municipio_solicitante, '')) = LOWER(?)", query.municipio);
   if (query.unidade) add("LOWER(COALESCE(c.unidade_solicitante, '')) = LOWER(?)", query.unidade);
+  if (query.regiao) add("LOWER(COALESCE(c.municipio_solicitante, c.ativo_municipio, '')) = LOWER(?)", query.regiao);
+  if (query.ativo_id) add("c.ativo_id = ?", query.ativo_id);
   if (query.team_id) add("c.team_id = ?", query.team_id);
   if (query.usuario) {
     const qUsuario = `%${query.usuario}%`;
@@ -537,11 +560,11 @@ function montarFiltrosChamados(query, req) {
     params.push(query.data_fim);
     where.push(`c.criado_em < ($${params.length}::date + INTERVAL '1 day')`);
   }
-  if (query.vencidos === "true") where.push("c.status NOT IN ('RESOLVED','CLOSED','CANCELED') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP");
+  if (query.vencidos === "true") where.push("c.status NOT IN ('RESOLVED','CLOSED','CANCELED','WAITING_USER') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP");
   if (query.q) {
     const q = `%${query.q}%`;
-    params.push(q, q, q, q, q);
-    where.push(`(LOWER(COALESCE(c.numero_chamado, '')) LIKE LOWER($${params.length - 4}) OR LOWER(COALESCE(c.titulo, '')) LIKE LOWER($${params.length - 3}) OR LOWER(COALESCE(c.descricao, '')) LIKE LOWER($${params.length - 2}) OR LOWER(COALESCE(c.solicitante, '')) LIKE LOWER($${params.length - 1}) OR LOWER(COALESCE(c.setor, '')) LIKE LOWER($${params.length}))`);
+    params.push(q, q, q, q, q, q, q, q);
+    where.push(`(LOWER(COALESCE(c.numero_chamado, '')) LIKE LOWER($${params.length - 7}) OR LOWER(COALESCE(c.titulo, '')) LIKE LOWER($${params.length - 6}) OR LOWER(COALESCE(c.descricao, '')) LIKE LOWER($${params.length - 5}) OR LOWER(COALESCE(c.solicitante, '')) LIKE LOWER($${params.length - 4}) OR LOWER(COALESCE(c.setor, '')) LIKE LOWER($${params.length - 3}) OR LOWER(COALESCE(c.municipio_solicitante, '')) LIKE LOWER($${params.length - 2}) OR LOWER(COALESCE(c.ativo_hostname, '')) LIKE LOWER($${params.length - 1}) OR LOWER(COALESCE(c.ativo_patrimonio, '')) LIKE LOWER($${params.length}))`);
   }
 
   return { params, whereSql: where.length ? `WHERE ${where.join(" AND ")}` : "" };
@@ -551,7 +574,7 @@ async function consultarChamados(req) {
   const { params, whereSql } = montarFiltrosChamados(req.query || {}, req);
   const result = await pool.query(
     `SELECT c.*,
-            CASE WHEN c.status NOT IN ('RESOLVED','CLOSED','CANCELED') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP THEN TRUE ELSE FALSE END AS vencido,
+            CASE WHEN c.status NOT IN ('RESOLVED','CLOSED','CANCELED','WAITING_USER') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP THEN TRUE ELSE FALSE END AS vencido,
             COUNT(DISTINCT co.id)::int AS total_comentarios,
             (SELECT cc.autor_perfil FROM chamado_comentarios cc WHERE cc.chamado_id=c.id ORDER BY cc.criado_em DESC LIMIT 1) AS ultimo_comentario_perfil,
             (SELECT cc.criado_em FROM chamado_comentarios cc WHERE cc.chamado_id=c.id ORDER BY cc.criado_em DESC LIMIT 1) AS ultimo_comentario_em,
@@ -598,7 +621,7 @@ const listarChamadosDoUsuario = async (req, res) => {
     const email = normalizarEmail(req.user?.email);
     const result = await pool.query(
       `SELECT c.*,
-              CASE WHEN c.status NOT IN ('RESOLVED','CLOSED','CANCELED') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP THEN TRUE ELSE FALSE END AS vencido,
+              CASE WHEN c.status NOT IN ('RESOLVED','CLOSED','CANCELED','WAITING_USER') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP THEN TRUE ELSE FALSE END AS vencido,
               COUNT(DISTINCT co.id)::int AS total_comentarios,
               (SELECT cc.autor_perfil FROM chamado_comentarios cc WHERE cc.chamado_id=c.id ORDER BY cc.criado_em DESC LIMIT 1) AS ultimo_comentario_perfil,
               (SELECT cc.criado_em FROM chamado_comentarios cc WHERE cc.chamado_id=c.id ORDER BY cc.criado_em DESC LIMIT 1) AS ultimo_comentario_em,
@@ -660,6 +683,9 @@ const atualizarChamado = async (req, res) => {
     }
 
     const anterior = acesso.chamado;
+    if (prioridade && prioridade !== anterior.prioridade && !normalizarTexto(prioridade_manual_motivo || "")) {
+      return res.status(400).json({ erro: "Informe o motivo da alteração de prioridade" });
+    }
     const statusCanonico = status == null ? null : canonicalizeStatus(status);
     if (status != null && !statusCanonico) return res.status(400).json({ erro: "Status de chamado inválido" });
     if (statusCanonico && !canTransition(anterior.status, statusCanonico)) {
@@ -668,10 +694,20 @@ const atualizarChamado = async (req, res) => {
     let responsavelNome = alteraResponsavel ? null : anterior.responsavel;
     const responsavelIdFinal = alteraResponsavel ? (responsavel_id ? Number(responsavel_id) : null) : anterior.responsavel_id;
     const teamIdFinal = alteraEquipe ? (team_id ? Number(team_id) : null) : anterior.team_id;
+    // Assumir ou delegar inicia o fluxo na coluna "Em aberto".
+    const statusEfetivo = alteraResponsavel && responsavelIdFinal ? STATUS.OPEN : statusCanonico;
     if (responsavelIdFinal) {
       const user = await pool.query("SELECT nome, email FROM usuarios WHERE id = $1 AND COALESCE(status,'ativo')='ativo' AND perfil IN ('tecnico','admin','desenvolvedor','super_admin')", [responsavelIdFinal]);
       if (user.rows.length === 0) return res.status(400).json({ erro: "Responsável não encontrado ou não é atendente" });
       responsavelNome = user.rows[0].nome;
+      if (alteraResponsavel && Number(responsavelIdFinal) !== Number(anterior.responsavel_id || 0)) {
+        const capacity = await pool.query("SELECT COUNT(*)::int AS total FROM chamados WHERE responsavel_id=$1 AND id<>$2 AND status=ANY($3::text[])",[responsavelIdFinal,id,ACTIVE_STATUSES]);
+        if (Number(capacity.rows[0].total) >= TECHNICIAN_CAPACITY) {
+          const suggestion = await pool.query(`SELECT u.id,u.nome,COUNT(c.id) FILTER (WHERE c.status=ANY($1::text[]))::int AS carga FROM usuarios u LEFT JOIN chamados c ON c.responsavel_id=u.id WHERE COALESCE(u.status,'ativo')='ativo' AND COALESCE(u.disponivel_atendimento,TRUE)=TRUE AND u.perfil IN ('tecnico','admin','desenvolvedor','super_admin') AND u.id<>$2 GROUP BY u.id,u.nome HAVING COUNT(c.id) FILTER (WHERE c.status=ANY($1::text[])) < $3 ORDER BY carga,u.nome LIMIT 1`,[ACTIVE_STATUSES,responsavelIdFinal,TECHNICIAN_CAPACITY]);
+          const recommended=suggestion.rows[0];
+          return res.status(409).json({erro:`${responsavelNome} atingiu a capacidade de ${TECHNICIAN_CAPACITY} chamados ativos.${recommended?` Sugestão: atribua para ${recommended.nome} (${recommended.carga}/${TECHNICIAN_CAPACITY}).`:" Nenhum técnico disponível no momento."}`,codigo:"TECHNICIAN_CAPACITY_REACHED",capacidade:TECHNICIAN_CAPACITY,recomendado:recommended||null});
+        }
+      }
       if (teamIdFinal) {
         const member = await pool.query("SELECT 1 FROM team_users WHERE team_id=$1 AND user_id=$2", [teamIdFinal, responsavelIdFinal]);
         if (!member.rowCount) return res.status(400).json({ erro: "O responsável deve ser membro da equipe selecionada" });
@@ -694,17 +730,36 @@ const atualizarChamado = async (req, res) => {
           team_id = CASE WHEN $12 THEN $10 ELSE team_id END,
           sla = COALESCE($5, sla),
           tipo_chamado = COALESCE($6, tipo_chamado),
-          finalizado_em = CASE WHEN $1 IN ('RESOLVED','CLOSED','CANCELED') THEN CURRENT_TIMESTAMP WHEN $1 = 'REOPENED' THEN NULL ELSE finalizado_em END,
+          sla_limite_resposta = CASE
+            WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL AND primeira_resposta_em IS NULL
+              THEN sla_limite_resposta + (CURRENT_TIMESTAMP - sla_pausado_em)
+            ELSE sla_limite_resposta END,
+          sla_limite_resolucao = CASE
+            WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
+              THEN sla_limite_resolucao + (CURRENT_TIMESTAMP - sla_pausado_em)
+            ELSE sla_limite_resolucao END,
+          sla_tempo_pausado_segundos = COALESCE(sla_tempo_pausado_segundos, 0) + CASE
+            WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
+              THEN GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - sla_pausado_em))::BIGINT)
+            ELSE 0 END,
+          sla_pausado_em = CASE
+            WHEN $1 = 'WAITING_USER' THEN COALESCE(sla_pausado_em, CURRENT_TIMESTAMP)
+            WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' THEN NULL
+            ELSE sla_pausado_em END,
+          vencido = CASE WHEN $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE vencido END,
+          sla_alerta_enviado = CASE WHEN $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_alerta_enviado END,
+          sla_escalado = CASE WHEN $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_escalado END,
+          finalizado_em = CASE WHEN $1 IN ('RESOLVED','CLOSED','CANCELED') THEN CURRENT_TIMESTAMP WHEN $1 IN ('OPEN','REOPENED') THEN NULL ELSE finalizado_em END,
           atualizado_em = CURRENT_TIMESTAMP
        WHERE id = $7 RETURNING *`,
-      [statusCanonico, prioridade || null, responsavelNome, responsavelIdFinal, sla || null, tipo_chamado || null, id, prioridade_manual_motivo || null, req.user.id, teamIdFinal, alteraResponsavel, alteraEquipe]
+      [statusEfetivo, prioridade || null, responsavelNome, responsavelIdFinal, sla || null, tipo_chamado || null, id, prioridade_manual_motivo || null, req.user.id, teamIdFinal, alteraResponsavel, alteraEquipe]
     );
     const atualizado = result.rows[0];
 
-    if (statusCanonico && statusCanonico !== canonicalizeStatus(anterior.status)) {
-      await registrarMovimentacao(id, req, "alteracao_status", `Status alterado de ${canonicalizeStatus(anterior.status)} para ${statusCanonico}.`);
-      await criarNotificacao(atualizado.usuario_id, "Status do chamado alterado", `${atualizado.numero_chamado} agora está como ${statusLabel(statusCanonico)}.`, "info", `/chamados/${id}`);
-      enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusCanonico)}.` }).catch(() => {});
+    if (statusEfetivo && statusEfetivo !== canonicalizeStatus(anterior.status)) {
+      await registrarMovimentacao(id, req, "alteracao_status", `Status alterado de ${canonicalizeStatus(anterior.status)} para ${statusEfetivo}.`);
+      await criarNotificacao(atualizado.usuario_id, "Status do chamado alterado", `${atualizado.numero_chamado} agora está como ${statusLabel(statusEfetivo)}.`, "info", `/chamados/${id}`);
+      enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusEfetivo)}.` }).catch(() => {});
     }
     if (prioridade && prioridade !== anterior.prioridade) {
       await registrarMovimentacao(id, req, "alteracao_prioridade", `Prioridade final alterada de ${anterior.prioridade} para ${prioridade}. Motivo: ${prioridade_manual_motivo || "não informado"}`);
@@ -753,6 +808,7 @@ const reabrirChamado = async (req, res) => {
     if (acesso.erro) return res.status(acesso.status).json({ erro: acesso.erro });
     if (bloquearMutacaoNaoAutorizada(req, res, acesso.chamado)) return;
     if (!statusFinalizado(acesso.chamado.status)) return res.status(400).json({ erro: "Somente chamados concluídos ou cancelados podem ser reabertos" });
+    if (!normalizarTexto(motivo || "")) return res.status(400).json({ erro: "O motivo da reabertura é obrigatório" });
     const result = await pool.query(
       `UPDATE chamados SET status = 'REOPENED', finalizado_em = NULL, reaberto_em = CURRENT_TIMESTAMP, atualizado_em = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
       [id]
@@ -782,7 +838,21 @@ const adicionarComentario = async (req, res) => {
       [id, req.user.id, req.user.nome, req.user.perfil, normalizarTexto(mensagem)]
     );
 
-    if (usuarioEhEquipe(req) && !acesso.chamado.primeira_resposta_em) {
+    const usuarioRetomouSla = !usuarioEhEquipe(req) && canonicalizeStatus(acesso.chamado.status) === STATUS.WAITING_USER;
+    if (usuarioRetomouSla) {
+      await pool.query(
+        `UPDATE chamados SET
+           status = 'IN_PROGRESS',
+           sla_limite_resposta = CASE WHEN primeira_resposta_em IS NULL AND sla_pausado_em IS NOT NULL THEN sla_limite_resposta + (CURRENT_TIMESTAMP - sla_pausado_em) ELSE sla_limite_resposta END,
+           sla_limite_resolucao = CASE WHEN sla_pausado_em IS NOT NULL THEN sla_limite_resolucao + (CURRENT_TIMESTAMP - sla_pausado_em) ELSE sla_limite_resolucao END,
+           sla_tempo_pausado_segundos = COALESCE(sla_tempo_pausado_segundos, 0) + CASE WHEN sla_pausado_em IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - sla_pausado_em))::BIGINT) ELSE 0 END,
+           sla_pausado_em = NULL, vencido = FALSE, sla_alerta_enviado = FALSE, sla_escalado = FALSE,
+           atualizado_em = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [id]
+      );
+      await registrarMovimentacao(id, req, "sla_retomado", "SLA retomado automaticamente após resposta do usuário. Status alterado para Em andamento.");
+    } else if (usuarioEhEquipe(req) && !acesso.chamado.primeira_resposta_em) {
       await pool.query("UPDATE chamados SET primeira_resposta_em = CURRENT_TIMESTAMP, atualizado_em = CURRENT_TIMESTAMP WHERE id = $1", [id]);
     } else {
       await pool.query("UPDATE chamados SET atualizado_em = CURRENT_TIMESTAMP WHERE id = $1", [id]);
@@ -946,12 +1016,17 @@ const assumirChamado = async (req, res) => {
       const member = await pool.query("SELECT 1 FROM team_users WHERE team_id=$1 AND user_id=$2", [acesso.chamado.team_id, req.user.id]);
       if (!member.rowCount && !usuarioEhAdmin(req)) return res.status(403).json({ erro: "Somente membros da equipe responsável podem assumir este chamado" });
     }
+    const capacity = await pool.query("SELECT COUNT(*)::int AS total FROM chamados WHERE responsavel_id=$1 AND status=ANY($2::text[])",[req.user.id,ACTIVE_STATUSES]);
+    if (Number(capacity.rows[0].total) >= TECHNICIAN_CAPACITY) {
+      return res.status(409).json({erro:`Sua capacidade de ${TECHNICIAN_CAPACITY} chamados ativos foi atingida. Conclua ou redistribua um chamado antes de assumir outro.`,codigo:"TECHNICIAN_CAPACITY_REACHED",capacidade:TECHNICIAN_CAPACITY});
+    }
 
     const result = await pool.query(
       `UPDATE chamados
        SET responsavel_id = $1,
            responsavel = $2,
-           status = CASE WHEN status = 'OPEN' THEN 'IN_PROGRESS' ELSE status END,
+           status = 'OPEN',
+           finalizado_em = NULL,
            atualizado_em = CURRENT_TIMESTAMP
        WHERE id = $3 AND responsavel_id IS NULL
        RETURNING *`,
@@ -984,11 +1059,7 @@ const listarRespostasRapidas = async (req, res) => {
        FROM respostas_rapidas
        WHERE ativo = TRUE
        ORDER BY categoria NULLS LAST, titulo ASC`
-    ).catch(() => ({ rows: [
-      { id: 1, titulo: "Em análise", mensagem: "Olá! Recebemos seu chamado e já estamos analisando. Em breve retornaremos com uma atualização.", categoria: "Atendimento", ativo: true },
-      { id: 2, titulo: "Solicitar print", mensagem: "Pode enviar um print da tela com o erro e informar o horário aproximado em que aconteceu?", categoria: "Diagnóstico", ativo: true },
-      { id: 3, titulo: "Finalização", mensagem: "Realizamos o ajuste solicitado. Por favor, teste novamente e nos avise se o problema persistir.", categoria: "Finalização", ativo: true }
-    ] }));
+    );
     return res.json(result.rows);
   } catch (error) {
     console.error(error);

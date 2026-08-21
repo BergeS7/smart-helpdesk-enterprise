@@ -29,5 +29,27 @@
 .patrimonio-dark .city-marker > b { color: #f8fafc; text-shadow: 0 1px 0 #0f172a, 1px 0 0 #0f172a, -1px 0 0 #0f172a; }
 .patrimonio-dark .city-marker > small { color: #fde68a; }
 .patrimonio-dark .leaflet-container { filter: brightness(.82) saturate(.82); }
+.patrimonio-module .asset-stats-strip { border-radius:0!important; box-shadow:none!important; }
+.patrimonio-module .asset-command-center { align-items: stretch; grid-template-columns: minmax(460px, .82fr) minmax(650px, 1.18fr); min-height: 520px; }
+.patrimonio-module .asset-command-center.asset-state-city { grid-template-columns:minmax(420px,.68fr) minmax(680px,1.32fr); }
+.patrimonio-module .asset-command-center.asset-state-device { grid-template-columns:minmax(380px,.58fr) minmax(720px,1.42fr); }
+.patrimonio-module .asset-command-center .map-stage,
+.patrimonio-module .asset-command-center .asset-explorer,
+.patrimonio-module .asset-command-center.asset-state-city .map-stage,
+.patrimonio-module .asset-command-center.asset-state-device .map-stage,
+.patrimonio-module .asset-command-center.asset-state-device .asset-explorer { height:520px; min-height:520px; }
+.patrimonio-module .asset-command-center.map-expanded { display: block; min-height: 640px; }
+.patrimonio-module .asset-command-center.map-expanded .map-stage { height: 640px; }
 @keyframes patrimonio-pulse { 0% { transform: scale(.45); opacity: .55; } 70%,100% { transform: scale(1.25); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .device-marker::before { animation: none; } }
+@media (max-width: 1279px) {
+  .patrimonio-module .asset-command-center { grid-template-columns: minmax(360px,.8fr) minmax(500px,1.2fr); }
+  .patrimonio-module .asset-command-center .map-stage { height: 500px; min-height:500px; }
+  .patrimonio-module .asset-command-center .asset-explorer { height: 520px; }
+}
+@media (max-width: 640px) {
+  .patrimonio-module .asset-command-center { display: flex; flex-direction: column; min-height: 0; }
+  .patrimonio-module .asset-command-center .map-stage { width:100%; height: 280px; min-height: 280px; }
+  .patrimonio-module .asset-command-center .asset-explorer { width:100%; height: min(560px,72vh); border-radius: 18px 18px 0 0; }
+  .patrimonio-module .asset-command-center.map-expanded .map-stage { height: min(620px,72vh); }
+}

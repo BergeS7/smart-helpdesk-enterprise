@@ -31,12 +31,23 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const { exigirPerfis, exigirPermissao } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
 const { uploadLimiter } = require("../middlewares/securityMiddleware");
+const { userHasPermission } = require("../services/permissionService");
+
+function exigirPermissaoDeAtualizacao(req, res, next) {
+  const body = req.body || {};
+  const permission = body.responsavel_id != null || body.equipe_id != null
+    ? "delegar_chamados"
+    : body.prioridade != null || body.prioridade_final != null
+      ? "alterar_prioridade"
+      : "gerenciar_chamados";
+  userHasPermission(req.user, permission).then((allowed) => allowed ? next() : res.status(403).json({ erro:"Você não possui permissão para esta alteração.", permissao:permission, requestId:req.id })).catch(next);
+}
 
 router.post("/", authMiddleware, criarChamado);
-router.get("/", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), listarChamados);
+router.get("/", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "supervisor", "tecnico"]), listarChamados);
 router.get("/usuario/me", authMiddleware, listarChamadosDoUsuario);
-router.get("/relatorios/resumo/metricas", authMiddleware, exigirPermissao("baixar_relatorios"), obterResumoRelatorio);
-router.get("/relatorios/:formato", authMiddleware, exigirPermissao("baixar_relatorios"), exportarRelatorio);
+router.get("/relatorios/resumo/metricas", authMiddleware, exigirPermissao("visualizar_relatorios"), obterResumoRelatorio);
+router.get("/relatorios/:formato", authMiddleware, exigirPermissao("exportar_dados"), exportarRelatorio);
 router.get("/respostas-rapidas/lista", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), listarRespostasRapidas);
 router.post("/respostas-rapidas", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), criarRespostaRapida);
 router.get("/filtros-salvos/lista", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), listarFiltrosSalvos);
@@ -44,9 +55,9 @@ router.post("/filtros-salvos", authMiddleware, exigirPerfis(["admin", "desenvolv
 router.delete("/filtros-salvos/:id", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), excluirFiltro);
 
 router.get("/:id", authMiddleware, buscarChamadoPorId);
-router.patch("/:id", authMiddleware, exigirPermissao("gerenciar_chamados"), atualizarChamado);
-router.patch("/:id/assumir", authMiddleware, exigirPermissao("gerenciar_chamados"), assumirChamado);
-router.patch("/:id/encerrar", authMiddleware, exigirPermissao("gerenciar_chamados"), encerrarChamado);
+router.patch("/:id", authMiddleware, exigirPermissaoDeAtualizacao, atualizarChamado);
+router.patch("/:id/assumir", authMiddleware, exigirPermissao("assumir_chamados"), assumirChamado);
+router.patch("/:id/encerrar", authMiddleware, exigirPermissao("encerrar_chamados"), encerrarChamado);
 router.patch("/:id/reabrir", authMiddleware, reabrirChamado);
 
 router.get("/:id/comentarios", authMiddleware, listarComentarios);

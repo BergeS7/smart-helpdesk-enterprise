@@ -8,7 +8,7 @@ O instalador solicita a URL HTTPS e o convite; nenhum segredo global fica inclu�
 .\SmartHelpDeskAgent.ps1 -ServerUrl "https://helpdesk.empresa.com/api/assets" -EnrollmentKey "CONVITE_TEMPORARIO" -Municipio "Santa Inês" -Unidade "Unidade Santa Inês" -Latitude -3.6667 -Longitude -45.38 -Install
 ```
 
-O agente coleta somente inventário e métricas técnicas, registra um token exclusivo em
+O agente 2.0 coleta inventário técnico estruturado e métricas, registra um token exclusivo em
 `C:\ProgramData\SmartHelpDeskAgent\agent.json` e envia um diagnóstico diariamente às 15h,
 sem abrir uma janela do PowerShell. Se o computador estiver desligado nesse horário, a tarefa
 será executada assim que o Windows voltar a disponibilizá-la.
@@ -23,4 +23,5 @@ Diagnóstico e suporte:
 - configuração/token individual: `C:\ProgramData\SmartHelpDeskAgent\agent.json`;
 - log de sucesso ou falha: `C:\ProgramData\SmartHelpDeskAgent\agent.log`;
 - o estado atual permanece no sistema até novo diagnóstico ou atualização manual do técnico;
-- o histórico grava no máximo uma amostra automática por ativo por dia.
+- cada execução cria um snapshot idempotente e o backend registra apenas mudanças relevantes;
+- detalhes de arquitetura, privacidade e rollback estão em `docs/INVENTARIO_ATIVOS.md`.

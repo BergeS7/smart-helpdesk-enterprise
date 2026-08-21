@@ -3,9 +3,18 @@ const { normalizarPerfil } = require("../utils/permissoes");
 
 const PERMISSIONS = Object.freeze([
   { key: "visualizar_dashboard", label: "Visualizar dashboard", description: "Acessar indicadores e métricas operacionais." },
-  { key: "baixar_relatorios", label: "Baixar relatórios", description: "Exportar relatórios em CSV, Excel e PDF." },
+  { key: "visualizar_relatorios", label: "Visualizar relatórios", description: "Consultar indicadores e relatórios operacionais." },
+  { key: "exportar_dados", label: "Exportar dados", description: "Exportar dados em CSV, Excel e PDF." },
+  { key: "baixar_relatorios", label: "Baixar relatórios (legado)", description: "Compatibilidade com acessos existentes." },
   { key: "visualizar_patrimonio", label: "Visualizar patrimônio", description: "Consultar ativos e o mapa de equipamentos." },
+  { key: "administrar_ativos", label: "Administrar ativos", description: "Alterar localização, estado e configurações dos agentes." },
   { key: "gerenciar_chamados", label: "Gerenciar chamados", description: "Alterar, assumir e concluir chamados." },
+  { key: "assumir_chamados", label: "Assumir chamados", description: "Aceitar chamados disponíveis na fila." },
+  { key: "delegar_chamados", label: "Delegar chamados", description: "Atribuir chamados a outros técnicos ou equipes." },
+  { key: "alterar_prioridade", label: "Alterar prioridade", description: "Modificar a prioridade final com justificativa." },
+  { key: "encerrar_chamados", label: "Encerrar chamados", description: "Resolver e encerrar atendimentos." },
+  { key: "gerenciar_usuarios", label: "Gerenciar usuários", description: "Cadastrar, editar e conceder acessos." },
+  { key: "alterar_configuracoes", label: "Alterar configurações", description: "Modificar parâmetros globais do sistema." },
   { key: "gerenciar_base", label: "Gerenciar base", description: "Criar e editar artigos da base de conhecimento." },
 ]);
 const KEYS = new Set(PERMISSIONS.map((permission) => permission.key));
@@ -27,15 +36,21 @@ function hasFullAccess(user) {
   return ["admin", "desenvolvedor"].includes(normalizarPerfil(user?.perfil));
 }
 
+const PROFILE_DEFAULTS = Object.freeze({
+  usuario: [],
+  tecnico: ["assumir_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados"],
+  supervisor: ["visualizar_dashboard", "visualizar_relatorios", "assumir_chamados", "delegar_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados"],
+});
+
 async function listUserPermissions(userId, user) {
   if (hasFullAccess(user)) return PERMISSIONS.map((permission) => permission.key);
   const result = await pool.query("SELECT permissao FROM usuario_permissoes WHERE usuario_id = $1 ORDER BY permissao", [userId]);
-  return result.rows.map((row) => row.permissao).filter((key) => KEYS.has(key));
+  return [...new Set([...(PROFILE_DEFAULTS[normalizarPerfil(user?.perfil)] || []), ...result.rows.map((row) => row.permissao)])].filter((key) => KEYS.has(key));
 }
 
 async function userHasPermission(user, permission) {
   if (hasFullAccess(user)) return true;
-  if (normalizarPerfil(user?.perfil) === "tecnico" && permission === "gerenciar_chamados") return true;
+  if ((PROFILE_DEFAULTS[normalizarPerfil(user?.perfil)] || []).includes(permission)) return true;
   if (!KEYS.has(permission) || !user?.id) return false;
   const result = await pool.query("SELECT 1 FROM usuario_permissoes WHERE usuario_id = $1 AND permissao = $2", [user.id, permission]);
   return result.rowCount > 0;

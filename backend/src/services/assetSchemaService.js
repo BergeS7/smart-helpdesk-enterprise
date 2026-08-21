@@ -16,11 +16,50 @@ async function ensureAssetSchema() {
     ALTER TABLE ativos ADD COLUMN IF NOT EXISTS firewall_enabled BOOLEAN;
     ALTER TABLE ativos ADD COLUMN IF NOT EXISTS network_type VARCHAR(80);
     ALTER TABLE ativos ADD COLUMN IF NOT EXISTS link_speed VARCHAR(80);
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS inventory_json JSONB;
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS schema_version INTEGER;
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS ultimo_inventario TIMESTAMPTZ;
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS fabricante VARCHAR(255);
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS modelo VARCHAR(255);
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS os_build VARCHAR(80);
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS ram_total_bytes BIGINT;
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS storage_total_bytes BIGINT;
+    ALTER TABLE ativos ADD COLUMN IF NOT EXISTS storage_free_bytes BIGINT;
+    CREATE TABLE IF NOT EXISTS ativo_snapshots (
+      id BIGSERIAL PRIMARY KEY, ativo_id BIGINT NOT NULL REFERENCES ativos(id) ON DELETE CASCADE,
+      report_id VARCHAR(128) NOT NULL, coletado_em TIMESTAMPTZ NOT NULL,
+      schema_version INTEGER NOT NULL, agente_versao VARCHAR(50), inventory_json JSONB NOT NULL,
+      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(ativo_id,report_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_ativo_snapshots_data ON ativo_snapshots(ativo_id,coletado_em DESC);
+    CREATE TABLE IF NOT EXISTS ativo_alteracoes (
+      id BIGSERIAL PRIMARY KEY, ativo_id BIGINT NOT NULL REFERENCES ativos(id) ON DELETE CASCADE,
+      snapshot_id BIGINT REFERENCES ativo_snapshots(id) ON DELETE CASCADE, categoria VARCHAR(30) NOT NULL,
+      campo VARCHAR(120) NOT NULL, valor_anterior JSONB, valor_novo JSONB, severidade VARCHAR(20) NOT NULL,
+      detectado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), reconhecida BOOLEAN NOT NULL DEFAULT FALSE,
+      reconhecida_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL, reconhecida_em TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS idx_ativo_alteracoes_filtro ON ativo_alteracoes(ativo_id,categoria,severidade,detectado_em DESC);
+    CREATE TABLE IF NOT EXISTS ativo_alertas (
+      id BIGSERIAL PRIMARY KEY, ativo_id BIGINT NOT NULL REFERENCES ativos(id) ON DELETE CASCADE,
+      codigo VARCHAR(160) NOT NULL, categoria VARCHAR(30) NOT NULL, titulo VARCHAR(255) NOT NULL,
+      mensagem TEXT, severidade VARCHAR(20) NOT NULL, ativo BOOLEAN NOT NULL DEFAULT TRUE,
+      detectado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      reconhecido BOOLEAN NOT NULL DEFAULT FALSE, UNIQUE(ativo_id,codigo)
+    );
+    CREATE INDEX IF NOT EXISTS idx_ativo_alertas_ativos ON ativo_alertas(ativo_id,ativo,severidade);
     CREATE TABLE IF NOT EXISTS ativo_metricas (
       id BIGSERIAL PRIMARY KEY, ativo_id BIGINT NOT NULL REFERENCES ativos(id) ON DELETE CASCADE,
       cpu_usage NUMERIC(6,2), ram_usage NUMERIC(6,2), disk_usage NUMERIC(6,2), coletado_em TIMESTAMPTZ DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_ativo_metricas_ativo_data ON ativo_metricas(ativo_id, coletado_em DESC);
+    ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_id BIGINT;
+    ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_hostname VARCHAR(255);
+    ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_patrimonio VARCHAR(100);
+    ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_municipio VARCHAR(150);
+    ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_unidade VARCHAR(255);
+    CREATE INDEX IF NOT EXISTS idx_chamados_ativo ON chamados(ativo_id);
+    CREATE INDEX IF NOT EXISTS idx_chamados_ativo_local ON chamados(ativo_municipio, ativo_unidade);
     CREATE TABLE IF NOT EXISTS ativo_unidades (
       id SERIAL PRIMARY KEY, nome VARCHAR(255) NOT NULL, municipio VARCHAR(150) NOT NULL,
       latitude DOUBLE PRECISION NOT NULL, longitude DOUBLE PRECISION NOT NULL,
@@ -57,6 +96,12 @@ async function ensureAssetSchema() {
       ('Maranhão Motos - Presidente Médici','Presidente Médici',-2.3890,-45.8200,TRUE)
     ON CONFLICT(nome,municipio) DO UPDATE SET
       latitude=EXCLUDED.latitude,longitude=EXCLUDED.longitude,ativa=TRUE;
+    UPDATE chamados c SET
+      ativo_hostname=COALESCE(c.ativo_hostname,a.hostname),
+      ativo_patrimonio=COALESCE(c.ativo_patrimonio,a.patrimonio,a.serial_number,a.device_id),
+      ativo_municipio=COALESCE(c.ativo_municipio,a.municipio),
+      ativo_unidade=COALESCE(c.ativo_unidade,a.unidade)
+    FROM ativos a WHERE c.ativo_id=a.id;
   `);
 }
 module.exports = { ensureAssetSchema };

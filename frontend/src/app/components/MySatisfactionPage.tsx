@@ -21,8 +21,8 @@ export default function MySatisfactionPage({ dark, onBack }: { dark: boolean; on
 
   return <section className={`min-h-[calc(100vh-150px)] overflow-hidden rounded-3xl border shadow-sm ${panel}`}>
     <header className={`flex flex-wrap items-center gap-3 border-b p-5 ${dark ? "border-white/10" : "border-slate-200"}`}>
-      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-50 text-amber-500"><Star size={21}/></span>
-      <div className="min-w-0 flex-1"><h2 className="text-lg font-black">Minha avaliação</h2><p className={`mt-1 text-xs ${muted}`}>Acompanhe a percepção dos clientes sobre seus atendimentos.</p></div>
+      <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-amber-50 text-amber-500">{data?.foto_url?<img src={data.foto_url} alt={data.name||"Técnico"} className="h-full w-full object-cover"/>:<Star size={21}/>}</span>
+      <div className="min-w-0 flex-1"><h2 className="text-lg font-black">{data?.name||"Minha avaliação"}</h2><p className={`mt-1 text-xs ${muted}`}>Suas metas e a percepção dos clientes sobre seus atendimentos.</p></div>
       <select value={month} onChange={(event) => setMonth(Number(event.target.value))} className={`h-10 rounded-xl border px-3 text-xs font-bold ${dark ? "border-white/10 bg-slate-900" : "border-slate-200 bg-white"}`}>{months.map((name,index)=><option key={name} value={index+1}>{name}</option>)}</select>
       <select value={year} onChange={(event) => setYear(Number(event.target.value))} className={`h-10 rounded-xl border px-3 text-xs font-bold ${dark ? "border-white/10 bg-slate-900" : "border-slate-200 bg-white"}`}>{[now.getFullYear(),now.getFullYear()-1,now.getFullYear()-2].map((value)=><option key={value}>{value}</option>)}</select>
       <button onClick={onBack} className={`flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-black ${dark ? "border-white/10 hover:bg-white/10" : "border-slate-200 hover:bg-slate-50"}`}><ArrowLeft size={15}/>Voltar</button>
@@ -39,6 +39,7 @@ export default function MySatisfactionPage({ dark, onBack }: { dark: boolean; on
           <Metric icon={<CheckCircle2 size={17}/>} label="SLA cumprido" value={`${Number(data.sla_rate).toFixed(0)}%`} card={card}/>
           <Metric icon={<Clock3 size={17}/>} label="Chamados concluídos" value={String(data.total_closed_tickets || 0)} card={card}/>
         </div>
+        <PersonalGoals data={data} dark={dark}/>
         {!enough ? <div className={`mt-5 rounded-2xl border border-dashed p-10 text-center ${card}`}><ShieldCheck className="mx-auto text-amber-500"/><h3 className="mt-3 text-sm font-black">Amostra ainda insuficiente</h3><p className={`mx-auto mt-2 max-w-md text-xs leading-relaxed ${muted}`}>Você possui {data.total_ratings || 0} avaliação(ões) neste período. Os detalhes serão liberados ao atingir {minimumSample}, protegendo o anonimato dos clientes.</p></div> : <>
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
             <section className={`rounded-2xl border p-5 ${card}`}><h3 className="text-sm font-black">Critérios do atendimento</h3><div className="mt-5 space-y-4"><Criterion label="Cordialidade" value={data.courtesy_rating}/><Criterion label="Comunicação" value={data.communication_rating}/><Criterion label="Solução apresentada" value={data.resolution_rating}/><Criterion label="Agilidade" value={data.speed_rating}/></div></section>
@@ -51,5 +52,17 @@ export default function MySatisfactionPage({ dark, onBack }: { dark: boolean; on
   </section>;
 }
 
-function Metric({icon,label,value,card}:{icon:React.ReactNode;label:string;value:string;card:string}) { return <div className={`rounded-2xl border p-4 ${card}`}><span className="text-amber-500">{icon}</span><b className="mt-3 block text-xl">{value}</b><span className="mt-1 block text-[9px] font-black uppercase tracking-wide text-slate-400">{label}</span></div>; }
+function Metric({icon,label,value,card}:{icon:React.ReactNode;label:string;value:string;card:string}) { return <div className={`rounded-2xl border p-4 ${card}`}><span className="text-amber-500">{icon}</span><b className="mt-3 block text-xl">{value}</b><span className="mt-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</span></div>; }
 function Criterion({label,value}:{label:string;value?:number}) { const numeric=Number(value||0);return <div><div className="flex justify-between text-xs font-bold"><span className="text-slate-500">{label}</span><span>{numeric.toFixed(1)}/5</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-500" style={{width:`${numeric/5*100}%`}}/></div></div>; }
+
+function PersonalGoals({data,dark}:{data:MyPerformanceDashboard;dark:boolean}) {
+  const goals=[
+    {label:"Nota média",value:Number(data.average_rating||0),target:4.5,current:Number(data.average_rating||0).toFixed(1),goal:"4,5"},
+    {label:"SLA cumprido",value:Number(data.sla_rate||0),target:95,current:`${Number(data.sla_rate||0).toFixed(0)}%`,goal:"95%"},
+    {label:"Chamados concluídos",value:Number(data.total_closed_tickets||0),target:30,current:String(data.total_closed_tickets||0),goal:"30"},
+    {label:"Avaliações recebidas",value:Number(data.total_ratings||0),target:10,current:String(data.total_ratings||0),goal:"10"},
+    {label:"Índice de desempenho",value:Number(data.performance_score||0),target:85,current:Number(data.performance_score||0).toFixed(0),goal:"85"},
+  ];
+  const overall=Math.round(goals.reduce((sum,item)=>sum+Math.min(100,item.value/item.target*100),0)/goals.length);
+  return <section className={`mt-5 rounded-2xl border p-5 ${dark?"border-white/10 bg-white/[.04]":"border-slate-200 bg-white"}`}><div className="flex items-center justify-between gap-3"><div><h3 className="text-base font-black">Minhas metas do mês</h3><p className="mt-1 text-xs text-slate-500">Progresso calculado com os resultados do período selecionado.</p></div><b className={`text-2xl ${overall>=100?"text-emerald-500":"text-sky-600"}`}>{overall}%</b></div><div className="mt-5 grid gap-4 md:grid-cols-5">{goals.map(item=>{const progress=Math.min(100,item.value/item.target*100),done=progress>=100;return <div key={item.label}><div className="flex justify-between gap-2 text-xs"><b>{item.label}</b><span className={done?"text-emerald-600":"text-slate-500"}>{item.current}/{item.goal}</span></div><div className={`mt-2 h-2 overflow-hidden rounded-full ${dark?"bg-white/10":"bg-slate-100"}`}><div className={`h-full rounded-full ${done?"bg-emerald-500":"bg-sky-500"}`} style={{width:`${progress}%`}}/></div></div>})}</div></section>;
+}

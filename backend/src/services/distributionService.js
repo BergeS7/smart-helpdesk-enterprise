@@ -1,6 +1,7 @@
 const pool = require("../config/database");
 
 const ACTIVE_STATUSES = ["OPEN", "IN_PROGRESS", "WAITING_USER", "WAITING_THIRD_PARTY", "REOPENED"];
+const TECHNICIAN_CAPACITY = 8;
 
 /** Distribui chamados sem acoplar a regra de seleção ao controlador. */
 async function selectAssignee(teamId, mode) {
@@ -18,6 +19,7 @@ async function selectAssignee(teamId, mode) {
         AND COALESCE(u.disponivel_atendimento, TRUE) = TRUE
         AND COALESCE(u.perfil, 'usuario') IN ('tecnico','admin','desenvolvedor','super_admin')
       GROUP BY u.id, u.nome, tu.last_assigned_at
+      HAVING COUNT(c.id) FILTER (WHERE c.status = ANY($2::text[])) < ${TECHNICIAN_CAPACITY}
       ORDER BY ${orderBy}
       LIMIT 1`,
     [teamId, ACTIVE_STATUSES]
@@ -36,4 +38,4 @@ async function distributeTicket({ teamId, distributionMode }) {
   return assignee;
 }
 
-module.exports = { distributeTicket, selectAssignee };
+module.exports = { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket, selectAssignee };

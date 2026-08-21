@@ -1,4 +1,4 @@
-const CACHE = "smart-helpdesk-shell-v2";
+const CACHE = "smart-helpdesk-shell-v3";
 const SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/pwa-192.png", "/pwa-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -23,7 +23,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/assets/") || /\.(?:png|jpg|jpeg|webp|svg|ico|woff2?)$/i.test(url.pathname)) {
+  // Os bundles com hash ficam sob responsabilidade do cache HTTP. Guardá-los
+  // também aqui pode manter uma versão incompatível após uma implantação.
+  if (!url.pathname.startsWith("/assets/") && /\.(?:png|jpg|jpeg|webp|svg|ico|woff2?)$/i.test(url.pathname)) {
     event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
       if (response.ok) caches.open(CACHE).then((cache) => cache.put(request, response.clone()));
       return response;

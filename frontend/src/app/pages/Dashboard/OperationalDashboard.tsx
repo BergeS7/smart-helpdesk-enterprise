@@ -92,7 +92,7 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
     URL.revokeObjectURL(url);
   }
 
-  return <div ref={root} className={`dashboard-modern space-y-5 ${dark ? "text-white" : "text-slate-950"}`}>
+  return <div ref={root} className={`ds-page dashboard-modern space-y-5 ${dark ? "text-white" : "text-slate-950"}`}>
     <section className={`relative overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-6 ${dark ? "border-blue-400/20 bg-gradient-to-r from-slate-900 to-slate-950" : "border-blue-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50"}`}>
       <div className="absolute -right-14 -top-20 h-52 w-52 rounded-full bg-blue-500/10" />
       <div className="relative flex flex-wrap items-center gap-4">

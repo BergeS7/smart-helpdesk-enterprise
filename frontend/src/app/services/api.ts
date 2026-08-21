@@ -2,7 +2,7 @@ export const API_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
 
 export type PerfilUsuario =
-  "usuario" | "tecnico" | "admin" | "desenvolvedor" | "super_admin";
+  "usuario" | "tecnico" | "supervisor" | "admin" | "desenvolvedor" | "super_admin";
 
 export type UsuarioLogado = {
   id: number;
@@ -60,6 +60,33 @@ export function atualizarUsuarioLocal(usuario: UsuarioLogado) {
 export function limparSessao() {
   localStorage.removeItem("smart_helpdesk_token");
   localStorage.removeItem("smart_helpdesk_usuario");
+}
+
+export type SystemDiagnostics = {
+  ok:boolean;
+  api:{status:string;uptimeSeconds:number;timestamp:string};
+  database:{status:string;latencyMs:number};
+  agent:{status:string;total:number;current:number;stale:number;lastHeartbeat?:string|null};
+  recentErrors:Array<{id:string;timestamp:string;source:string;level:string;message:string;requestId?:string|null;path?:string|null}>;
+};
+
+export function getSystemDiagnostics() { return request<SystemDiagnostics>("/system/diagnostics"); }
+
+export async function reportFrontendError(error: Error, componentStack?: string) {
+  if (!getToken()) return;
+  const fingerprint = `${error.name}:${error.message}:${window.location.pathname}`;
+  const now = Date.now();
+  const previous = sessionStorage.getItem("smart_helpdesk_last_frontend_error");
+  if (previous) {
+    try {
+      const parsed = JSON.parse(previous) as { fingerprint?: string; timestamp?: number };
+      if (parsed.fingerprint === fingerprint && now - Number(parsed.timestamp || 0) < 60_000) return;
+    } catch { /* Registro inválido não deve impedir o diagnóstico atual. */ }
+  }
+  sessionStorage.setItem("smart_helpdesk_last_frontend_error", JSON.stringify({ fingerprint, timestamp: now }));
+  try {
+    await request("/system/errors/frontend", { method:"POST", body:JSON.stringify({message:error.message,stack:`${error.stack||""}\n${componentStack||""}`,path:window.location.pathname}) });
+  } catch { /* O registro de erro não pode provocar uma segunda falha na interface. */ }
 }
 
 async function request<T>(
@@ -190,6 +217,11 @@ export type ApiChamado = {
   team_name?: string;
   municipio_solicitante?: string;
   unidade_solicitante?: string;
+  ativo_id?: number | null;
+  ativo_hostname?: string;
+  ativo_patrimonio?: string;
+  ativo_municipio?: string;
+  ativo_unidade?: string;
   responsavel?: string;
   responsavel_nome?: string;
   responsavel_email?: string;
@@ -207,6 +239,8 @@ export type ApiChamado = {
   vencido?: boolean;
   sla_status?: "normal" | "alerta" | "vencido" | string;
   sla_minutos_restantes?: number | null;
+  sla_pausado_em?: string | null;
+  sla_tempo_pausado_segundos?: number;
   criado_em?: string;
   atualizado_em?: string;
   finalizado_em?: string;
@@ -234,6 +268,7 @@ export type NovoChamado = {
   titulo: string;
   descricao: string;
   tipo_chamado?: string;
+  ativo_id?: string | number;
 };
 export type NovoCadastroUsuario = {
   nome: string;
@@ -243,6 +278,8 @@ export type NovoCadastroUsuario = {
   departamento?: string;
   municipio?: string;
   unidade?: string;
+  regiao?: string;
+  ativo_id?: string | number;
   cargo?: string;
 };
 export type FiltrosChamados = {
@@ -381,6 +418,10 @@ export type PerformanceRatingInput = {
 export type PerformanceScore = {
   id?: number;
   name?: string;
+  email?: string;
+  departamento?: string;
+  foto_url?: string;
+  position?: number;
   technician_id?: number | null;
   team_id?: number | null;
   performance_score: number;
@@ -445,9 +486,18 @@ export type ApiTeamMember = Pick<
 > & { created_at?: string };
 export type PermissionKey =
   | "visualizar_dashboard"
+  | "visualizar_relatorios"
+  | "exportar_dados"
   | "baixar_relatorios"
   | "visualizar_patrimonio"
+  | "administrar_ativos"
   | "gerenciar_chamados"
+  | "assumir_chamados"
+  | "delegar_chamados"
+  | "alterar_prioridade"
+  | "encerrar_chamados"
+  | "gerenciar_usuarios"
+  | "alterar_configuracoes"
   | "gerenciar_base";
 export type PermissionDefinition = {
   key: PermissionKey;
@@ -477,7 +527,7 @@ export function loginAdmin(email: string, senha: string) {
   });
 }
 export function solicitarRecuperacaoSenha(email: string) {
-  return request<{ mensagem: string; codigo_demo?: string }>(
+  return request<{ mensagem: string }>(
     "/auth/recuperar-senha",
     { method: "POST", auth: false, body: JSON.stringify({ email }) },
   );

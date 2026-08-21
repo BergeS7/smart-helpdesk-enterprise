@@ -1,0 +1,23 @@
+import { useCallback, useEffect, useState } from "react";
+import { Activity, AlertTriangle, Bot, CheckCircle2, Clock3, Database, RefreshCw, Server, XCircle } from "lucide-react";
+import { getSystemDiagnostics, type SystemDiagnostics } from "../services/api";
+
+function label(status?: string) { return ({operational:"Operacional",degraded:"Com atenção",unavailable:"Indisponível",not_configured:"Não configurado"} as Record<string,string>)[status || ""] || "Verificando"; }
+function tone(status?: string) { return status === "operational" ? "success" : status === "not_configured" ? "neutral" : status === "degraded" ? "warning" : "danger"; }
+
+export function SystemDiagnosticsPage({ dark }: { dark: boolean }) {
+  const [data,setData]=useState<SystemDiagnostics|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
+  const load=useCallback(async()=>{setLoading(true);setError("");try{setData(await getSystemDiagnostics())}catch(e){setError(e instanceof Error?e.message:"Falha ao carregar diagnóstico")}finally{setLoading(false)}},[]);
+  useEffect(()=>{void load();const timer=window.setInterval(()=>void load(),30000);return()=>window.clearInterval(timer)},[load]);
+  const cards=[
+    {title:"API",icon:Server,status:data?.api.status,detail:data?`Disponível há ${Math.floor(data.api.uptimeSeconds/60)} min`:""},
+    {title:"Banco de dados",icon:Database,status:data?.database.status,detail:data?`${data.database.latencyMs} ms de resposta`:""},
+    {title:"Agente de ativos",icon:Bot,status:data?.agent.status,detail:data?`${data.agent.current} atual(is) · ${data.agent.stale} atrasado(s)`:""},
+  ];
+  return <div className="ds-page space-y-4">
+    <section className="ds-panel p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Activity className="text-blue-600" size={20}/><h2 className="text-lg font-black">Diagnóstico do sistema</h2></div><p className="mt-1 text-xs text-slate-500">Atualização automática a cada 30 segundos. Nenhum dado é simulado.</p></div><button onClick={()=>void load()} disabled={loading} className="ds-button ds-button--secondary inline-flex items-center gap-2"><RefreshCw size={16} className={loading?"animate-spin":""}/>Verificar agora</button></div></section>
+    {error?<div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"><AlertTriangle className="mr-2 inline" size={17}/>{error}</div>:null}
+    <div className="grid gap-4 md:grid-cols-3">{cards.map(card=>{const Icon=card.icon;const ok=card.status==="operational";return <article key={card.title} className="ds-card p-5"><div className="flex items-start justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-600"><Icon size={20}/></span>{loading&&!data?<RefreshCw className="animate-spin text-slate-400" size={18}/>:ok?<CheckCircle2 className="text-emerald-600" size={19}/>:card.status==="unavailable"?<XCircle className="text-red-600" size={19}/>:<AlertTriangle className="text-amber-600" size={19}/>}</div><h3 className="mt-4 font-black">{card.title}</h3><span className={`ds-badge ds-status--${tone(card.status)} mt-2`}>{label(card.status)}</span><p className="mt-3 text-xs text-slate-500">{card.detail}</p></article>})}</div>
+    <section className="ds-card overflow-hidden"><header className="flex items-center justify-between border-b p-4"><div><h3 className="font-black">Erros recentes</h3><p className="text-xs text-slate-500">Falhas capturadas no frontend e backend desde a última inicialização da API.</p></div><span className="ds-badge ds-status--neutral">{data?.recentErrors.length||0}</span></header>{data?.recentErrors.length?<div className="divide-y">{data.recentErrors.map(item=><div key={item.id} className="grid gap-2 p-4 md:grid-cols-[150px_100px_1fr]"><span className="flex items-center gap-1 text-xs text-slate-500"><Clock3 size={13}/>{new Date(item.timestamp).toLocaleString("pt-BR")}</span><span className="ds-badge ds-status--danger w-fit">{item.source}</span><div><p className="break-words text-sm font-bold">{item.message}</p>{item.requestId?<p className="mt-1 text-[11px] text-slate-500">Solicitação: {item.requestId}</p>:null}</div></div>)}</div>:<div className="ds-empty-state"><CheckCircle2 className="ds-empty-state__icon text-emerald-600"/><strong>Nenhum erro registrado</strong><p>O sistema não capturou falhas nesta execução.</p></div>}</section>
+  </div>;
+}

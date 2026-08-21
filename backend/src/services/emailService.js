@@ -8,8 +8,7 @@ async function enviarEmail({ para, assunto, texto, html }) {
   if (!para) return { enviado: false, motivo: "Destinatário não informado" };
 
   if (!emailConfigurado()) {
-    console.log("[EMAIL SIMULADO]", { para, assunto, texto });
-    return { enviado: false, simulado: true, motivo: "SMTP não configurado" };
+    return { enviado: false, motivo: "SMTP não configurado" };
   }
 
   const transporter = nodemailer.createTransport({

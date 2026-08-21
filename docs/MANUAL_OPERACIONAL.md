@@ -1,6 +1,8 @@
 # Manual operacional — Smart HelpDesk
 
 Última revisão técnica: 18/08/2026.
+Desenvolvido por: Sergio Bergê
+Github:
 
 ## 1. Escopo e responsáveis
 

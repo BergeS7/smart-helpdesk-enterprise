@@ -19,7 +19,7 @@ const obterDashboard = async (req, res) => {
       pool.query(`SELECT c.status, COUNT(*)::int AS total FROM chamados c ${filtro.sql} GROUP BY c.status ORDER BY c.status`, params),
       pool.query(`SELECT c.prioridade, COUNT(*)::int AS total FROM chamados c ${filtro.sql} GROUP BY c.prioridade ORDER BY c.prioridade`, params),
       pool.query(`SELECT COALESCE(c.setor, 'Sem departamento') AS departamento, COUNT(*)::int AS total FROM chamados c ${filtro.sql} GROUP BY COALESCE(c.setor, 'Sem departamento') ORDER BY total DESC`, params),
-      pool.query(`SELECT COUNT(*) FROM chamados c ${wherePrefix} c.status NOT IN ('RESOLVED','CLOSED','CANCELED') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP`, params),
+      pool.query(`SELECT COUNT(*) FROM chamados c ${wherePrefix} c.status NOT IN ('RESOLVED','CLOSED','CANCELED','WAITING_USER') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP`, params),
       pool.query("SELECT COUNT(*) FROM usuarios"),
       pool.query("SELECT COUNT(*) FROM usuarios WHERE status = 'pendente'"),
       pool.query(`SELECT COUNT(*) FROM chamados c ${wherePrefix} c.status NOT IN ('RESOLVED','CLOSED','CANCELED') AND c.responsavel_id IS NULL`, params),
@@ -33,7 +33,7 @@ const obterDashboard = async (req, res) => {
                   GROUP BY COALESCE(u.nome, c.responsavel, 'Sem responsável')
                   ORDER BY total DESC LIMIT 10`, params),
       pool.query(`SELECT c.id, c.numero_chamado, c.titulo, c.status, c.prioridade, c.sla_limite_resolucao,
-                         CASE WHEN c.status NOT IN ('RESOLVED','CLOSED','CANCELED') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP THEN TRUE ELSE FALSE END AS vencido
+                         CASE WHEN c.status NOT IN ('RESOLVED','CLOSED','CANCELED','WAITING_USER') AND c.sla_limite_resolucao < CURRENT_TIMESTAMP THEN TRUE ELSE FALSE END AS vencido
                   FROM chamados c ${filtro.sql}
                   ORDER BY c.atualizado_em DESC NULLS LAST, c.id DESC LIMIT 8`, params),
       pool.query(`SELECT d::date AS data,

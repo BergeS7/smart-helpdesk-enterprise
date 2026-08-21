@@ -1,0 +1,17 @@
+BEGIN;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS inventory_json JSONB;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS schema_version INTEGER;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS ultimo_inventario TIMESTAMPTZ;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS fabricante TEXT;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS modelo TEXT;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS os_build TEXT;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS ram_total_bytes BIGINT;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS storage_total_bytes BIGINT;
+ALTER TABLE ativos ADD COLUMN IF NOT EXISTS storage_free_bytes BIGINT;
+CREATE TABLE IF NOT EXISTS ativo_snapshots (id BIGSERIAL PRIMARY KEY,ativo_id BIGINT NOT NULL REFERENCES ativos(id) ON DELETE CASCADE,report_id TEXT NOT NULL,schema_version INTEGER NOT NULL DEFAULT 1,agente_versao VARCHAR(50),coletado_em TIMESTAMPTZ NOT NULL,criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),inventory_json JSONB NOT NULL,UNIQUE(ativo_id,report_id));
+CREATE TABLE IF NOT EXISTS ativo_alteracoes (id BIGSERIAL PRIMARY KEY,ativo_id BIGINT NOT NULL REFERENCES ativos(id) ON DELETE CASCADE,snapshot_id BIGINT REFERENCES ativo_snapshots(id) ON DELETE CASCADE,categoria TEXT NOT NULL,campo TEXT NOT NULL,valor_anterior JSONB,valor_novo JSONB,severidade TEXT NOT NULL DEFAULT 'INFO',detectado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),reconhecida BOOLEAN NOT NULL DEFAULT FALSE,reconhecida_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,reconhecida_em TIMESTAMPTZ);
+CREATE TABLE IF NOT EXISTS ativo_alertas (id BIGSERIAL PRIMARY KEY,ativo_id BIGINT NOT NULL REFERENCES ativos(id) ON DELETE CASCADE,codigo TEXT NOT NULL,categoria TEXT NOT NULL,titulo TEXT NOT NULL,mensagem TEXT,severidade TEXT NOT NULL DEFAULT 'WARNING',ativo BOOLEAN NOT NULL DEFAULT TRUE,detectado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),reconhecido BOOLEAN NOT NULL DEFAULT FALSE,UNIQUE(ativo_id,codigo));
+CREATE INDEX IF NOT EXISTS idx_ativo_snapshots_ativo_data ON ativo_snapshots(ativo_id,coletado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_ativo_alteracoes_ativo_data ON ativo_alteracoes(ativo_id,detectado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_ativo_alertas_ativo ON ativo_alertas(ativo_id,ativo,severidade);
+COMMIT;

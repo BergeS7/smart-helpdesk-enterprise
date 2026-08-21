@@ -48,12 +48,12 @@ export function ProfileCenter({ profile, draft, setDraft, photo, initials, uploa
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `meus-dados-smart-helpdesk-${profile.id}.json`; link.click(); URL.revokeObjectURL(link.href);
   };
 
-  return <div className="fixed inset-0 z-50 flex justify-end">
+  return <div className="fixed inset-x-0 bottom-0 top-14 z-50 flex justify-end">
     <button type="button" aria-label="Fechar perfil" className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]" onClick={onClose} />
     <aside className={`profile-center relative z-10 flex h-full w-full max-w-[920px] flex-col border-l shadow-2xl ${surface}`}>
       <header className={`flex items-center justify-between border-b px-5 py-4 ${dark ? "border-white/10" : "border-zinc-100"}`}>
         <div><p className="flex items-center gap-2 text-base font-black"><UserCog size={18} />Meu perfil</p><p className={`mt-0.5 text-xs ${muted}`}>Conta, preferências, segurança e privacidade.</p></div>
-        <button type="button" onClick={onClose} className={`rounded-xl p-2 transition ${dark ? "hover:bg-white/10" : "hover:bg-zinc-100"}`}><X size={19} /></button>
+        <button type="button" onClick={onClose} title="Fechar perfil" aria-label="Fechar perfil" className={`rounded-xl p-2 transition ${dark ? "hover:bg-white/10" : "hover:bg-zinc-100"}`}><X size={19} /></button>
       </header>
       <div className="grid min-h-0 flex-1 md:grid-cols-[235px_1fr]">
         <nav className={`border-b p-4 md:border-b-0 md:border-r ${dark ? "border-white/10" : "border-zinc-100"}`}>
