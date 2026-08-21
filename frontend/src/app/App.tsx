@@ -296,7 +296,7 @@ function isDevApp(perfil?: string) {
 
 const CONFIG_SISTEMA_PADRAO: ConfiguracoesSistema = {
   nome_sistema: "Smart HelpDesk",
-  email_suporte: "suporte@empresa.com",
+  email_suporte: "",
   cor_principal: "#2563eb",
   logo_url: "",
   logo_1_url: "",
@@ -326,7 +326,7 @@ function nomeSistema(config: ConfiguracoesSistema | null | undefined) {
 }
 
 function emailSuporteSistema(config: ConfiguracoesSistema | null | undefined) {
-  return valorConfig(config, "email_suporte", "suporte@empresa.com");
+  return valorConfig(config, "email_suporte", "");
 }
 
 function corPrincipalSistema(config: ConfiguracoesSistema | null | undefined) {

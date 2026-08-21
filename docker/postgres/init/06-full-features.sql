@@ -13,13 +13,9 @@ CREATE TABLE IF NOT EXISTS empresas (
   criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO empresas (id, nome)
-VALUES (1, 'Empresa principal')
-ON CONFLICT (id) DO NOTHING;
+-- Empresas começam vazias e devem ser cadastradas com dados reais.
 
-UPDATE usuarios SET empresa_id = COALESCE(empresa_id, 1);
-
-ALTER TABLE chamados ADD COLUMN IF NOT EXISTS empresa_id INTEGER DEFAULT 1;
+ALTER TABLE chamados ADD COLUMN IF NOT EXISTS empresa_id INTEGER;
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS sla_alerta_enviado BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS sla_escalado BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS prioridade_manual_motivo TEXT;
@@ -27,8 +23,6 @@ ALTER TABLE chamados ADD COLUMN IF NOT EXISTS prioridade_alterada_por INTEGER;
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS prioridade_alterada_em TIMESTAMP;
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS responsavel_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL;
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS vencido BOOLEAN NOT NULL DEFAULT FALSE;
-
-UPDATE chamados SET empresa_id = COALESCE(empresa_id, 1);
 
 -- Padroniza novos status, sem remover os antigos.
 UPDATE chamados SET status = 'CLOSED' WHERE status IN ('Resolvido', 'Concluido', 'Concluído');
@@ -44,14 +38,7 @@ CREATE TABLE IF NOT EXISTS respostas_rapidas (
   atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO respostas_rapidas (titulo, mensagem, categoria)
-VALUES
-('Em análise', 'Olá! Recebemos seu chamado e já estamos analisando. Em breve retornaremos com uma atualização.', 'Atendimento'),
-('Solicitar print', 'Pode enviar um print da tela com o erro e informar o horário aproximado em que aconteceu?', 'Diagnóstico'),
-('Solicitar teste', 'Realizamos um ajuste. Por favor, teste novamente e nos informe se o problema persiste.', 'Diagnóstico'),
-('Aguardando usuário', 'Para continuar o atendimento, precisamos de mais uma informação sua. Assim que responder, daremos sequência.', 'Aguardando usuário'),
-('Finalização', 'O chamado foi resolvido. Caso o problema continue, você pode reabrir o chamado pelo portal.', 'Finalização')
-ON CONFLICT DO NOTHING;
+-- Respostas rápidas começam vazias e devem ser cadastradas pela equipe.
 
 CREATE TABLE IF NOT EXISTS filtros_salvos (
   id SERIAL PRIMARY KEY,
@@ -71,7 +58,7 @@ CREATE TABLE IF NOT EXISTS configuracoes_sistema (
 INSERT INTO configuracoes_sistema (chave, valor)
 VALUES
 ('nome_sistema', 'Smart HelpDesk'),
-('email_suporte', 'suporte@empresa.com'),
+('email_suporte', ''),
 ('cor_principal', '#2563eb'),
 ('sla_alta_resposta', '60'),
 ('sla_alta_resolucao', '480'),
@@ -103,7 +90,7 @@ CREATE TABLE IF NOT EXISTS configuracoes_sistema (
 INSERT INTO configuracoes_sistema (chave, valor)
 VALUES
 ('nome_sistema', 'Smart HelpDesk'),
-('email_suporte', 'suporte@empresa.com'),
+('email_suporte', ''),
 ('cor_principal', '#2563eb'),
 ('logo_url', ''),
 ('sla_alta_resposta', '60'),

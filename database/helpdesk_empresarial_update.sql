@@ -119,31 +119,4 @@ CREATE INDEX IF NOT EXISTS idx_chamados_responsavel_id ON chamados(responsavel_i
 CREATE INDEX IF NOT EXISTS idx_usuarios_perfil_status ON usuarios(perfil, status);
 CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario_lida ON notificacoes(usuario_id, lida);
 
-INSERT INTO departamentos (nome, descricao)
-VALUES
-  ('Financeiro', 'Cobranças, pagamentos, notas fiscais e faturamento'),
-  ('RH', 'Recursos humanos, admissões, acessos e documentação'),
-  ('Comercial', 'Vendas, relacionamento com clientes e propostas'),
-  ('TI', 'Tecnologia, infraestrutura, sistemas e acessos'),
-  ('Operação', 'Rotina operacional e atendimento interno'),
-  ('Diretoria', 'Demandas executivas e estratégicas'),
-  ('Atendimento', 'Relacionamento e suporte a clientes')
-ON CONFLICT (nome) DO NOTHING;
-
-INSERT INTO tipos_chamado (nome, descricao)
-VALUES
-  ('Incidente', 'Algo que parou de funcionar ou impacta a operação'),
-  ('Solicitação', 'Pedido de acesso, configuração, instalação ou serviço'),
-  ('Dúvida', 'Pedido de orientação ou instrução'),
-  ('Melhoria', 'Sugestão de ajuste ou nova funcionalidade'),
-  ('Acesso', 'Criação, liberação ou correção de acesso'),
-  ('Equipamento', 'Computador, impressora, periféricos e dispositivos')
-ON CONFLICT (nome) DO NOTHING;
-
-INSERT INTO base_conhecimento (titulo, categoria, palavras_chave, conteudo)
-VALUES
-  ('Como redefinir sua senha', 'Acesso', 'senha,login,acesso,bloqueado,usuario', 'Verifique se o e-mail está correto. Use a opção de recuperação de senha ou solicite ao suporte a liberação do acesso.'),
-  ('O que fazer quando a internet cair', 'Internet', 'internet,wifi,wi-fi,rede,conexao', 'Reinicie o roteador, teste outro site, verifique cabos e informe se o problema afeta somente você ou todos do setor.'),
-  ('Erro ao emitir nota fiscal', 'Financeiro', 'nota fiscal,nfe,nf-e,faturamento,financeiro', 'Anexe o print do erro, informe o cliente, número do pedido e horário em que o erro ocorreu.'),
-  ('Como abrir um chamado eficiente', 'Orientação', 'chamado,suporte,erro,print', 'Descreva o problema, informe quando começou, quem foi afetado e anexe prints ou documentos relacionados.')
-ON CONFLICT DO NOTHING;
+-- Catálogos e artigos começam vazios e devem ser cadastrados pelo desenvolvedor.

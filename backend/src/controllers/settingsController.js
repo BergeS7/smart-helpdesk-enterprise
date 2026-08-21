@@ -11,7 +11,7 @@ const defaults = {
   sla_critica_resposta: 15,
   sla_critica_resolucao: 120,
   nome_sistema: "Smart HelpDesk",
-  email_suporte: "suporte@empresa.com",
+  email_suporte: "",
   cor_principal: "#2563eb",
   logo_url: "",
   logo_1_url: "",
