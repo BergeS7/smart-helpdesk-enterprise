@@ -545,10 +545,20 @@ export function redefinirSenha(
 }
 
 export function cadastrarUsuarioPublico(dados: NovoCadastroUsuario) {
-  return request<{ mensagem: string; usuario: ApiUsuario }>(
+  return request<{ mensagem: string; usuario: ApiUsuario; requer_verificacao_email?: boolean }>(
     "/usuarios/cadastro",
     { method: "POST", auth: false, body: JSON.stringify(dados) },
   );
+}
+export function verificarEmailCadastro(email: string, codigo: string) {
+  return request<{ mensagem: string }>("/usuarios/verificar-email", {
+    method: "POST", auth: false, body: JSON.stringify({ email, codigo }),
+  });
+}
+export function reenviarVerificacaoEmail(email: string) {
+  return request<{ mensagem: string }>("/usuarios/reenviar-verificacao", {
+    method: "POST", auth: false, body: JSON.stringify({ email }),
+  });
 }
 export function listarUsuariosAdmin(
   params: { status?: string; perfil?: string; q?: string } = {},

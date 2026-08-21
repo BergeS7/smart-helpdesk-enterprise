@@ -815,6 +815,7 @@ const reabrirChamado = async (req, res) => {
     );
     await registrarMovimentacao(id, req, "reabertura", motivo ? `Chamado reaberto. Motivo: ${normalizarTexto(motivo)}` : "Chamado reaberto pelo usuário.");
     await notificarAdmins("Chamado reaberto", `${result.rows[0].numero_chamado} foi reaberto.`, "warning", `/chamados/${id}`);
+    enviarEmail({ para: result.rows[0].email_solicitante, assunto: `Chamado reaberto ${result.rows[0].numero_chamado}`, texto: `Seu chamado foi reaberto e voltou para atendimento. Motivo: ${normalizarTexto(motivo)}` }).catch(() => {});
     return res.json(await carregarDetalhesChamado(req, result.rows[0]));
   } catch (error) {
     console.error(error);

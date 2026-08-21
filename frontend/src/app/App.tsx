@@ -123,6 +123,8 @@ import {
   baixarAnexoChamado,
   buscarChamado,
   cadastrarUsuarioPublico,
+  verificarEmailCadastro,
+  reenviarVerificacaoEmail,
   criarArtigoBase,
   criarAvisoSistema,
   criarCatalogo,
@@ -183,7 +185,7 @@ import {
 } from "./services/api";
 
 type LoginMode = "usuario" | "admin";
-type TelaAuth = "login" | "cadastro" | "recuperar";
+type TelaAuth = "login" | "cadastro" | "verificar" | "recuperar";
 type AdminTab = AdminRouteKey;
 type UsuarioTab =
   "home" | "chamados" | "base" | "avisos" | "dashboard" | "relatorios";
@@ -834,6 +836,7 @@ function LoginScreen({
     codigo: "",
     novaSenha: "",
   });
+  const [verificacao, setVerificacao] = useState({ email: "", codigo: "" });
 
   async function handleLogin(event: FormEvent) {
     event.preventDefault();
@@ -870,9 +873,10 @@ function LoginScreen({
     event.preventDefault();
     setLoading(true);
     try {
-      await cadastrarUsuarioPublico(cadastro);
-      toast.success("Cadastro solicitado. Aguarde aprovação do administrador.");
-      setTela("login");
+      const resposta = await cadastrarUsuarioPublico(cadastro);
+      toast.success(resposta.mensagem);
+      setVerificacao({ email: cadastro.email, codigo: "" });
+      setTela("verificar");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Erro ao solicitar cadastro.",
@@ -880,6 +884,29 @@ function LoginScreen({
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleVerificarEmail(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      const resposta = await verificarEmailCadastro(verificacao.email, verificacao.codigo);
+      toast.success(resposta.mensagem);
+      setEmail(verificacao.email);
+      setTela("login");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao confirmar e-mail.");
+    } finally { setLoading(false); }
+  }
+
+  async function handleReenviarVerificacao() {
+    setLoading(true);
+    try {
+      const resposta = await reenviarVerificacaoEmail(verificacao.email);
+      toast.success(resposta.mensagem);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao reenviar código.");
+    } finally { setLoading(false); }
   }
 
   async function handleRecuperar(event: FormEvent) {
@@ -1187,6 +1214,18 @@ function LoginScreen({
                 >
                   Voltar
                 </Button>
+              </form>
+            )}
+            {tela === "verificar" && (
+              <form onSubmit={handleVerificarEmail} className="space-y-4">
+                <h2 className="text-center text-2xl font-black text-zinc-800">Confirmar e-mail</h2>
+                <p className="text-center text-sm leading-6 text-zinc-500">Enviamos um código de 6 dígitos para <strong>{verificacao.email}</strong>.</p>
+                <Field label="Código de confirmação">
+                  <Input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={verificacao.codigo} onChange={(e) => setVerificacao({ ...verificacao, codigo: e.target.value.replace(/\D/g, "") })} placeholder="000000" />
+                </Field>
+                <Button disabled={loading || verificacao.codigo.length !== 6} className="w-full">Confirmar e-mail</Button>
+                <Button type="button" variant="secondary" disabled={loading} onClick={handleReenviarVerificacao} className="w-full">Reenviar código</Button>
+                <button type="button" onClick={() => setTela("login")} className="w-full text-sm font-semibold text-zinc-500">Voltar ao login</button>
               </form>
             )}
             <p className="mt-12 text-center text-[11px] font-medium text-slate-400">

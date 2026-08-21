@@ -11,6 +11,8 @@ const authModule = require("../middlewares/authMiddleware");
 const {
   criarPrimeiroAdmin,
   cadastrarUsuarioPublico,
+  verificarEmail,
+  reenviarVerificacaoEmail,
   createUser,
   listarUsuarios,
   aprovarUsuario,
@@ -130,6 +132,8 @@ function tratarUploadFoto(req, res, next) {
 // Rotas públicas
 router.post("/primeiro-admin", registrationLimiter, criarPrimeiroAdmin);
 router.post("/cadastro", registrationLimiter, cadastrarUsuarioPublico);
+router.post("/verificar-email", registrationLimiter, verificarEmail);
+router.post("/reenviar-verificacao", registrationLimiter, reenviarVerificacaoEmail);
 
 // Rotas do próprio usuário
 router.get("/me", authMiddleware, obterMeuPerfil);

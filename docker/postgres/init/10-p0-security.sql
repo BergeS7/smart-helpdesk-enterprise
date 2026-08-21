@@ -4,6 +4,11 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(128);
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_tentativas INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_bloqueado_ate TIMESTAMPTZ;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_solicitado_em TIMESTAMPTZ;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado_em TIMESTAMPTZ;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificacao_hash VARCHAR(128);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificacao_expira_em TIMESTAMPTZ;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificacao_tentativas INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificacao_enviado_em TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS agente_convites (
   id BIGSERIAL PRIMARY KEY,
@@ -21,4 +26,3 @@ CREATE INDEX IF NOT EXISTS idx_agente_convites_validade ON agente_convites(expir
 -- DROP TABLE agente_convites;
 -- ALTER TABLE usuarios DROP COLUMN reset_solicitado_em, DROP COLUMN reset_bloqueado_ate,
 --   DROP COLUMN reset_tentativas, DROP COLUMN reset_token_hash, DROP COLUMN token_version;
-

@@ -14,7 +14,6 @@ ALTER TABLE chamados ADD COLUMN IF NOT EXISTS municipio_solicitante VARCHAR(150)
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS unidade_solicitante VARCHAR(180);
 CREATE INDEX IF NOT EXISTS idx_chamados_municipio_criado ON chamados(municipio_solicitante, criado_em DESC);
 CREATE INDEX IF NOT EXISTS idx_chamados_unidade_criado ON chamados(unidade_solicitante, criado_em DESC);
-CREATE INDEX IF NOT EXISTS idx_chamados_team_criado ON chamados(team_id, criado_em DESC);
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cargo VARCHAR(120);
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS aprovado_em TIMESTAMP;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS aprovado_por INTEGER;

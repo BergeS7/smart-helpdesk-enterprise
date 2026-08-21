@@ -109,6 +109,7 @@ async function executarLogin(req, res, perfisPermitidos) {
           cargo,
           tentativas_login,
           bloqueado_ate
+          ,email_verificado_em
           ,COALESCE(token_version, 1) AS token_version
        FROM usuarios
        WHERE LOWER(email) = LOWER($1)`,
@@ -161,6 +162,10 @@ async function executarLogin(req, res, perfisPermitidos) {
           ? "Muitas tentativas inválidas. Usuário bloqueado por 15 minutos."
           : "Credenciais inválidas",
       });
+    }
+
+    if (!usuario.email_verificado_em) {
+      return res.status(403).json({ erro: "Confirme seu e-mail antes de entrar." });
     }
 
     const perfisPermitidosNormalizados = normalizarListaPerfis(perfisPermitidos);
@@ -264,7 +269,8 @@ const solicitarRecuperacaoSenha = async (req, res) => {
     const result = await pool.query(
       `SELECT id, nome, email, perfil
        FROM usuarios
-       WHERE LOWER(email) = LOWER($1)`,
+       WHERE LOWER(email) = LOWER($1)
+         AND email_verificado_em IS NOT NULL`,
       [String(email).trim()]
     );
 
@@ -291,11 +297,15 @@ const solicitarRecuperacaoSenha = async (req, res) => {
       [codigoHash, usuario.id]
     );
 
-    await enviarEmail({
+    const entrega = await enviarEmail({
       para: usuario.email,
       assunto: "Recuperação de senha - Smart HelpDesk",
       texto: `Seu código de recuperação é: ${codigo}. Ele expira em 20 minutos.`,
     });
+    if (!entrega.enviado) {
+      await pool.query("UPDATE usuarios SET reset_token_hash=NULL,reset_expira_em=NULL WHERE id=$1", [usuario.id]);
+      return res.status(503).json({ erro: "O serviço de e-mail ainda não está configurado. Contate o suporte." });
+    }
 
     await registrarAuditoria(
       usuario,

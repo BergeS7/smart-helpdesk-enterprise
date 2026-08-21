@@ -1,5 +1,7 @@
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const pool = require("../config/database");
+const { emailConfigurado, enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil, limparFotosPerfil } = require("../utils/profilePhoto");
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
 const { validLocation } = require("../domain/serviceArea");
@@ -10,6 +12,24 @@ function normalizarTexto(valor) {
 
 function normalizarEmail(email) {
   return String(email || "").trim().toLowerCase();
+}
+
+function hashCodigoEmail(email, codigo) {
+  return crypto.createHmac("sha256", String(process.env.JWT_SECRET || "email-verification"))
+    .update(`${normalizarEmail(email)}:${String(codigo)}`).digest("hex");
+}
+
+function novoCodigoEmail() {
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
+async function enviarCodigoVerificacao({ nome, email, codigo }) {
+  return enviarEmail({
+    para: email,
+    assunto: "Confirme seu e-mail - Smart HelpDesk",
+    texto: `Olá, ${nome}. Seu código de confirmação é ${codigo}. Ele expira em 20 minutos. Se você não solicitou este cadastro, ignore esta mensagem.`,
+    html: `<p>Olá, <strong>${String(nome).replace(/[<>&]/g, "")}</strong>.</p><p>Seu código de confirmação é:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${codigo}</p><p>O código expira em 20 minutos.</p>`,
+  });
 }
 
 function senhaForte(senha) {
@@ -155,8 +175,8 @@ async function criarPrimeiroAdmin(req, res) {
 
     const result = await pool.query(
       `INSERT INTO usuarios
-       (nome, email, senha, perfil, status, telefone, departamento, cargo, aprovado_em)
-       VALUES ($1, LOWER($2), $3, 'desenvolvedor', 'ativo', $4, $5, $6, CURRENT_TIMESTAMP)
+       (nome, email, senha, perfil, status, telefone, departamento, cargo, aprovado_em, email_verificado_em)
+       VALUES ($1, LOWER($2), $3, 'desenvolvedor', 'ativo', $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING
         id,
         nome,
@@ -216,13 +236,18 @@ async function cadastrarUsuarioPublico(req, res) {
         erro: "Já existe um usuário cadastrado com este e-mail.",
       });
     }
+    if (!emailConfigurado()) return res.status(503).json({ erro: "O envio de e-mail ainda não está configurado. Contate o suporte." });
 
     const senhaHash = await bcrypt.hash(String(senha), 10);
+    const codigo = novoCodigoEmail();
+    const codigoHash = hashCodigoEmail(email, codigo);
 
     const result = await pool.query(
       `INSERT INTO usuarios
-       (nome, email, senha, perfil, status, telefone, departamento, municipio, unidade, cargo)
-       VALUES ($1, LOWER($2), $3, 'usuario', 'pendente', $4, $5, $6, $7, $8)
+       (nome, email, senha, perfil, status, telefone, departamento, municipio, unidade, cargo,
+        email_verificacao_hash, email_verificacao_expira_em, email_verificacao_enviado_em)
+       VALUES ($1, LOWER($2), $3, 'usuario', 'pendente', $4, $5, $6, $7, $8,
+        $9, CURRENT_TIMESTAMP + INTERVAL '20 minutes', CURRENT_TIMESTAMP)
        RETURNING
         id,
         nome,
@@ -248,13 +273,23 @@ async function cadastrarUsuarioPublico(req, res) {
         normalizarTexto(municipio),
         normalizarTexto(unidade),
         normalizarTexto(cargo),
+        codigoHash,
       ]
     );
+
+    try {
+      await enviarCodigoVerificacao({ nome: result.rows[0].nome, email: result.rows[0].email, codigo });
+    } catch (emailError) {
+      await pool.query("DELETE FROM usuarios WHERE id=$1", [result.rows[0].id]);
+      console.error("Erro ao enviar verificação:", emailError.message);
+      return res.status(503).json({ erro: "Não foi possível enviar o código de confirmação. Verifique o endereço e tente novamente." });
+    }
 
     await recordLegalAcceptance({ userId: result.rows[0].id, req });
 
     return res.status(201).json({
-      mensagem: "Cadastro solicitado com sucesso. Aguarde aprovação do administrador.",
+      mensagem: "Enviamos um código para seu e-mail. Confirme o endereço para concluir o cadastro.",
+      requer_verificacao_email: true,
       usuario: montarUsuarioPublico(result.rows[0], req),
     });
   } catch (error) {
@@ -264,6 +299,48 @@ async function cadastrarUsuarioPublico(req, res) {
       erro: "Erro ao solicitar cadastro",
       detalhe: error.message,
     });
+  }
+}
+
+async function verificarEmail(req, res) {
+  try {
+    const email = normalizarEmail(req.body?.email);
+    const codigo = String(req.body?.codigo || "").trim();
+    if (!email || !/^\d{6}$/.test(codigo)) return res.status(400).json({ erro: "Informe o e-mail e o código de 6 dígitos." });
+    const result = await pool.query(`SELECT id,email_verificado_em,email_verificacao_hash,email_verificacao_expira_em,email_verificacao_tentativas FROM usuarios WHERE LOWER(email)=LOWER($1)`, [email]);
+    const usuario = result.rows[0];
+    if (!usuario) return res.status(400).json({ erro: "Código inválido ou expirado." });
+    if (usuario.email_verificado_em) return res.json({ mensagem: "E-mail já confirmado. Aguarde a aprovação do administrador." });
+    if (Number(usuario.email_verificacao_tentativas || 0) >= 5) return res.status(429).json({ erro: "Limite de tentativas atingido. Solicite um novo código." });
+    if (!usuario.email_verificacao_expira_em || new Date(usuario.email_verificacao_expira_em) < new Date() || usuario.email_verificacao_hash !== hashCodigoEmail(email, codigo)) {
+      await pool.query("UPDATE usuarios SET email_verificacao_tentativas=email_verificacao_tentativas+1 WHERE id=$1", [usuario.id]);
+      return res.status(400).json({ erro: "Código inválido ou expirado." });
+    }
+    await pool.query(`UPDATE usuarios SET email_verificado_em=CURRENT_TIMESTAMP,email_verificacao_hash=NULL,email_verificacao_expira_em=NULL,email_verificacao_tentativas=0 WHERE id=$1`, [usuario.id]);
+    return res.json({ mensagem: "E-mail confirmado. Seu cadastro agora aguarda aprovação do administrador." });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao confirmar e-mail", detalhe: error.message });
+  }
+}
+
+async function reenviarVerificacaoEmail(req, res) {
+  try {
+    const email = normalizarEmail(req.body?.email);
+    if (!email) return res.status(400).json({ erro: "Informe o e-mail." });
+    const result = await pool.query(`SELECT id,nome,email,email_verificado_em,email_verificacao_enviado_em FROM usuarios WHERE LOWER(email)=LOWER($1)`, [email]);
+    const usuario = result.rows[0];
+    const mensagem = "Se o cadastro existir e ainda não estiver confirmado, enviaremos um novo código.";
+    if (!usuario || usuario.email_verificado_em) return res.json({ mensagem });
+    if (usuario.email_verificacao_enviado_em && Date.now() - new Date(usuario.email_verificacao_enviado_em).getTime() < 60000) return res.status(429).json({ erro: "Aguarde um minuto antes de solicitar outro código." });
+    if (!emailConfigurado()) return res.status(503).json({ erro: "O envio de e-mail ainda não está configurado." });
+    const codigo = novoCodigoEmail();
+    await pool.query(`UPDATE usuarios SET email_verificacao_hash=$1,email_verificacao_expira_em=CURRENT_TIMESTAMP+INTERVAL '20 minutes',email_verificacao_tentativas=0,email_verificacao_enviado_em=CURRENT_TIMESTAMP WHERE id=$2`, [hashCodigoEmail(email, codigo), usuario.id]);
+    await enviarCodigoVerificacao({ nome: usuario.nome, email: usuario.email, codigo });
+    return res.json({ mensagem });
+  } catch (error) {
+    console.error(error);
+    return res.status(503).json({ erro: "Não foi possível reenviar o código agora." });
   }
 }
 
@@ -298,8 +375,8 @@ async function createUser(req, res) {
 
     const result = await pool.query(
       `INSERT INTO usuarios
-       (nome, email, senha, perfil, status, telefone, departamento, municipio, unidade, cargo, aprovado_por, aprovado_em)
-       VALUES ($1, LOWER($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+       (nome, email, senha, perfil, status, telefone, departamento, municipio, unidade, cargo, aprovado_por, aprovado_em, email_verificado_em)
+       VALUES ($1, LOWER($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING
         id,
         nome,
@@ -410,7 +487,7 @@ async function aprovarUsuario(req, res) {
         token_version = COALESCE(token_version, 1) + 1,
         aprovado_por = $1,
         aprovado_em = CURRENT_TIMESTAMP
-       WHERE id = $2
+       WHERE id = $2 AND email_verificado_em IS NOT NULL
        RETURNING
         id,
         nome,
@@ -429,8 +506,8 @@ async function aprovarUsuario(req, res) {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        erro: "Usuário não encontrado.",
+      return res.status(409).json({
+        erro: "Usuário não encontrado ou e-mail ainda não confirmado.",
       });
     }
 
@@ -832,6 +909,8 @@ async function excluirUsuarioAdmin(req, res) {
 module.exports = {
   criarPrimeiroAdmin,
   cadastrarUsuarioPublico,
+  verificarEmail,
+  reenviarVerificacaoEmail,
   createUser,
   listarUsuarios,
   aprovarUsuario,

@@ -20,6 +20,7 @@ const { ensurePrioritySchema } = require("./services/prioritySchemaService");
 const { ensurePermissionSchema } = require("./services/permissionService");
 const { ensurePrivacyComplianceSchema, startPrivacyRetentionSchedule } = require("./services/privacyComplianceService");
 const { ensureSlaPauseSchema } = require("./services/slaPauseSchemaService");
+const { ensureEmailVerificationSchema } = require("./services/emailVerificationSchemaService");
 
 const app = express();
 
@@ -73,6 +74,7 @@ ensureAssetSchema().catch((error) => console.error("Erro ao preparar módulo de 
 ensurePrioritySchema().catch((error) => console.error("Erro ao preparar IA de prioridades:", error));
 ensurePermissionSchema().catch((error) => console.error("Erro ao preparar permissões:", error));
 ensureSlaPauseSchema().catch((error) => console.error("Erro ao preparar pausa de SLA:", error));
+ensureEmailVerificationSchema().catch((error) => console.error("Erro ao preparar verificação de e-mail:", error));
 ensurePrivacyComplianceSchema()
   .then(startPrivacyRetentionSchedule)
   .catch((error) => console.error("Erro ao preparar conformidade LGPD:", error));

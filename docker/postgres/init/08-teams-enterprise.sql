@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS team_users (
   PRIMARY KEY (team_id, user_id)
 );
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_chamados_team_criado ON chamados(team_id, criado_em DESC);
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS closed_hidden_at TIMESTAMP;
 INSERT INTO configuracoes_sistema (chave, valor) VALUES ('closedTicketsHideAfter', '24h') ON CONFLICT (chave) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_team_users_user ON team_users(user_id);
