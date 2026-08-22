@@ -940,7 +940,7 @@ function LoginScreen({
 
   return (
     <div
-      className="smart-helpdesk-config-theme min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1682f2] via-[#4059e8] to-[#8244d6] lg:flex lg:items-center lg:justify-center lg:p-8"
+      className="smart-helpdesk-config-theme min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1682f2] via-[#4059e8] to-[#8244d6]"
       style={variaveisTemaSistema(configSistema)}
     >
       <SystemThemeStyle />
@@ -948,7 +948,7 @@ function LoginScreen({
       <div className="fixed inset-x-0 top-4 z-40 mx-auto w-[min(920px,calc(100vw-32px))]">
         <AvisosSistemaBanner avisos={avisosSistema} />
       </div>
-      <div className="grid min-h-screen w-full grid-cols-1 lg:min-h-0 lg:h-[min(780px,calc(100vh-64px))] lg:max-w-[1180px] lg:grid-cols-[46%_54%] lg:overflow-hidden lg:rounded-[34px] lg:bg-white lg:shadow-[0_30px_90px_rgba(2,12,40,0.45)]">
+      <div className="grid min-h-screen w-full grid-cols-1 lg:h-screen lg:grid-cols-[46%_54%] lg:overflow-hidden lg:bg-white">
         <section className="relative z-10 order-2 -mt-10 flex min-h-[calc(100vh-270px)] items-start justify-center rounded-t-[42px] bg-white px-6 pb-10 pt-12 shadow-[0_-18px_45px_rgba(21,42,100,.16)] sm:px-10 lg:mt-0 lg:min-h-0 lg:items-center lg:overflow-y-auto lg:rounded-none lg:px-16 lg:py-10 lg:shadow-none">
           <div className="w-full max-w-[440px]">
             <div className="mb-7 flex items-center justify-center gap-3 text-center lg:mb-10">
