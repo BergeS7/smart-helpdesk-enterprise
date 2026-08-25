@@ -5,4 +5,9 @@ validateProductionSecurity();
 
 const app = require("../src/app");
 
-module.exports = app;
+async function handler(req, res) {
+  return app(req, res);
+}
+
+module.exports = handler;
+module.exports.handler = handler;
