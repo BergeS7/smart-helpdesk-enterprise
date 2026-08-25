@@ -29,7 +29,7 @@ function senhaForte(senha) {
   return valor.length >= 12 && /[a-z]/.test(valor) && /[A-Z]/.test(valor) && /\d/.test(valor) && /[^A-Za-z0-9]/.test(valor);
 }
 
-function montarUsuarioPublico(usuario, req = null) {
+async function montarUsuarioPublico(usuario, req = null) {
   return {
     id: usuario.id,
     nome: usuario.nome,
@@ -39,7 +39,8 @@ function montarUsuarioPublico(usuario, req = null) {
     telefone: usuario.telefone || "",
     departamento: usuario.departamento || "",
     cargo: usuario.cargo || "",
-    foto_url: montarUrlFotoPerfil(req, usuario.id),
+    foto_perfil: usuario.foto_perfil || null,
+    foto_url: await montarUrlFotoPerfil(req, usuario.id, usuario.foto_perfil),
   };
 }
 
@@ -111,6 +112,7 @@ async function executarLogin(req, res, perfisPermitidos) {
           bloqueado_ate
           ,email_verificado_em
           ,COALESCE(token_version, 1) AS token_version
+          ,foto_perfil
        FROM usuarios
        WHERE LOWER(email) = LOWER($1)`,
       [String(email).trim()]
@@ -204,7 +206,7 @@ async function executarLogin(req, res, perfisPermitidos) {
     );
 
     return res.json({
-      usuario: montarUsuarioPublico(usuario, req),
+      usuario: await montarUsuarioPublico(usuario, req),
       token: gerarToken(usuario),
     });
   } catch (error) {

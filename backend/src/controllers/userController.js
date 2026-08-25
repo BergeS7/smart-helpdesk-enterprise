@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const pool = require("../config/database");
 const { emailConfigurado, enviarEmail } = require("../services/emailService");
-const { montarUrlFotoPerfil, limparFotosPerfil } = require("../utils/profilePhoto");
+const { montarUrlFotoPerfil, limparFotosPerfil, enviarAvatar, removerAvatar, arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
 const { validLocation } = require("../domain/serviceArea");
 
@@ -73,7 +73,7 @@ function usuarioIdDoRequest(req) {
   return req.user?.id || req.usuario?.id || null;
 }
 
-function montarUsuarioPublico(usuario, req = null) {
+async function montarUsuarioPublico(usuario, req = null) {
   return {
     id: usuario.id,
     nome: usuario.nome || "",
@@ -90,7 +90,8 @@ function montarUsuarioPublico(usuario, req = null) {
     aprovado_por: usuario.aprovado_por || null,
     ultimo_login_em: usuario.ultimo_login_em || null,
     bloqueado_ate: usuario.bloqueado_ate || null,
-    foto_url: montarUrlFotoPerfil(req, usuario.id),
+    foto_perfil: usuario.foto_perfil || null,
+    foto_url: await montarUrlFotoPerfil(req, usuario.id, usuario.foto_perfil),
   };
 }
 
@@ -111,7 +112,8 @@ async function buscarUsuarioPorId(id, req = null) {
         aprovado_em,
         aprovado_por,
         ultimo_login_em,
-        bloqueado_ate
+        bloqueado_ate,
+        foto_perfil
      FROM usuarios
      WHERE id = $1`,
     [id]
@@ -190,7 +192,8 @@ async function criarPrimeiroAdmin(req, res) {
         aprovado_em,
         aprovado_por,
         ultimo_login_em,
-        bloqueado_ate`,
+        bloqueado_ate,
+        foto_perfil`,
       [
         normalizarTexto(nome),
         normalizarEmail(email),
@@ -203,7 +206,7 @@ async function criarPrimeiroAdmin(req, res) {
 
     return res.status(201).json({
       mensagem: "Primeiro administrador/desenvolvedor criado com sucesso.",
-      usuario: montarUsuarioPublico(result.rows[0], req),
+      usuario: await montarUsuarioPublico(result.rows[0], req),
     });
   } catch (error) {
     console.error(error);
@@ -263,7 +266,8 @@ async function cadastrarUsuarioPublico(req, res) {
         aprovado_em,
         aprovado_por,
         ultimo_login_em,
-        bloqueado_ate`,
+        bloqueado_ate,
+        foto_perfil`,
       [
         normalizarTexto(nome),
         normalizarEmail(email),
@@ -290,7 +294,7 @@ async function cadastrarUsuarioPublico(req, res) {
     return res.status(201).json({
       mensagem: "Enviamos um código para seu e-mail. Confirme o endereço para concluir o cadastro.",
       requer_verificacao_email: true,
-      usuario: montarUsuarioPublico(result.rows[0], req),
+      usuario: await montarUsuarioPublico(result.rows[0], req),
     });
   } catch (error) {
     console.error(error);
@@ -392,7 +396,8 @@ async function createUser(req, res) {
         aprovado_em,
         aprovado_por,
         ultimo_login_em,
-        bloqueado_ate`,
+        bloqueado_ate,
+        foto_perfil`,
       [
         normalizarTexto(nome),
         normalizarEmail(email),
@@ -410,7 +415,7 @@ async function createUser(req, res) {
 
     await registrarAuditoria(req, result.rows[0].id, "criado", `Usuário ${result.rows[0].email} criado.`);
 
-    return res.status(201).json(montarUsuarioPublico(result.rows[0], req));
+    return res.status(201).json(await montarUsuarioPublico(result.rows[0], req));
   } catch (error) {
     console.error(error);
 
@@ -458,14 +463,15 @@ async function listarUsuarios(req, res) {
           aprovado_em,
           aprovado_por,
           ultimo_login_em,
-          bloqueado_ate
+          bloqueado_ate,
+          foto_perfil
        FROM usuarios
        ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
        ORDER BY criado_em DESC, id DESC`,
       params
     );
 
-    return res.json(result.rows.map((usuario) => montarUsuarioPublico(usuario, req)));
+    return res.json(await Promise.all(result.rows.map((usuario) => montarUsuarioPublico(usuario, req))));
   } catch (error) {
     console.error(error);
 
@@ -501,7 +507,8 @@ async function aprovarUsuario(req, res) {
         aprovado_em,
         aprovado_por,
         ultimo_login_em,
-        bloqueado_ate`,
+        bloqueado_ate,
+        foto_perfil`,
       [usuarioIdDoRequest(req), id]
     );
 
@@ -515,7 +522,7 @@ async function aprovarUsuario(req, res) {
 
     return res.json({
       mensagem: "Usuário aprovado com sucesso.",
-      usuario: montarUsuarioPublico(result.rows[0], req),
+      usuario: await montarUsuarioPublico(result.rows[0], req),
     });
   } catch (error) {
     console.error(error);
@@ -552,7 +559,8 @@ async function rejeitarUsuario(req, res) {
         aprovado_em,
         aprovado_por,
         ultimo_login_em,
-        bloqueado_ate`,
+        bloqueado_ate,
+        foto_perfil`,
       [usuarioIdDoRequest(req), id]
     );
 
@@ -566,7 +574,7 @@ async function rejeitarUsuario(req, res) {
 
     return res.json({
       mensagem: "Usuário rejeitado com sucesso.",
-      usuario: montarUsuarioPublico(result.rows[0], req),
+      usuario: await montarUsuarioPublico(result.rows[0], req),
     });
   } catch (error) {
     console.error(error);
@@ -662,7 +670,8 @@ async function atualizarUsuarioAdmin(req, res) {
         aprovado_em,
         aprovado_por,
         ultimo_login_em,
-        bloqueado_ate`,
+        bloqueado_ate,
+        foto_perfil`,
       valores
     );
 
@@ -674,7 +683,7 @@ async function atualizarUsuarioAdmin(req, res) {
 
     await registrarAuditoria(req, id, "atualizado", `Dados do usuário ${result.rows[0].email} atualizados.`);
 
-    return res.json(montarUsuarioPublico(result.rows[0], req));
+    return res.json(await montarUsuarioPublico(result.rows[0], req));
   } catch (error) {
     console.error(error);
 
@@ -752,7 +761,8 @@ async function atualizarMeuPerfil(req, res) {
         aprovado_em,
         aprovado_por,
         ultimo_login_em,
-        bloqueado_ate`,
+        bloqueado_ate,
+        foto_perfil`,
       [
         nome !== undefined ? normalizarTexto(nome) : null,
         telefone !== undefined ? normalizarTexto(telefone) : null,
@@ -772,7 +782,7 @@ async function atualizarMeuPerfil(req, res) {
 
     await registrarAuditoria(req, usuarioId, "perfil_atualizado", "Usuário atualizou o próprio perfil.");
 
-    return res.json(montarUsuarioPublico(result.rows[0], req));
+    return res.json(await montarUsuarioPublico(result.rows[0], req));
   } catch (error) {
     console.error(error);
 
@@ -784,6 +794,7 @@ async function atualizarMeuPerfil(req, res) {
 }
 
 async function atualizarMinhaFotoPerfil(req, res) {
+  let novoCaminho = "";
   try {
     const usuarioId = usuarioIdDoRequest(req);
 
@@ -798,26 +809,55 @@ async function atualizarMinhaFotoPerfil(req, res) {
         erro: "Envie uma foto de perfil.",
       });
     }
+    if (!arquivoTemAssinaturaValida(req.file)) {
+      return res.status(400).json({
+        erro: "O conteúdo do arquivo não corresponde a uma imagem PNG, JPG ou WEBP válida.",
+      });
+    }
 
-    limparFotosPerfil(usuarioId, req.file.filename);
-
-    const usuario = await buscarUsuarioPorId(usuarioId, req);
-
-    if (!usuario) {
+    const atual = await pool.query(
+      "SELECT id, foto_perfil FROM usuarios WHERE id = $1",
+      [usuarioId]
+    );
+    if (!atual.rowCount) {
       return res.status(404).json({
         erro: "Usuário não encontrado.",
       });
     }
 
+    const caminhoAnterior = atual.rows[0].foto_perfil || "";
+    novoCaminho = await enviarAvatar(usuarioId, req.file);
+
+    try {
+      const atualizado = await pool.query(
+        "UPDATE usuarios SET foto_perfil = $1 WHERE id = $2",
+        [novoCaminho, usuarioId]
+      );
+      if (!atualizado.rowCount) throw new Error("Usuário não encontrado durante a atualização.");
+    } catch (error) {
+      await removerAvatar(usuarioId, novoCaminho).catch((cleanupError) =>
+        console.error("Erro ao limpar avatar órfão:", cleanupError.message)
+      );
+      novoCaminho = "";
+      throw error;
+    }
+
+    if (caminhoAnterior) {
+      await removerAvatar(usuarioId, caminhoAnterior).catch((error) =>
+        console.error("Erro ao remover avatar anterior:", error.message)
+      );
+    }
+
+    const usuario = await buscarUsuarioPorId(usuarioId, req);
+
     await registrarAuditoria(req, usuarioId, "foto_atualizada", "Foto de perfil atualizada.");
 
     return res.json(usuario);
   } catch (error) {
-    console.error(error);
+    console.error("Erro ao atualizar foto de perfil:", error.message);
 
     return res.status(500).json({
-      erro: "Erro ao atualizar foto de perfil",
-      detalhe: error.message,
+      erro: "Não foi possível atualizar a foto de perfil.",
     });
   }
 }
@@ -832,15 +872,26 @@ async function removerMinhaFotoPerfil(req, res) {
       });
     }
 
-    limparFotosPerfil(usuarioId);
-
-    const usuario = await buscarUsuarioPorId(usuarioId, req);
-
-    if (!usuario) {
+    const atual = await pool.query(
+      "SELECT id, foto_perfil FROM usuarios WHERE id = $1",
+      [usuarioId]
+    );
+    if (!atual.rowCount) {
       return res.status(404).json({
         erro: "Usuário não encontrado.",
       });
     }
+
+    const caminhoAtual = atual.rows[0].foto_perfil || "";
+    if (caminhoAtual) {
+      await removerAvatar(usuarioId, caminhoAtual);
+      await pool.query("UPDATE usuarios SET foto_perfil = NULL WHERE id = $1", [usuarioId]);
+    } else {
+      // Compatibilidade: fotos locais antigas só são apagadas por solicitação explícita.
+      limparFotosPerfil(usuarioId);
+    }
+
+    const usuario = await buscarUsuarioPorId(usuarioId, req);
 
     await registrarAuditoria(req, usuarioId, "foto_removida", "Foto de perfil removida.");
 
@@ -849,11 +900,10 @@ async function removerMinhaFotoPerfil(req, res) {
       foto_url: "",
     });
   } catch (error) {
-    console.error(error);
+    console.error("Erro ao remover foto de perfil:", error.message);
 
     return res.status(500).json({
-      erro: "Erro ao remover foto de perfil",
-      detalhe: error.message,
+      erro: "Não foi possível remover a foto de perfil.",
     });
   }
 }
@@ -879,7 +929,7 @@ async function excluirUsuarioAdmin(req, res) {
     const result = await pool.query(
       `DELETE FROM usuarios
        WHERE id = $1
-       RETURNING id, email`,
+       RETURNING id, email, foto_perfil`,
       [id]
     );
 
@@ -889,6 +939,11 @@ async function excluirUsuarioAdmin(req, res) {
       });
     }
 
+    if (result.rows[0].foto_perfil) {
+      await removerAvatar(id, result.rows[0].foto_perfil).catch((error) =>
+        console.error("Erro ao remover avatar do usuário excluído:", error.message)
+      );
+    }
     limparFotosPerfil(id);
 
     await registrarAuditoria(req, id, "excluido", `Usuário ${result.rows[0].email} excluído.`);

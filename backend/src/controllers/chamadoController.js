@@ -189,7 +189,7 @@ async function verificarAlertasSla(req = null) {
   }
 }
 
-function adicionarFotosParticipantes(req, chamado) {
+async function adicionarFotosParticipantes(req, chamado) {
   if (!chamado) return chamado;
 
   const solicitanteNome = chamado.solicitante_nome || chamado.solicitante || "";
@@ -206,11 +206,15 @@ function adicionarFotosParticipantes(req, chamado) {
     solicitante_nome: solicitanteNome,
     solicitante_email: solicitanteEmail,
     solicitante_id: solicitanteId,
-    solicitante_foto_url: solicitanteId ? montarUrlFotoPerfil(req, solicitanteId) : "",
+    solicitante_foto_url: solicitanteId
+      ? await montarUrlFotoPerfil(req, solicitanteId, chamado.solicitante_foto_perfil)
+      : "",
     responsavel_nome: responsavelNome,
     responsavel_snapshot: chamado.responsavel || "",
     responsavel_email: responsavelEmail,
-    responsavel_foto_url: responsavelId ? montarUrlFotoPerfil(req, responsavelId) : "",
+    responsavel_foto_url: responsavelId
+      ? await montarUrlFotoPerfil(req, responsavelId, chamado.responsavel_foto_perfil)
+      : "",
   };
 }
 
@@ -257,7 +261,9 @@ async function buscarChamadoAutorizado(req, id) {
             COALESCE(sol.email, sol_email.email, c.email_solicitante) AS solicitante_email,
             c.responsavel_id,
             COALESCE(resp.nome, c.responsavel) AS responsavel_nome,
-            resp.email AS responsavel_email
+            resp.email AS responsavel_email,
+            COALESCE(sol.foto_perfil, sol_email.foto_perfil) AS solicitante_foto_perfil,
+            resp.foto_perfil AS responsavel_foto_perfil
      FROM chamados c
      LEFT JOIN usuarios sol ON sol.id = c.usuario_id
      LEFT JOIN usuarios sol_email ON LOWER(sol_email.email) = LOWER(c.email_solicitante)
@@ -311,7 +317,7 @@ async function carregarDetalhesChamado(req, chamado) {
   ]);
 
   return {
-    ...adicionarFotosParticipantes(req, calcularIndicadoresSla(chamado)),
+    ...await adicionarFotosParticipantes(req, calcularIndicadoresSla(chamado)),
     vencido: canonicalizeStatus(chamado.status) === STATUS.WAITING_USER
       ? false
       : chamado.status && !statusFinalizado(chamado.status) && chamado.sla_limite_resolucao
@@ -584,9 +590,11 @@ async function consultarChamados(req) {
             COALESCE(sol.id, sol_email.id, c.usuario_id) AS solicitante_id,
             COALESCE(sol.nome, sol_email.nome, c.solicitante) AS solicitante_nome,
             COALESCE(sol.email, sol_email.email, c.email_solicitante) AS solicitante_email,
+            COALESCE(sol.foto_perfil, sol_email.foto_perfil) AS solicitante_foto_perfil,
             c.responsavel_id,
             COALESCE(u.nome, c.responsavel) AS responsavel_nome,
             u.email AS responsavel_email,
+            u.foto_perfil AS responsavel_foto_perfil,
             COALESCE(t.name, 'Sem equipe') AS team_name
      FROM chamados c
      LEFT JOIN chamado_comentarios co ON co.chamado_id = c.id
@@ -597,11 +605,11 @@ async function consultarChamados(req) {
      LEFT JOIN usuarios u ON u.id = c.responsavel_id
      LEFT JOIN teams t ON t.id = c.team_id
      ${whereSql}
-     GROUP BY c.id, av.overall_rating, av.comment, sol.id, sol.nome, sol.email, sol_email.id, sol_email.nome, sol_email.email, u.id, u.nome, u.email, t.id, t.name
+     GROUP BY c.id, av.overall_rating, av.comment, sol.id, sol.nome, sol.email, sol.foto_perfil, sol_email.id, sol_email.nome, sol_email.email, sol_email.foto_perfil, u.id, u.nome, u.email, u.foto_perfil, t.id, t.name
      ORDER BY c.id DESC`,
     params
   );
-  return result.rows.map((row) => adicionarFotosParticipantes(req, calcularIndicadoresSla(row)));
+  return Promise.all(result.rows.map((row) => adicionarFotosParticipantes(req, calcularIndicadoresSla(row))));
 }
 
 const listarChamados = async (req, res) => {
@@ -630,9 +638,11 @@ const listarChamadosDoUsuario = async (req, res) => {
               COALESCE(sol.id, sol_email.id, c.usuario_id) AS solicitante_id,
               COALESCE(sol.nome, sol_email.nome, c.solicitante) AS solicitante_nome,
               COALESCE(sol.email, sol_email.email, c.email_solicitante) AS solicitante_email,
+              COALESCE(sol.foto_perfil, sol_email.foto_perfil) AS solicitante_foto_perfil,
               c.responsavel_id,
               COALESCE(u.nome, c.responsavel) AS responsavel_nome,
-              u.email AS responsavel_email
+              u.email AS responsavel_email,
+              u.foto_perfil AS responsavel_foto_perfil
        FROM chamados c
        LEFT JOIN chamado_comentarios co ON co.chamado_id = c.id
        LEFT JOIN chamado_anexos an ON an.chamado_id = c.id
@@ -641,11 +651,11 @@ const listarChamadosDoUsuario = async (req, res) => {
        LEFT JOIN usuarios sol_email ON LOWER(sol_email.email) = LOWER(c.email_solicitante)
        LEFT JOIN usuarios u ON u.id = c.responsavel_id
        WHERE c.usuario_id = $1 OR LOWER(c.email_solicitante) = $2
-       GROUP BY c.id, av.overall_rating, sol.id, sol.nome, sol.email, sol_email.id, sol_email.nome, sol_email.email, u.id, u.nome, u.email
+       GROUP BY c.id, av.overall_rating, sol.id, sol.nome, sol.email, sol.foto_perfil, sol_email.id, sol_email.nome, sol_email.email, sol_email.foto_perfil, u.id, u.nome, u.email, u.foto_perfil
        ORDER BY c.id DESC`,
       [req.user.id, email]
     );
-    return res.json(result.rows.map((row) => adicionarFotosParticipantes(req, row)));
+    return res.json(await Promise.all(result.rows.map((row) => adicionarFotosParticipantes(req, row))));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao listar chamados do usuário", detalhe: error.message });

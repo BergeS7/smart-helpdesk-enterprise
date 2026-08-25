@@ -15,6 +15,7 @@ export type UsuarioLogado = {
   municipio?: string;
   unidade?: string;
   cargo?: string;
+  foto_perfil?: string | null;
   foto_url?: string;
 };
 

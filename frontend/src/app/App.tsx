@@ -1652,6 +1652,14 @@ function UserPortal({
     const arquivo = event.target.files?.[0];
     event.target.value = "";
     if (!arquivo) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(arquivo.type)) {
+      toast.error("Envie uma imagem PNG, JPG ou WEBP.");
+      return;
+    }
+    if (arquivo.size > 5 * 1024 * 1024) {
+      toast.error("A imagem precisa ter até 5 MB.");
+      return;
+    }
 
     setEnviandoFoto(true);
     try {
@@ -4002,12 +4010,12 @@ function AdminPanel({
     const arquivo = event.target.files?.[0];
     event.target.value = "";
     if (!arquivo) return;
-    if (!arquivo.type.startsWith("image/")) {
-      toast.error("Envie uma imagem PNG, JPG, JPEG ou WEBP.");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(arquivo.type)) {
+      toast.error("Envie uma imagem PNG, JPG ou WEBP.");
       return;
     }
-    if (arquivo.size > 3 * 1024 * 1024) {
-      toast.error("A imagem precisa ter até 3 MB.");
+    if (arquivo.size > 5 * 1024 * 1024) {
+      toast.error("A imagem precisa ter até 5 MB.");
       return;
     }
 
