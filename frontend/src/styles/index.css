@@ -385,14 +385,13 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 /* Transição pós-login minimalista inspirada no jogo offline do navegador */
 .login-moto-loader { animation: login-moto-enter .2s ease-out both; }
 .login-vector-convoy { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.login-animated-moto { display: block; width: clamp(220px,27vw,320px) !important; height: clamp(145px,19vw,205px) !important; }
-.login-loading-lottie { display: block; width: 96px !important; height: 46px !important; }
+.login-animated-moto { display: block; width: clamp(340px,42vw,540px) !important; height: clamp(230px,30vw,330px) !important; }
 .login-moto-progress { transition: width .45s cubic-bezier(.2,.8,.2,1); }
 @keyframes login-moto-enter { from { opacity: 0; } to { opacity: 1; } }
 @media (max-width: 640px) {
   .login-moto-road { width: calc(100% + 40px); margin-right: -20px; margin-left: -20px; }
   .login-vector-convoy { gap: 0; }
-  .login-animated-moto { width: 215px !important; height: 145px !important; }
+  .login-animated-moto { width: 330px !important; height: 230px !important; }
 }
 @media (prefers-reduced-motion: reduce) {
 }
@@ -473,7 +472,7 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 }
 
 /* Linguagem visual Nectar: estrutura leve, cartões discretos e navegação orientada por ícones. */
-.nectar-shell { background:#f5f5f8 !important; color:var(--ds-text); }
+.nectar-shell { background:#f4f8fa !important; color:var(--ds-text); }
 .nectar-shell .nectar-sidebar {
   border-color:#edf0f4 !important;
   background:#fff !important;
@@ -484,12 +483,12 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 .nectar-shell .nectar-nav-button { color:#0a0a0a; background:transparent; }
 .nectar-shell .nectar-sidebar nav svg { width:21px; height:21px; stroke-width:2.25; }
 .nectar-shell .nectar-sidebar > div:last-child svg { width:20px; height:20px; stroke-width:2.2; }
-.nectar-shell .nectar-nav-button:hover { color:#12a8ed; background:#f3fbff; }
-.nectar-shell .nectar-nav-button.is-active { color:#12a8ed; background:#eefaff; }
-.nectar-shell .nectar-nav-button.is-active > span:first-child { width:2px; background:#12a8ed; }
+.nectar-shell .nectar-nav-button:hover { color:#078caf; background:#effbfe; }
+.nectar-shell .nectar-nav-button.is-active { color:#078caf; background:#e9f9fd; }
+.nectar-shell .nectar-nav-button.is-active > span:first-child { width:3px; background:#ffd52a; }
 .nectar-shell .nectar-topbar {
   border-color:#dff0f8 !important;
-  background:linear-gradient(90deg,#f7fbfe 0%,#e6f6fd 56%,#d5f2fd 100%) !important;
+  background:linear-gradient(90deg,#f8fcfd 0%,#e4f7fb 68%,#fff8d8 100%) !important;
   color:#596170 !important;
   box-shadow:none !important;
 }
@@ -505,7 +504,7 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
   transform:none !important;
 }
 .nectar-shell .notification-popover button { border-radius:8px !important; }
-.nectar-shell main { background:#f5f5f8 !important; }
+.nectar-shell main { background:#f4f8fa !important; }
 .nectar-shell .workspace-navigation {
   border-color:#eceff3 !important;
   background:#fff !important;
@@ -544,7 +543,7 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 .nectar-shell:not(.admin-theme-dark) .nectar-topbar [class*="text-blue"] { color:#0a0a0a !important; }
 .nectar-shell:not(.admin-theme-dark) .nectar-sidebar .nectar-nav-button { color:#0a0a0a !important; }
 .nectar-shell:not(.admin-theme-dark) .nectar-sidebar .nectar-nav-button:hover,
-.nectar-shell:not(.admin-theme-dark) .nectar-sidebar .nectar-nav-button.is-active { color:#12a8ed !important; }
+.nectar-shell:not(.admin-theme-dark) .nectar-sidebar .nectar-nav-button.is-active { color:#078caf !important; }
 .nectar-shell:not(.admin-theme-dark) .nectar-sidebar svg { color:currentColor !important; stroke:currentColor !important; }
 .nectar-shell:not(.admin-theme-dark) .ds-button--primary,
 .nectar-shell:not(.admin-theme-dark) .ds-button--danger,
@@ -582,14 +581,17 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 }
 .nectar-shell main h1,.nectar-shell main h2,.nectar-shell main h3 { color:#535966; font-weight:650; }
 .nectar-shell main [class*="font-black"] { font-weight:700; }
-.nectar-shell .ds-button--primary { border-color:#12a8ed !important; background:#12a8ed !important; }
-.nectar-shell .ds-button--primary:hover { border-color:#079bdd !important; background:#079bdd !important; }
+.nectar-shell .ds-button--primary { border-color:var(--shd-primary,#17a9d4) !important; background:var(--shd-primary,#17a9d4) !important; }
+.nectar-shell .ds-button--primary:hover { border-color:var(--shd-primary-hover,#078caf) !important; background:var(--shd-primary-hover,#078caf) !important; }
 .nectar-shell .ds-search { border-color:#edf0f4 !important; background:#fff !important; }
 
-.admin-theme-dark.nectar-shell { background:#111827 !important; }
-.admin-theme-dark.nectar-shell .nectar-sidebar { border-color:#263448 !important; background:#111b2b !important; color:#93a4b8 !important; }
-.admin-theme-dark.nectar-shell .nectar-nav-button:hover,.admin-theme-dark.nectar-shell .nectar-nav-button.is-active { background:#152b3b; color:#38bdf8; }
-.admin-theme-dark.nectar-shell .nectar-topbar { border-color:#263448 !important; background:linear-gradient(90deg,#111b2b,#102536) !important; color:#e5edf7 !important; }
+.admin-theme-dark.nectar-shell { background:#071620 !important; }
+.admin-theme-dark.nectar-shell .nectar-sidebar { border-color:#164052 !important; background:linear-gradient(180deg,#091923 0%,#073b52 100%) !important; color:#a9c4cf !important; }
+.admin-theme-dark.nectar-shell .nectar-sidebar .nectar-nav-button { color:#a8b8ca !important; }
+.admin-theme-dark.nectar-shell .nectar-sidebar .nectar-nav-button svg { color:currentColor !important; stroke:currentColor !important; }
+.admin-theme-dark.nectar-shell .nectar-nav-button:hover,.admin-theme-dark.nectar-shell .nectar-nav-button.is-active { background:#0b3444; color:#43c9ed !important; }
+.admin-theme-dark.nectar-shell .nectar-sidebar > div:last-child .nectar-nav-button:last-child:hover { color:#fb7185 !important; }
+.admin-theme-dark.nectar-shell .nectar-topbar { border-color:#164052 !important; background:linear-gradient(90deg,#091923 0%,#073247 72%,#4b4317 100%) !important; color:#e8f7fb !important; }
 .admin-theme-dark.nectar-shell main { background:var(--ds-canvas) !important; }
 .admin-theme-dark.nectar-shell .workspace-navigation {
   border-color:var(--ds-border) !important;

@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { obterSupabase } = require("../config/supabase");
+const { garantirBucket } = require("./supabaseStorage");
 
 const pastaPerfis = path.join(__dirname, "../../uploads/perfis");
 const bucketAvatares = "avatars";
@@ -105,6 +106,8 @@ function arquivoTemAssinaturaValida(arquivo) {
 async function gerarUrlAvatar(caminho) {
   if (!caminho) return "";
 
+  await garantirBucket(bucketAvatares, false);
+
   const { data, error } = await obterSupabase()
     .storage
     .from(bucketAvatares)
@@ -132,6 +135,7 @@ async function enviarAvatar(usuarioId, arquivo) {
   }
 
   const caminho = `usuarios/${usuarioId}/${crypto.randomUUID()}.${extensao}`;
+  await garantirBucket(bucketAvatares, false);
   const { error } = await obterSupabase()
     .storage
     .from(bucketAvatares)

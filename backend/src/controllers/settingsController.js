@@ -1,7 +1,6 @@
-const fs = require("fs");
-const path = require("path");
 const pool = require("../config/database");
 const { ehDesenvolvedor } = require("../utils/permissoes");
+const { enviarArquivo, removerArquivo, urlPublica, lerReferencia } = require("../utils/supabaseStorage");
 
 function podeConfigurar(user) {
   return ehDesenvolvedor(user?.perfil);
@@ -12,7 +11,7 @@ const defaults = {
   sla_critica_resolucao: 120,
   nome_sistema: "Smart HelpDesk",
   email_suporte: "",
-  cor_principal: "#2563eb",
+  cor_principal: "#17a9d4",
   logo_url: "",
   logo_1_url: "",
   sla_alta_resposta: 60,
@@ -76,6 +75,9 @@ async function carregarConfiguracoesObjeto() {
   for (const row of result.rows) {
     if (chavesPermitidas.has(row.chave)) dados[row.chave] = row.valor;
   }
+  for (const chave of ["logo_url", "logo_1_url"]) {
+    if (lerReferencia(dados[chave])) dados[chave] = urlPublica(dados[chave]);
+  }
   return dados;
 }
 
@@ -93,7 +95,7 @@ const salvarConfiguracoes = async (req, res) => {
     if (!podeConfigurar(req.user)) return res.status(403).json({ erro: "Acesso não autorizado" });
     await garantirTabelaConfiguracoes();
 
-    const entradas = Object.entries(req.body || {}).filter(([chave]) => chavesPermitidas.has(chave));
+    const entradas = Object.entries(req.body || {}).filter(([chave]) => chavesPermitidas.has(chave) && !["logo_url", "logo_1_url"].includes(chave));
 
     for (const [chave, valor] of entradas) {
       await pool.query(
@@ -119,16 +121,9 @@ async function atualizarLogoPorChave(req, res, chave, prefixo, label) {
 
     await garantirTabelaConfiguracoes();
 
-    const pastaSistema = path.join(__dirname, "../../uploads/sistema");
-    const arquivos = fs.existsSync(pastaSistema) ? fs.readdirSync(pastaSistema) : [];
-
-    for (const arquivo of arquivos) {
-      if (arquivo.startsWith(`${prefixo}-`) && arquivo !== req.file.filename) {
-        fs.unlink(path.join(pastaSistema, arquivo), () => {});
-      }
-    }
-
-    const logoUrl = `/uploads/sistema/${req.file.filename}`;
+    const anterior = await pool.query("SELECT valor FROM configuracoes_sistema WHERE chave = $1", [chave]);
+    const caminhoAnterior = anterior.rows[0]?.valor || "";
+    const logoUrl = await enviarArquivo({ bucket: "system-assets", pasta: `logos/${prefixo}`, arquivo: req.file, publico: true });
 
     await pool.query(
       `INSERT INTO configuracoes_sistema (chave, valor, atualizado_por)
@@ -147,6 +142,10 @@ async function atualizarLogoPorChave(req, res, chave, prefixo, label) {
          DO UPDATE SET valor = EXCLUDED.valor, atualizado_por = EXCLUDED.atualizado_por, atualizado_em = CURRENT_TIMESTAMP`,
         [logoUrl, req.user.id]
       );
+    }
+
+    if (lerReferencia(caminhoAnterior) && caminhoAnterior !== logoUrl) {
+      await removerArquivo(caminhoAnterior).catch((erro) => console.error("Erro ao remover logo anterior:", erro.message));
     }
 
     return res.json(await carregarConfiguracoesObjeto());

@@ -1,12 +1,4 @@
-const fs = require("fs");
-const path = require("path");
 const multer = require("multer");
-
-const pastaUploads = path.join(__dirname, "../../uploads/chamados");
-
-if (!fs.existsSync(pastaUploads)) {
-  fs.mkdirSync(pastaUploads, { recursive: true });
-}
 
 const tiposPermitidos = [
   "image/png",
@@ -21,17 +13,8 @@ const tiposPermitidos = [
   "text/plain",
 ];
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, pastaUploads),
-  filename: (req, file, cb) => {
-    const extensao = path.extname(file.originalname || "").toLowerCase();
-    const nomeSeguro = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extensao}`;
-    cb(null, nomeSeguro);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024,
     files: 5,
