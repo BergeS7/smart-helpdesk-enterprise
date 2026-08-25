@@ -3,6 +3,7 @@ const { decidirPrioridadeChamado } = require("../services/prioridadeIAService");
 const { carregarConfiguracoesObjeto } = require("./settingsController");
 const { enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
+const { enviarArquivo, baixarArquivo, removerArquivo, lerReferencia } = require("../utils/supabaseStorage");
 const { normalizarPerfil, ehAdmin, ehEquipe, ehDesenvolvedor } = require("../utils/permissoes");
 const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../services/distributionService");
 const { generateExcelReport, generatePdfReport } = require("../services/reportService");
@@ -41,7 +42,7 @@ function montarUrlAnexo(req, anexo) {
 }
 
 function assinaturaPermitida(arquivo) {
-  const buffer = fs.readFileSync(arquivo.path);
+  const buffer = arquivo.buffer || (arquivo.path ? fs.readFileSync(arquivo.path) : Buffer.alloc(0));
   const hex = buffer.subarray(0, 12).toString("hex");
   if (arquivo.mimetype === "image/png") return hex.startsWith("89504e470d0a1a0a");
   if (["image/jpeg", "image/jpg"].includes(arquivo.mimetype)) return hex.startsWith("ffd8ff");
@@ -904,18 +905,21 @@ const adicionarAnexos = async (req, res) => {
     const arquivos = req.files || [];
     if (arquivos.length === 0) return res.status(400).json({ erro: "Nenhum arquivo enviado" });
     const invalidos = arquivos.filter((arquivo) => !assinaturaPermitida(arquivo));
-    if (invalidos.length) {
-      arquivos.forEach((arquivo) => fs.unlink(arquivo.path, () => {}));
-      return res.status(400).json({ erro: "Um ou mais arquivos não correspondem ao tipo permitido." });
-    }
+    if (invalidos.length) return res.status(400).json({ erro: "Um ou mais arquivos não correspondem ao tipo permitido." });
     const anexosCriados = [];
     for (const arquivo of arquivos) {
-      const caminhoPublico = `uploads/chamados/${arquivo.filename}`;
-      const result = await pool.query(
-        `INSERT INTO chamado_anexos (chamado_id, usuario_id, nome_original, nome_arquivo, mime_type, tamanho, caminho)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [id, req.user.id, arquivo.originalname, arquivo.filename, arquivo.mimetype, arquivo.size, caminhoPublico]
-      );
+      const caminhoPublico = await enviarArquivo({ bucket: "ticket-attachments", pasta: `chamados/${id}`, arquivo });
+      let result;
+      try {
+        result = await pool.query(
+          `INSERT INTO chamado_anexos (chamado_id, usuario_id, nome_original, nome_arquivo, mime_type, tamanho, caminho)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+          [id, req.user.id, arquivo.originalname, caminhoPublico, arquivo.mimetype, arquivo.size, caminhoPublico]
+        );
+      } catch (error) {
+        await removerArquivo(caminhoPublico).catch(() => {});
+        throw error;
+      }
       anexosCriados.push({ ...result.rows[0], url: montarUrlAnexo(req, result.rows[0]) });
     }
     await registrarMovimentacao(id, req, "anexo", `${req.user.nome} adicionou ${anexosCriados.length} anexo(s).`);
@@ -945,15 +949,21 @@ const baixarAnexo = async (req, res, next) => {
     const result = await pool.query("SELECT * FROM chamado_anexos WHERE id=$1 AND chamado_id=$2", [req.params.anexoId, req.params.id]);
     const anexo = result.rows[0];
     if (!anexo) return res.status(404).json({ erro: "Anexo não encontrado" });
-    const base = path.resolve(__dirname, "../../uploads/chamados");
-    const arquivo = path.resolve(base, path.basename(anexo.nome_arquivo));
-    if (!arquivo.startsWith(`${base}${path.sep}`) || !fs.existsSync(arquivo)) return res.status(404).json({ erro: "Arquivo não encontrado" });
+    let conteudo = null;
+    let arquivo = "";
+    if (lerReferencia(anexo.caminho) || lerReferencia(anexo.nome_arquivo)) {
+      conteudo = await baixarArquivo(anexo.caminho || anexo.nome_arquivo);
+    } else {
+      const base = path.resolve(__dirname, "../../uploads/chamados");
+      arquivo = path.resolve(base, path.basename(anexo.nome_arquivo));
+      if (!arquivo.startsWith(`${base}${path.sep}`) || !fs.existsSync(arquivo)) return res.status(404).json({ erro: "Arquivo não encontrado" });
+    }
     await registrarAuditoria(req, "anexo", anexo.id, "download", `Download do anexo do chamado ${req.params.id}`);
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("Content-Type", anexo.mime_type || "application/octet-stream");
     res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(anexo.nome_original)}`);
-    return res.sendFile(arquivo);
+    return conteudo ? res.send(conteudo) : res.sendFile(arquivo);
   } catch (error) { return next(error); }
 };
 

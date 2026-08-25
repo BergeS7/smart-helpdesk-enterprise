@@ -32,6 +32,7 @@ import {
   Clock3,
   Download,
   Eye,
+  EyeOff,
   FileText,
   Filter,
   History,
@@ -299,7 +300,7 @@ function isDevApp(perfil?: string) {
 const CONFIG_SISTEMA_PADRAO: ConfiguracoesSistema = {
   nome_sistema: "Smart HelpDesk",
   email_suporte: "",
-  cor_principal: "#2563eb",
+  cor_principal: "#17a9d4",
   logo_url: "",
   logo_1_url: "",
   sla_alta_resposta: 60,
@@ -332,8 +333,8 @@ function emailSuporteSistema(config: ConfiguracoesSistema | null | undefined) {
 }
 
 function corPrincipalSistema(config: ConfiguracoesSistema | null | undefined) {
-  const cor = valorConfig(config, "cor_principal", "#2563eb").trim();
-  return /^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#2563eb";
+  const cor = valorConfig(config, "cor_principal", "#17a9d4").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#17a9d4";
 }
 
 function ajustarCor(hex: string, amount: number) {
@@ -383,6 +384,10 @@ function variaveisTemaSistema(
     "--shd-primary-soft": rgbaHex(principal, 0.1),
     "--shd-primary-ring": rgbaHex(principal, 0.18),
     "--shd-primary-border": rgbaHex(principal, 0.28),
+    "--shd-accent": "#ffd52a",
+    "--shd-accent-hover": "#f4bd16",
+    "--shd-deep": "#073b66",
+    "--shd-ink": "#091923",
   } as CSSProperties;
 }
 
@@ -820,6 +825,7 @@ function LoginScreen({
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [cadastro, setCadastro] = useState({
     nome: "",
     email: "",
@@ -940,7 +946,7 @@ function LoginScreen({
 
   return (
     <div
-      className="smart-helpdesk-config-theme min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1682f2] via-[#4059e8] to-[#8244d6]"
+      className="smart-helpdesk-config-theme min-h-screen overflow-x-hidden bg-gradient-to-br from-[#073b66] via-[#087fa8] to-[#17a9d4]"
       style={variaveisTemaSistema(configSistema)}
     >
       <SystemThemeStyle />
@@ -1008,12 +1014,23 @@ function LoginScreen({
                       />
                       <Input
                         required
-                        type="password"
+                        type={mostrarSenha ? "text" : "password"}
                         value={senha}
                         onChange={(e) => setSenha(e.target.value)}
                         placeholder="Digite sua senha"
-                        className="pl-10"
+                        className="pl-10 pr-11"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setMostrarSenha((visivel) => !visivel)}
+                        onMouseDown={(event) => event.preventDefault()}
+                        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-zinc-400 transition hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                        title={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                        aria-pressed={mostrarSenha}
+                      >
+                        {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
                     </div>
                   </Field>
                   <Button disabled={loading} className="h-14 w-full rounded-2xl text-base shadow-[0_12px_25px_rgba(37,99,235,.22)]">
@@ -1233,7 +1250,7 @@ function LoginScreen({
             </p>
           </div>
         </section>
-        <section className="relative order-1 flex min-h-[310px] items-center justify-center overflow-hidden bg-gradient-to-br from-[#1682f2] via-[#3d60e9] to-[#8244d6] px-7 pb-20 pt-10 text-white lg:min-h-0 lg:px-12 lg:py-10">
+        <section className="relative order-1 flex min-h-[310px] items-center justify-center overflow-hidden bg-gradient-to-br from-[#073b66] via-[#087fa8] to-[#17a9d4] px-7 pb-20 pt-10 text-white lg:min-h-0 lg:px-12 lg:py-10">
           <div
             className="absolute inset-0"
             style={{
@@ -4475,7 +4492,7 @@ function AdminPanel({
             <img
               src={sistemaLogo1}
               alt={sistemaNome}
-              className="h-8 w-9 object-contain"
+              className="h-11 w-12 object-contain"
             />
           </div>
 
