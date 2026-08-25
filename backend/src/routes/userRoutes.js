@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 
 const router = express.Router();
 const { registrationLimiter, uploadLimiter } = require("../middlewares/securityMiddleware");
@@ -69,7 +70,9 @@ function exigirPerfisLocais(perfisPermitidos) {
   };
 }
 
-const pastaPerfis = path.join(__dirname, "../../uploads/perfis");
+const os = require("os");
+
+const pastaPerfis = path.join(os.tmpdir(), "smart-helpdesk", "perfis");
 
 if (!fs.existsSync(pastaPerfis)) {
   fs.mkdirSync(pastaPerfis, { recursive: true });
