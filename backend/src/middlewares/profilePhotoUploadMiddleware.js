@@ -1,35 +1,20 @@
-const fs = require("fs");
-const path = require("path");
 const multer = require("multer");
-const { pastaPerfil, removerFotosPerfil } = require("../utils/profilePhoto");
-
-if (!fs.existsSync(pastaPerfil)) {
-  fs.mkdirSync(pastaPerfil, { recursive: true });
-}
-
-const tiposPermitidos = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, pastaPerfil),
-  filename: (req, file, cb) => {
-    const extensaoOriginal = path.extname(file.originalname || "").toLowerCase();
-    const extensaoPorMime = file.mimetype === "image/png" ? ".png" : file.mimetype === "image/webp" ? ".webp" : ".jpg";
-    const extensao = [".png", ".jpg", ".jpeg", ".webp"].includes(extensaoOriginal) ? extensaoOriginal : extensaoPorMime;
-    removerFotosPerfil(req.user.id);
-    cb(null, `perfil-${req.user.id}${extensao}`);
-  },
-});
+const tiposPermitidos = new Set(["image/png", "image/jpeg", "image/webp"]);
+const limiteFotoPerfilBytes = 5 * 1024 * 1024;
 
 const uploadFotoPerfil = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
-    fileSize: 3 * 1024 * 1024,
+    fileSize: limiteFotoPerfilBytes,
     files: 1,
   },
   fileFilter: (req, file, cb) => {
-    if (tiposPermitidos.includes(file.mimetype)) return cb(null, true);
-    cb(new Error("Tipo de arquivo não permitido. Envie PNG, JPG, JPEG ou WEBP."));
+    if (tiposPermitidos.has(file.mimetype)) return cb(null, true);
+    cb(new Error("Tipo de arquivo não permitido. Envie PNG, JPG ou WEBP."));
   },
 });
+
+uploadFotoPerfil.limiteFotoPerfilBytes = limiteFotoPerfilBytes;
+uploadFotoPerfil.tiposPermitidos = tiposPermitidos;
 
 module.exports = uploadFotoPerfil;

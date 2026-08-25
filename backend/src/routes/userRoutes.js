@@ -1,11 +1,7 @@
 const express = require("express");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const os = require("os");
-
 const router = express.Router();
 const { registrationLimiter, uploadLimiter } = require("../middlewares/securityMiddleware");
+const uploadFotoPerfil = require("../middlewares/profilePhotoUploadMiddleware");
 
 const authModule = require("../middlewares/authMiddleware");
 
@@ -70,61 +66,14 @@ function exigirPerfisLocais(perfisPermitidos) {
   };
 }
 
-const os = require("os");
-
-const pastaPerfis = path.join(os.tmpdir(), "smart-helpdesk", "perfis");
-
-if (!fs.existsSync(pastaPerfis)) {
-  fs.mkdirSync(pastaPerfis, { recursive: true });
-}
-
-const storagePerfil = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, pastaPerfis);
-  },
-  filename: (req, file, cb) => {
-    const extensaoOriginal = path.extname(file.originalname || "").toLowerCase();
-
-    const extensaoPorMime =
-      file.mimetype === "image/png"
-        ? ".png"
-        : file.mimetype === "image/webp"
-        ? ".webp"
-        : ".jpg";
-
-    const extensao = [".png", ".jpg", ".jpeg", ".webp"].includes(extensaoOriginal)
-      ? extensaoOriginal
-      : extensaoPorMime;
-
-    const usuarioId = req.user?.id || req.usuario?.id || "usuario";
-
-    cb(null, `perfil-${usuarioId}-${Date.now()}${extensao}`);
-  },
-});
-
-const uploadFotoPerfil = multer({
-  storage: storagePerfil,
-  limits: {
-    fileSize: 3 * 1024 * 1024,
-    files: 1,
-  },
-  fileFilter: (req, file, cb) => {
-    const tiposPermitidos = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-
-    if (tiposPermitidos.includes(file.mimetype)) {
-      return cb(null, true);
-    }
-
-    return cb(new Error("Tipo de arquivo não permitido. Envie PNG, JPG, JPEG ou WEBP."));
-  },
-});
-
 function tratarUploadFoto(req, res, next) {
   uploadFotoPerfil.single("foto")(req, res, (error) => {
     if (error) {
+      const tamanhoExcedido = error?.code === "LIMIT_FILE_SIZE";
       return res.status(400).json({
-        erro: "Erro ao enviar foto",
-        detalhe: error.message,
+        erro: tamanhoExcedido
+          ? "A foto deve ter no máximo 5 MB."
+          : error.message || "Erro ao enviar foto.",
       });
     }
 

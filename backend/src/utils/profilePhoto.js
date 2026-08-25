@@ -1,7 +1,16 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
+const { obterSupabase } = require("../config/supabase");
 
 const pastaPerfis = path.join(__dirname, "../../uploads/perfis");
+const bucketAvatares = "avatars";
+const duracaoUrlAssinada = 3600;
+const extensoesPorMime = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 function garantirPastaPerfis() {
   if (!fs.existsSync(pastaPerfis)) {
@@ -49,7 +58,7 @@ function montarBaseUrl(req) {
   return `${protocolo}://${host}`;
 }
 
-function montarUrlFotoPerfil(req, usuarioId) {
+function montarUrlFotoPerfilLegada(req, usuarioId) {
   if (!usuarioId) {
     return "";
   }
@@ -64,6 +73,89 @@ function montarUrlFotoPerfil(req, usuarioId) {
   const baseUrl = montarBaseUrl(req);
 
   return `${baseUrl}/uploads/perfis/${fotoMaisRecente.arquivo}?v=${Math.round(fotoMaisRecente.mtimeMs)}`;
+}
+
+function caminhoAvatarPertenceAoUsuario(caminho, usuarioId) {
+  const idSeguro = String(usuarioId || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const padrao = new RegExp(
+    `^usuarios/${idSeguro}/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(jpg|png|webp)$`,
+    "i"
+  );
+  return Boolean(idSeguro) && padrao.test(String(caminho || ""));
+}
+
+function arquivoTemAssinaturaValida(arquivo) {
+  const buffer = arquivo?.buffer;
+  if (!Buffer.isBuffer(buffer)) return false;
+
+  if (arquivo.mimetype === "image/jpeg") {
+    return buffer.length >= 3 && buffer.subarray(0, 3).toString("hex") === "ffd8ff";
+  }
+  if (arquivo.mimetype === "image/png") {
+    return buffer.length >= 8 && buffer.subarray(0, 8).toString("hex") === "89504e470d0a1a0a";
+  }
+  if (arquivo.mimetype === "image/webp") {
+    return buffer.length >= 12
+      && buffer.subarray(0, 4).toString("ascii") === "RIFF"
+      && buffer.subarray(8, 12).toString("ascii") === "WEBP";
+  }
+  return false;
+}
+
+async function gerarUrlAvatar(caminho) {
+  if (!caminho) return "";
+
+  const { data, error } = await obterSupabase()
+    .storage
+    .from(bucketAvatares)
+    .createSignedUrl(caminho, duracaoUrlAssinada);
+
+  if (error) throw error;
+  return data?.signedUrl || "";
+}
+
+async function montarUrlFotoPerfil(req, usuarioId, caminho = "") {
+  if (!caminho) return montarUrlFotoPerfilLegada(req, usuarioId);
+
+  try {
+    return await gerarUrlAvatar(caminho);
+  } catch (error) {
+    console.error("Erro ao gerar URL assinada do avatar:", error.message);
+    return "";
+  }
+}
+
+async function enviarAvatar(usuarioId, arquivo) {
+  const extensao = extensoesPorMime[arquivo?.mimetype];
+  if (!usuarioId || !arquivo?.buffer || !extensao) {
+    throw new Error("Arquivo de avatar inválido.");
+  }
+
+  const caminho = `usuarios/${usuarioId}/${crypto.randomUUID()}.${extensao}`;
+  const { error } = await obterSupabase()
+    .storage
+    .from(bucketAvatares)
+    .upload(caminho, arquivo.buffer, {
+      contentType: arquivo.mimetype,
+      upsert: false,
+    });
+
+  if (error) throw error;
+  return caminho;
+}
+
+async function removerAvatar(usuarioId, caminho) {
+  if (!caminho) return;
+  if (!caminhoAvatarPertenceAoUsuario(caminho, usuarioId)) {
+    throw new Error("Caminho de avatar inválido.");
+  }
+
+  const { error } = await obterSupabase()
+    .storage
+    .from(bucketAvatares)
+    .remove([caminho]);
+
+  if (error) throw error;
 }
 
 function limparFotosPerfil(usuarioId, manterArquivo = "") {
@@ -91,5 +183,11 @@ module.exports = {
   garantirPastaPerfis,
   listarFotosPerfil,
   montarUrlFotoPerfil,
+  montarUrlFotoPerfilLegada,
   limparFotosPerfil,
+  gerarUrlAvatar,
+  enviarAvatar,
+  removerAvatar,
+  caminhoAvatarPertenceAoUsuario,
+  arquivoTemAssinaturaValida,
 };

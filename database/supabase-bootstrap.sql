@@ -18,6 +18,7 @@
 \ir migrations/20260818_p1_ticket_assignment.sql
 \ir migrations/20260818_p1_ticket_status.sql
 \ir migrations/20260821_email_verification.sql
+\ir migrations/20260825_supabase_avatars.sql
 
 -- Tabelas de inventario e evolucoes de SLA sao criadas de forma idempotente
 -- pelos servicos de inicializacao do backend na primeira conexao.
