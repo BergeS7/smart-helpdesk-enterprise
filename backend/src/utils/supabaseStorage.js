@@ -27,6 +27,11 @@ async function garantirBucket(bucket, publico = false) {
   if (!data) {
     const criado = await supabase.storage.createBucket(bucket, { public: publico });
     if (criado.error && String(criado.error.statusCode || criado.error.status) !== "409") throw criado.error;
+  } else if (Boolean(data.public) !== Boolean(publico)) {
+    // getPublicUrl apenas monta a URL: ele não torna público um bucket privado
+    // criado por uma implantação anterior.
+    const atualizado = await supabase.storage.updateBucket(bucket, { public: publico });
+    if (atualizado.error) throw atualizado.error;
   }
   bucketsPreparados.add(chave);
 }
