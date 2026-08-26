@@ -9,6 +9,8 @@ const bucketAvatares = "avatars";
 // A sessão padrão dura 8 horas. A URL precisa continuar válida durante toda a
 // sessão, inclusive nas telas administrativas que mantêm o perfil em cache.
 const duracaoUrlAssinada = 12 * 60 * 60;
+const margemCacheUrlMs = 15 * 60 * 1000;
+const cacheUrlsAvatar = new Map();
 const extensoesPorMime = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -108,6 +110,9 @@ function arquivoTemAssinaturaValida(arquivo) {
 async function gerarUrlAvatar(caminho) {
   if (!caminho) return "";
 
+  const cached = cacheUrlsAvatar.get(caminho);
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
+
   await garantirBucket(bucketAvatares, false);
 
   const { data, error } = await obterSupabase()
@@ -116,7 +121,15 @@ async function gerarUrlAvatar(caminho) {
     .createSignedUrl(caminho, duracaoUrlAssinada);
 
   if (error) throw error;
-  return data?.signedUrl || "";
+  const url = data?.signedUrl || "";
+  if (url) {
+    cacheUrlsAvatar.set(caminho, {
+      url,
+      expiresAt: Date.now() + duracaoUrlAssinada * 1000 - margemCacheUrlMs,
+    });
+    if (cacheUrlsAvatar.size > 1000) cacheUrlsAvatar.delete(cacheUrlsAvatar.keys().next().value);
+  }
+  return url;
 }
 
 async function montarUrlFotoPerfil(req, usuarioId, caminho = "") {
@@ -162,6 +175,7 @@ async function removerAvatar(usuarioId, caminho) {
     .remove([caminho]);
 
   if (error) throw error;
+  cacheUrlsAvatar.delete(caminho);
 }
 
 function limparFotosPerfil(usuarioId, manterArquivo = "") {
