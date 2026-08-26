@@ -43,10 +43,19 @@ app.use(
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
+      // O frontend de produção está na Vercel e os arquivos legados no Render.
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     },
   })
 );
-app.use("/uploads/sistema", express.static(path.join(__dirname, "../uploads/sistema"), { fallthrough: false, maxAge: "1h" }));
+app.use(
+  "/uploads/sistema",
+  express.static(path.join(__dirname, "../uploads/sistema"), {
+    fallthrough: false,
+    maxAge: "1h",
+    setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"),
+  })
+);
 
 app.get("/", (req, res) => {
   res.json({ message: "API funcionando" });

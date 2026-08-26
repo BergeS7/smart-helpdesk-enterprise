@@ -6,7 +6,9 @@ const { garantirBucket } = require("./supabaseStorage");
 
 const pastaPerfis = path.join(__dirname, "../../uploads/perfis");
 const bucketAvatares = "avatars";
-const duracaoUrlAssinada = 3600;
+// A sessão padrão dura 8 horas. A URL precisa continuar válida durante toda a
+// sessão, inclusive nas telas administrativas que mantêm o perfil em cache.
+const duracaoUrlAssinada = 12 * 60 * 60;
 const extensoesPorMime = {
   "image/jpeg": "jpg",
   "image/png": "png",

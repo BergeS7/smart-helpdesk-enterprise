@@ -755,6 +755,19 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!usuario) return;
+
+    // Renova a URL assinada do avatar ao restaurar uma sessão salva. Sem isso,
+    // o painel administrativo reutilizava indefinidamente a URL do login.
+    obterMeuPerfil()
+      .then((perfilAtualizado) => {
+        atualizarUsuarioLocal(perfilAtualizado);
+        setUsuario(perfilAtualizado);
+      })
+      .catch(() => {});
+  }, []);
+
   function handleLogout() {
     limparSessao();
     setUsuario(null);
