@@ -13,6 +13,7 @@ const {
   listarComentarios,
   adicionarAnexos,
   baixarAnexo,
+  baixarHistoricoPdf,
   listarAnexos,
   listarMovimentacoes,
   avaliarChamado,
@@ -54,6 +55,7 @@ router.get("/filtros-salvos/lista", authMiddleware, exigirPerfis(["admin", "dese
 router.post("/filtros-salvos", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), salvarFiltro);
 router.delete("/filtros-salvos/:id", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), excluirFiltro);
 
+router.get("/:id/historico.pdf", authMiddleware, baixarHistoricoPdf);
 router.get("/:id", authMiddleware, buscarChamadoPorId);
 router.patch("/:id", authMiddleware, exigirPermissaoDeAtualizacao, atualizarChamado);
 router.patch("/:id/assumir", authMiddleware, exigirPermissao("assumir_chamados"), assumirChamado);
