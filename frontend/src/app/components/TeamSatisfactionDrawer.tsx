@@ -690,7 +690,7 @@ function TechnicianCard({
           <span className={`text-[10px] ${muted}`}>de 5</span>
         </div>
       </div>
-      <GoalProgress technician={technician} dark={dark}/>
+      <PerformanceSummary technician={technician} dark={dark}/>
       {enough && (
         <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           <Criterion label="Cordialidade" value={technician.courtesy_rating} />
@@ -720,35 +720,30 @@ function TechnicianCard({
 }
 
 function CompactTechnicianRow({technician,rank,dark}:{technician:PerformanceScore;rank:number;dark:boolean}) {
-  const goals=[Number(technician.average_rating||0)/4.5,Number(technician.sla_rate||0)/95,Number(technician.total_closed_tickets||0)/30,Number(technician.total_ratings||0)/10];
-  const progress=Math.round(goals.reduce((sum,value)=>sum+Math.min(1,value),0)/goals.length*100),enough=Number(technician.total_ratings)>=minimumSample;
-  return <article className={`grid grid-cols-[42px_42px_minmax(150px,1.25fr)_repeat(5,minmax(62px,.55fr))_90px] items-center gap-2 border px-2 py-2 ${dark?"border-white/10 bg-white/[.03]":"border-slate-200 bg-white"}`}>
+  const enough=Number(technician.total_ratings)>=minimumSample;
+  return <article className={`grid grid-cols-[42px_42px_minmax(150px,1.25fr)_repeat(5,minmax(70px,.6fr))] items-center gap-2 border px-2 py-2 ${dark?"border-white/10 bg-white/[.03]":"border-slate-200 bg-white"}`}>
     <b className={`text-center text-sm ${rank<=3?"text-amber-600":"text-slate-500"}`}>{rank}º</b>
     <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-slate-100 text-xs font-black text-slate-700">{technician.foto_url?<img src={technician.foto_url} alt={technician.name||"Técnico"} className="h-full w-full object-cover"/>:initials(technician.name)}</span>
     <div className="min-w-0"><div className="flex items-center gap-2"><b className="truncate text-xs">{technician.name}</b><span className={`shrink-0 text-[8px] font-bold uppercase ${enough?"text-emerald-600":"text-amber-600"}`}>{enough?"Amostra válida":"Amostra insuficiente"}</span></div><span className="block truncate text-[10px] text-slate-500">{technician.departamento||"Equipe técnica"} · {technician.email||"Sem e-mail"}</span></div>
     <MiniValue label="Nota" value={enough?`${Number(technician.average_rating).toFixed(1)}/5`:`${Number(technician.average_rating||0).toFixed(1)}/5`}/>
     <MiniValue label="SLA" value={`${Number(technician.sla_rate||0).toFixed(0)}%`}/>
-    <MiniValue label="Conclusões" value={`${technician.total_closed_tickets||0}/30`}/>
-    <MiniValue label="Avaliações" value={`${technician.total_ratings||0}/10`}/>
-    <MiniValue label="Resolução" value={formatDuration(technician.average_resolution_time)}/>
-    <div><div className="flex items-center justify-between text-[10px]"><span className="font-bold">Meta</span><b className={progress>=100?"text-emerald-600":"text-sky-600"}>{progress}%</b></div><div className={`mt-1 h-2 overflow-hidden rounded-full ${dark?"bg-white/10":"bg-slate-100"}`}><div className={progress>=100?"h-full bg-emerald-500":"h-full bg-sky-500"} style={{width:`${Math.min(100,progress)}%`}}/></div><span className="mt-1 block text-[9px] text-slate-500">Índice {Number(technician.performance_score||0).toFixed(0)}/85</span></div>
+    <MiniValue label="Resolvidos" value={String(technician.total_closed_tickets||0)}/>
+    <MiniValue label="Avaliações" value={String(technician.total_ratings||0)}/>
+    <MiniValue label="Tempo médio" value={formatDuration(technician.average_resolution_time)}/>
   </article>;
 }
 function MiniValue({label,value}:{label:string;value:string}) { return <div className="min-w-0"><span className="block text-[9px] font-bold uppercase text-slate-500">{label}</span><b className="block truncate text-[11px]" title={value}>{value}</b></div>; }
 
-const PERFORMANCE_GOALS={rating:4.5,sla:95,closed:30,ratings:10,score:85};
-function GoalProgress({technician,dark}:{technician:PerformanceScore;dark:boolean}) {
-  const goals=[
-    {label:"Nota",value:Number(technician.average_rating||0),target:PERFORMANCE_GOALS.rating,display:`${Number(technician.average_rating||0).toFixed(1)}/4,5`},
-    {label:"SLA",value:Number(technician.sla_rate||0),target:PERFORMANCE_GOALS.sla,display:`${Number(technician.sla_rate||0).toFixed(0)}%/95%`},
-    {label:"Conclusões",value:Number(technician.total_closed_tickets||0),target:PERFORMANCE_GOALS.closed,display:`${technician.total_closed_tickets||0}/30`},
-    {label:"Avaliações",value:Number(technician.total_ratings||0),target:PERFORMANCE_GOALS.ratings,display:`${technician.total_ratings||0}/10`},
+function PerformanceSummary({technician,dark}:{technician:PerformanceScore;dark:boolean}) {
+  const metrics=[
+    {label:"Avaliações recebidas",display:String(technician.total_ratings||0)},
+    {label:"Chamados resolvidos",display:String(technician.total_closed_tickets||0)},
+    {label:"SLA cumprido",display:`${Number(technician.sla_rate||0).toFixed(0)}%`},
+    {label:"Tempo médio de resolução",display:formatDuration(technician.average_resolution_time)},
   ];
-  const progress=Math.round(goals.reduce((sum,item)=>sum+Math.min(100,item.value/item.target*100),0)/goals.length);
   return <div className={`mt-4 rounded-xl border p-3 ${dark?"border-white/10 bg-white/[.025]":"border-slate-100 bg-slate-50/70"}`}>
-    <div className="flex items-center justify-between gap-3"><div><b className="text-sm">Progresso das metas</b><p className="mt-0.5 text-[11px] text-slate-500">Índice de desempenho {Number(technician.performance_score||0).toFixed(0)}/85</p></div><b className={`text-lg ${progress>=100?"text-emerald-500":"text-sky-600"}`}>{progress}%</b></div>
-    <div className={`mt-2 h-2 overflow-hidden rounded-full ${dark?"bg-white/10":"bg-slate-200"}`}><div className={`h-full rounded-full ${progress>=100?"bg-emerald-500":"bg-sky-500"}`} style={{width:`${Math.min(100,progress)}%`}}/></div>
-    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{goals.map(item=>{const done=item.value>=item.target;return <div key={item.label}><span className="block text-[11px] text-slate-500">{item.label}</span><b className={`text-xs ${done?"text-emerald-600":""}`}>{item.display}</b></div>})}</div>
+    <b className="text-sm">Resultados do período</b>
+    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">{metrics.map(item=><div key={item.label}><span className="block text-[11px] text-slate-500">{item.label}</span><b className="text-xs">{item.display}</b></div>)}</div>
   </div>;
 }
 

@@ -148,6 +148,7 @@ export type ApiComentario = {
   usuario_id?: number | null;
   autor_nome?: string;
   autor_perfil?: string;
+  foto_url?: string;
   mensagem: string;
   criado_em?: string;
 };
@@ -801,6 +802,31 @@ export async function baixarAnexoChamado(
   const link = document.createElement("a");
   link.href = url;
   link.download = anexo.nome_original;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+export async function obterBlobAnexoChamado(
+  chamadoId: number | string,
+  anexo: ApiAnexo,
+) {
+  const response = await fetch(
+    `${API_URL}/chamados/${chamadoId}/anexos/${anexo.id}/download`,
+    { headers: { Authorization: `Bearer ${getToken() || ""}` } },
+  );
+  if (!response.ok) throw new Error("Não foi possível carregar a prévia do anexo.");
+  return response.blob();
+}
+export async function baixarHistoricoChamadoPdf(chamado: ApiChamado) {
+  const response = await fetch(`${API_URL}/chamados/${chamado.id}/historico.pdf`, {
+    headers: { Authorization: `Bearer ${getToken() || ""}` },
+  });
+  if (!response.ok) throw new Error("Não foi possível gerar o PDF do chamado.");
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `historico-${chamado.numero_chamado || chamado.id}.pdf`;
   document.body.appendChild(link);
   link.click();
   link.remove();

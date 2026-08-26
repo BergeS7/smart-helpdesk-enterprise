@@ -8,6 +8,7 @@ const { usuarioPodeAvaliarChamado } = require("../services/ticketEvaluationAcces
 const { normalizarPerfil, ehAdmin, ehEquipe, ehDesenvolvedor } = require("../utils/permissoes");
 const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../services/distributionService");
 const { generateExcelReport, generatePdfReport } = require("../services/reportService");
+const { generateTicketHistoryPdf } = require("../services/ticketHistoryPdfService");
 const { buildReportMetrics } = require("../domain/reportMetrics");
 const fs = require("fs");
 const path = require("path");
@@ -40,6 +41,20 @@ function usuarioEhEquipe(req) {
 
 function montarUrlAnexo(req, anexo) {
   return `/api/chamados/${anexo.chamado_id}/anexos/${anexo.id}/download`;
+}
+
+async function lerConteudoAnexo(anexo) {
+  if (lerReferencia(anexo.caminho) || lerReferencia(anexo.nome_arquivo)) {
+    return baixarArquivo(anexo.caminho || anexo.nome_arquivo);
+  }
+  const base = path.resolve(__dirname, "../../uploads/chamados");
+  const arquivo = path.resolve(base, path.basename(anexo.nome_arquivo));
+  if (!arquivo.startsWith(`${base}${path.sep}`) || !fs.existsSync(arquivo)) {
+    const error = new Error("Arquivo não encontrado");
+    error.status = 404;
+    throw error;
+  }
+  return fs.readFileSync(arquivo);
 }
 
 function assinaturaPermitida(arquivo) {
@@ -319,8 +334,12 @@ async function registrarMovimentacao(chamadoId, req, tipo, descricao) {
 async function carregarDetalhesChamado(req, chamado) {
   const [comentarios, anexos, movimentacoes, avaliacao] = await Promise.all([
     pool.query(
-      `SELECT id, chamado_id, usuario_id, autor_nome, autor_perfil, mensagem, criado_em
-       FROM chamado_comentarios WHERE chamado_id = $1 ORDER BY criado_em ASC`,
+      `SELECT cc.id, cc.chamado_id, cc.usuario_id, cc.autor_nome, cc.autor_perfil,
+              cc.mensagem, cc.criado_em, u.foto_perfil
+       FROM chamado_comentarios cc
+       LEFT JOIN usuarios u ON u.id = cc.usuario_id
+       WHERE cc.chamado_id = $1
+       ORDER BY cc.criado_em ASC`,
       [chamado.id]
     ),
     pool.query(
@@ -348,7 +367,12 @@ async function carregarDetalhesChamado(req, chamado) {
       : chamado.status && !statusFinalizado(chamado.status) && chamado.sla_limite_resolucao
         ? new Date(chamado.sla_limite_resolucao) < new Date()
         : Boolean(chamado.vencido),
-    comentarios: comentarios.rows,
+    comentarios: await Promise.all(comentarios.rows.map(async ({ foto_perfil, ...comentario }) => ({
+      ...comentario,
+      foto_url: comentario.usuario_id
+        ? await montarUrlFotoPerfil(req, comentario.usuario_id, foto_perfil)
+        : "",
+    }))),
     anexos: anexos.rows.map((anexo) => ({ ...anexo, url: montarUrlAnexo(req, anexo) })),
     movimentacoes: movimentacoes.rows,
     avaliacao: avaliacao.rows[0] || null,
@@ -986,22 +1010,36 @@ const baixarAnexo = async (req, res, next) => {
     const result = await pool.query("SELECT * FROM chamado_anexos WHERE id=$1 AND chamado_id=$2", [req.params.anexoId, req.params.id]);
     const anexo = result.rows[0];
     if (!anexo) return res.status(404).json({ erro: "Anexo não encontrado" });
-    let conteudo = null;
-    let arquivo = "";
-    if (lerReferencia(anexo.caminho) || lerReferencia(anexo.nome_arquivo)) {
-      conteudo = await baixarArquivo(anexo.caminho || anexo.nome_arquivo);
-    } else {
-      const base = path.resolve(__dirname, "../../uploads/chamados");
-      arquivo = path.resolve(base, path.basename(anexo.nome_arquivo));
-      if (!arquivo.startsWith(`${base}${path.sep}`) || !fs.existsSync(arquivo)) return res.status(404).json({ erro: "Arquivo não encontrado" });
-    }
+    const conteudo = await lerConteudoAnexo(anexo);
     await registrarAuditoria(req, "anexo", anexo.id, "download", `Download do anexo do chamado ${req.params.id}`);
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("Content-Type", anexo.mime_type || "application/octet-stream");
     res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(anexo.nome_original)}`);
-    return conteudo ? res.send(conteudo) : res.sendFile(arquivo);
+    return res.send(conteudo);
   } catch (error) { return next(error); }
+};
+
+const baixarHistoricoPdf = async (req, res) => {
+  try {
+    const acesso = await buscarChamadoAutorizado(req, req.params.id);
+    if (acesso.erro) return res.status(acesso.status).json({ erro: acesso.erro });
+    const chamado = await carregarDetalhesChamado(req, acesso.chamado);
+    const buffer = await generateTicketHistoryPdf({
+      chamado,
+      generatedBy: req.user.nome || req.user.email || "Usuário",
+      loadAttachment: lerConteudoAnexo,
+    });
+    const numero = String(chamado.numero_chamado || `chamado-${chamado.id}`).replace(/[^a-zA-Z0-9_-]+/g, "-");
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="historico-${numero}.pdf"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Cache-Control", "private, no-store");
+    return res.send(buffer);
+  } catch (error) {
+    console.error("Erro ao gerar PDF do chamado:", error);
+    return res.status(error.status || 500).json({ erro: "Erro ao gerar PDF do chamado", detalhe: error.message });
+  }
 };
 
 const listarMovimentacoes = async (req, res) => {
@@ -1284,6 +1322,7 @@ module.exports = {
   listarComentarios,
   adicionarAnexos,
   baixarAnexo,
+  baixarHistoricoPdf,
   listarAnexos,
   listarMovimentacoes,
   avaliarChamado,

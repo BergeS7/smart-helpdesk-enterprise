@@ -121,6 +121,7 @@ import {
   atualizarAvisoSistema,
   baixarRelatorio,
   baixarAnexoChamado,
+  baixarHistoricoChamadoPdf,
   buscarChamado,
   cadastrarUsuarioPublico,
   verificarEmailCadastro,
@@ -159,6 +160,7 @@ import {
   obterMinhasPermissoes,
   API_URL,
   obterConfiguracoesSistema,
+  obterBlobAnexoChamado,
   salvarConfiguracoesSistema,
   atualizarLogoSistema1,
   salvarFiltroChamados,
@@ -7168,6 +7170,7 @@ function ChamadoDetalhe({
 }) {
   const [mensagem, setMensagem] = useState("");
   const [arquivos, setArquivos] = useState<File[]>([]);
+  const [previewsAnexos, setPreviewsAnexos] = useState<Record<number, string>>({});
   const arquivoInputRef = useRef<HTMLInputElement>(null);
   const arquivosComPrevia = useMemo(
     () => arquivos.map((arquivo) => ({
@@ -7180,6 +7183,29 @@ function ChamadoDetalhe({
     () => () => arquivosComPrevia.forEach(({ url }) => url && URL.revokeObjectURL(url)),
     [arquivosComPrevia],
   );
+  useEffect(() => {
+    let ativo = true;
+    const urls: string[] = [];
+    const anexosImagem = (chamado.anexos || []).filter((anexo) =>
+      String(anexo.mime_type || "").startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(anexo.nome_original || ""),
+    );
+    Promise.all(anexosImagem.map(async (anexo) => {
+      try {
+        const blob = await obterBlobAnexoChamado(chamado.id, anexo);
+        const url = URL.createObjectURL(blob);
+        urls.push(url);
+        return [anexo.id, url] as const;
+      } catch {
+        return null;
+      }
+    })).then((items) => {
+      if (ativo) setPreviewsAnexos(Object.fromEntries(items.filter(Boolean) as Array<readonly [number, string]>));
+    });
+    return () => {
+      ativo = false;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [chamado.id, chamado.anexos]);
   const [motivoReabrir, setMotivoReabrir] = useState("");
   const [mostrarIA, setMostrarIA] = useState(false);
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
@@ -7256,7 +7282,7 @@ function ChamadoDetalhe({
       {somenteLeitura && (
         <div className="mb-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700">
           <LockKeyhole size={18} />
-          <div>
+          <div className="min-w-0 flex-1">
             <b className="block text-sm">
               Registro histórico — somente leitura
             </b>
@@ -7265,6 +7291,15 @@ function ChamadoDetalhe({
               modificados nesta tela.
             </span>
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="shrink-0"
+            onClick={() => baixarHistoricoChamadoPdf(chamado).catch((error) => toast.error(error.message))}
+          >
+            <Download size={16} />
+            Baixar PDF
+          </Button>
         </div>
       )}
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -7414,9 +7449,17 @@ function ChamadoDetalhe({
                       className={`flex gap-3 ${atendimento ? "justify-end" : "justify-start"}`}
                     >
                       <span
-                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-black ${atendimento ? "order-2 bg-blue-600 text-white" : "bg-zinc-200 text-zinc-700"}`}
+                        className={`grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-black ${atendimento ? "order-2 bg-blue-600 text-white" : "bg-zinc-200 text-zinc-700"}`}
                       >
-                        {iniciaisPessoa(c.autor_nome)}
+                        {c.foto_url ? (
+                          <img
+                            src={c.foto_url}
+                            alt={c.autor_nome || "Participante"}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          iniciaisPessoa(c.autor_nome)
+                        )}
                       </span>
                       <div
                         className={`max-w-[82%] rounded-2xl px-4 py-3 shadow-sm ${atendimento ? "rounded-tr-md bg-blue-600 text-white" : "rounded-tl-md bg-zinc-100 text-zinc-800"}`}
@@ -7590,10 +7633,19 @@ function ChamadoDetalhe({
                   key={a.id}
                   type="button"
                   onClick={() => baixarAnexoChamado(chamado.id, a).catch((error) => toast.error(error.message))}
-                  className="block w-full rounded-xl border p-3 text-left text-sm hover:bg-zinc-50"
+                  className="block w-full overflow-hidden rounded-xl border text-left text-sm transition hover:border-blue-300 hover:bg-zinc-50"
                 >
-                  <FileText className="mr-2 inline" size={16} />
-                  {a.nome_original}
+                  {previewsAnexos[a.id] && (
+                    <img
+                      src={previewsAnexos[a.id]}
+                      alt={`Prévia de ${a.nome_original}`}
+                      className="h-40 w-full border-b bg-white object-contain"
+                    />
+                  )}
+                  <span className="block p-3">
+                    <FileText className="mr-2 inline" size={16} />
+                    {a.nome_original}
+                  </span>
                 </button>
               ))}
             </div>
