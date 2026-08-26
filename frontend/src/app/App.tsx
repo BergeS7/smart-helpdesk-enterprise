@@ -7130,7 +7130,19 @@ function ChamadoDetalhe({
   somenteLeitura?: boolean;
 }) {
   const [mensagem, setMensagem] = useState("");
-  const [arquivos, setArquivos] = useState<FileList | null>(null);
+  const [arquivos, setArquivos] = useState<File[]>([]);
+  const arquivoInputRef = useRef<HTMLInputElement>(null);
+  const arquivosComPrevia = useMemo(
+    () => arquivos.map((arquivo) => ({
+      arquivo,
+      url: arquivo.type.startsWith("image/") ? URL.createObjectURL(arquivo) : "",
+    })),
+    [arquivos],
+  );
+  useEffect(
+    () => () => arquivosComPrevia.forEach(({ url }) => url && URL.revokeObjectURL(url)),
+    [arquivosComPrevia],
+  );
   const [nota, setNota] = useState(chamado.avaliacao?.nota || 5);
   const [comentarioNota, setComentarioNota] = useState(
     chamado.avaliacao?.comentario || "",
@@ -7181,9 +7193,10 @@ function ChamadoDetalhe({
   }
   async function upload(event: FormEvent) {
     event.preventDefault();
-    if (!arquivos?.length) return;
+    if (!arquivos.length) return;
     await anexarArquivos(chamado.id, arquivos);
-    setArquivos(null);
+    setArquivos([]);
+    if (arquivoInputRef.current) arquivoInputRef.current.value = "";
     await onRefresh();
   }
   async function avaliar(event: FormEvent) {
@@ -7580,14 +7593,35 @@ function ChamadoDetalhe({
             </div>
             <form onSubmit={upload} className="space-y-3">
               <input
+                ref={arquivoInputRef}
                 type="file"
                 multiple
-                onChange={(e) => setArquivos(e.target.files)}
-                className="text-sm"
+                accept="image/png,image/jpeg,image/webp,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+                onClick={(e) => { e.currentTarget.value = ""; }}
+                onChange={(e) => setArquivos(Array.from(e.target.files || []).slice(0, 5))}
+                className="block w-full cursor-pointer rounded-xl border border-zinc-200 bg-white text-sm file:mr-3 file:border-0 file:bg-zinc-100 file:px-3 file:py-3 file:text-xs file:font-black hover:border-blue-300"
               />
-              <Button className="w-full">
+              {arquivosComPrevia.length > 0 && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {arquivosComPrevia.map(({ arquivo, url }, index) => (
+                    <div key={`${arquivo.name}-${arquivo.lastModified}-${index}`} className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+                      {url ? (
+                        <img src={url} alt={`Prévia de ${arquivo.name}`} className="h-28 w-full bg-white object-contain" />
+                      ) : (
+                        <div className="grid h-20 place-items-center text-zinc-400"><FileText size={28} /></div>
+                      )}
+                      <div className="min-w-0 border-t border-zinc-200 p-2 pr-9">
+                        <p className="truncate text-xs font-bold" title={arquivo.name}>{arquivo.name}</p>
+                        <p className="mt-0.5 text-[10px] text-zinc-500">{(arquivo.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <button type="button" onClick={() => setArquivos((atuais) => atuais.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Remover ${arquivo.name}`} className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100"><Trash2 size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button className="w-full" disabled={!arquivos.length}>
                 <Upload size={16} />
-                Anexar
+                {arquivos.length ? `Anexar ${arquivos.length} arquivo${arquivos.length > 1 ? "s" : ""}` : "Anexar"}
               </Button>
             </form>
           </Card>
