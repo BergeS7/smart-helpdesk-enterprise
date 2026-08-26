@@ -7239,7 +7239,7 @@ function ChamadoDetalhe({
       : chamado.vencido
       ? `Vencido há ${formatarMinutos(Math.abs(Number(chamado.sla_minutos_restantes || 0)))}`
       : chamado.sla_minutos_restantes != null
-        ? `${formatarMinutos(chamado.sla_minutos_restantes)} restantes`
+        ? formatarMinutos(chamado.sla_minutos_restantes)
         : "SLA não calculado";
 
   async function enviarComentario(event: FormEvent) {
