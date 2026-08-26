@@ -255,6 +255,7 @@ export type ApiChamado = {
   anexos?: ApiAnexo[];
   movimentacoes?: ApiMovimentacao[];
   avaliacao?: ApiAvaliacao | null;
+  pode_avaliar?: boolean;
   ia?: {
     prioridade: string;
     pontuacao: number;

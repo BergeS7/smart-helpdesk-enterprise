@@ -13,13 +13,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_performance_ratings_ticket ON performance_r
 CREATE UNIQUE INDEX IF NOT EXISTS uq_performance_ratings_legacy ON performance_ratings(legacy_rating_id) WHERE legacy_rating_id IS NOT NULL;
 
 CREATE OR REPLACE FUNCTION validar_avaliacao_chamado() RETURNS trigger AS $$
-DECLARE solicitante INTEGER; tecnico INTEGER; equipe INTEGER; estado TEXT;
+DECLARE solicitante INTEGER; tecnico INTEGER; equipe INTEGER; estado TEXT; ativo BIGINT; autorizado BOOLEAN;
 BEGIN
-  SELECT usuario_id,responsavel_id,team_id,status INTO solicitante,tecnico,equipe,estado FROM chamados WHERE id=NEW.ticket_id;
+  SELECT usuario_id,responsavel_id,team_id,status,ativo_id INTO solicitante,tecnico,equipe,estado,ativo FROM chamados WHERE id=NEW.ticket_id;
   IF estado IS NULL THEN RAISE EXCEPTION 'Chamado não encontrado'; END IF;
   IF estado NOT IN ('RESOLVED','CLOSED','CANCELED') THEN RAISE EXCEPTION 'Somente chamados finalizados podem ser avaliados'; END IF;
   IF NEW.client_id IS NULL AND NEW.source<>'legacy_migration' THEN RAISE EXCEPTION 'Solicitante da avaliação é obrigatório'; END IF;
-  IF NEW.client_id IS NOT NULL AND NEW.client_id IS DISTINCT FROM solicitante THEN RAISE EXCEPTION 'A avaliação deve pertencer ao solicitante do chamado'; END IF;
+  IF NEW.client_id IS NOT NULL AND NEW.client_id IS DISTINCT FROM solicitante THEN
+    SELECT EXISTS (SELECT 1 FROM ativos a JOIN usuarios u ON u.id=NEW.client_id WHERE a.id=ativo AND (a.usuario_id=NEW.client_id OR LOWER(COALESCE(a.usuario,''))=LOWER(u.email) OR LOWER(COALESCE(a.usuario,''))=LOWER(u.nome) OR LOWER(REGEXP_REPLACE(COALESCE(a.usuario,''), '^.*[\\/]', ''))=LOWER(SPLIT_PART(u.email,'@',1)))) INTO autorizado;
+    IF NOT COALESCE(autorizado,FALSE) THEN RAISE EXCEPTION 'A avaliação deve pertencer ao solicitante ou ao usuário vinculado ao ativo'; END IF;
+  END IF;
   NEW.technician_id:=tecnico; NEW.team_id:=equipe; RETURN NEW;
 END $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_validar_avaliacao_chamado BEFORE INSERT OR UPDATE ON performance_ratings FOR EACH ROW EXECUTE FUNCTION validar_avaliacao_chamado();

@@ -4,6 +4,7 @@ const { carregarConfiguracoesObjeto } = require("./settingsController");
 const { enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
 const { enviarArquivo, baixarArquivo, removerArquivo, lerReferencia } = require("../utils/supabaseStorage");
+const { usuarioPodeAvaliarChamado } = require("../services/ticketEvaluationAccessService");
 const { normalizarPerfil, ehAdmin, ehEquipe, ehDesenvolvedor } = require("../utils/permissoes");
 const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../services/distributionService");
 const { generateExcelReport, generatePdfReport } = require("../services/reportService");
@@ -226,6 +227,27 @@ async function notificarAdmins(titulo, mensagem, tipo = "info", link = null) {
   await Promise.all(admins.rows.map((admin) => criarNotificacao(admin.id, titulo, mensagem, tipo, link)));
 }
 
+async function notificarUsuarioVinculadoAoAtivo(chamado) {
+  if (!chamado?.ativo_id) return;
+  const vinculado = await pool.query(
+    `SELECT u.id
+       FROM ativos a
+       JOIN usuarios u ON (
+         u.id = a.usuario_id
+         OR LOWER(COALESCE(a.usuario, '')) = LOWER(u.email)
+         OR LOWER(COALESCE(a.usuario, '')) = LOWER(u.nome)
+         OR LOWER(REGEXP_REPLACE(COALESCE(a.usuario, ''), '^.*[\\\\/]', '')) = LOWER(SPLIT_PART(u.email, '@', 1))
+       )
+      WHERE a.id = $1 AND u.id <> COALESCE($2, 0)
+        AND COALESCE(u.status, 'ativo') = 'ativo'
+      LIMIT 1`,
+    [chamado.ativo_id, chamado.usuario_id]
+  );
+  if (vinculado.rows[0]) {
+    await criarNotificacao(vinculado.rows[0].id, "Chamado do seu ativo concluído", `${chamado.numero_chamado} foi concluído. Avalie o atendimento.`, "success", `/chamados/${chamado.id}`);
+  }
+}
+
 async function obterUsuarioAtual(req) {
   const result = await pool.query(
     `SELECT id, nome, email, COALESCE(perfil, 'usuario') AS perfil, COALESCE(status, 'ativo') AS status,
@@ -251,7 +273,9 @@ async function podeAcessarChamado(req, chamado) {
   }
   const emailUsuario = normalizarEmail(req.user?.email);
   const emailChamado = normalizarEmail(chamado.email_solicitante);
-  return chamado.usuario_id === req.user?.id || emailChamado === emailUsuario;
+  return chamado.usuario_id === req.user?.id
+    || emailChamado === emailUsuario
+    || usuarioPodeAvaliarChamado(chamado, req.user);
 }
 
 async function buscarChamadoAutorizado(req, id) {
@@ -312,8 +336,8 @@ async function carregarDetalhesChamado(req, chamado) {
     pool.query(
       `SELECT id, ticket_id AS chamado_id, client_id AS usuario_id, overall_rating AS nota,
               comment AS comentario, created_at AS criado_em, updated_at AS atualizado_em
-       FROM performance_ratings WHERE ticket_id = $1 LIMIT 1`,
-      [chamado.id]
+       FROM performance_ratings WHERE ticket_id = $1 AND client_id = $2 LIMIT 1`,
+      [chamado.id, req.user.id]
     ),
   ]);
 
@@ -328,6 +352,7 @@ async function carregarDetalhesChamado(req, chamado) {
     anexos: anexos.rows.map((anexo) => ({ ...anexo, url: montarUrlAnexo(req, anexo) })),
     movimentacoes: movimentacoes.rows,
     avaliacao: avaliacao.rows[0] || null,
+    pode_avaliar: !usuarioEhEquipe(req) && await usuarioPodeAvaliarChamado(chamado, req.user),
   };
 }
 
@@ -652,9 +677,19 @@ const listarChamadosDoUsuario = async (req, res) => {
        LEFT JOIN usuarios sol_email ON LOWER(sol_email.email) = LOWER(c.email_solicitante)
        LEFT JOIN usuarios u ON u.id = c.responsavel_id
        WHERE c.usuario_id = $1 OR LOWER(c.email_solicitante) = $2
+          OR EXISTS (
+            SELECT 1 FROM ativos a
+             WHERE a.id = c.ativo_id
+               AND (
+                 a.usuario_id = $1
+                 OR LOWER(COALESCE(a.usuario, '')) = $2
+                 OR LOWER(COALESCE(a.usuario, '')) = LOWER($3)
+                 OR LOWER(REGEXP_REPLACE(COALESCE(a.usuario, ''), '^.*[\\\\/]', '')) = SPLIT_PART($2, '@', 1)
+               )
+          )
        GROUP BY c.id, av.overall_rating, sol.id, sol.nome, sol.email, sol.foto_perfil, sol_email.id, sol_email.nome, sol_email.email, sol_email.foto_perfil, u.id, u.nome, u.email, u.foto_perfil
        ORDER BY c.id DESC`,
-      [req.user.id, email]
+      [req.user.id, email, req.user.nome || ""]
     );
     return res.json(await Promise.all(result.rows.map((row) => adicionarFotosParticipantes(req, row))));
   } catch (error) {
@@ -771,6 +806,7 @@ const atualizarChamado = async (req, res) => {
       await registrarMovimentacao(id, req, "alteracao_status", `Status alterado de ${canonicalizeStatus(anterior.status)} para ${statusEfetivo}.`);
       await criarNotificacao(atualizado.usuario_id, "Status do chamado alterado", `${atualizado.numero_chamado} agora está como ${statusLabel(statusEfetivo)}.`, "info", `/chamados/${id}`);
       enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusEfetivo)}.` }).catch(() => {});
+      if (statusFinalizado(statusEfetivo)) await notificarUsuarioVinculadoAoAtivo(atualizado);
     }
     if (prioridade && prioridade !== anterior.prioridade) {
       await registrarMovimentacao(id, req, "alteracao_prioridade", `Prioridade final alterada de ${anterior.prioridade} para ${prioridade}. Motivo: ${prioridade_manual_motivo || "não informado"}`);
@@ -803,6 +839,7 @@ const encerrarChamado = async (req, res) => {
     );
     await registrarMovimentacao(id, req, "conclusao", "Chamado finalizado.");
     await criarNotificacao(result.rows[0].usuario_id, "Chamado concluído", `${result.rows[0].numero_chamado} foi concluído. Avalie o atendimento.`, "success", `/chamados/${id}`);
+    await notificarUsuarioVinculadoAoAtivo(result.rows[0]);
     enviarEmail({ para: result.rows[0].email_solicitante, assunto: `Chamado concluído ${result.rows[0].numero_chamado}`, texto: "Seu chamado foi concluído. Acesse o portal para avaliar." }).catch(() => {});
     return res.json(await carregarDetalhesChamado(req, result.rows[0]));
   } catch (error) {
@@ -986,7 +1023,7 @@ const avaliarChamado = async (req, res) => {
     const acesso = await buscarChamadoAutorizado(req, id);
     if (acesso.erro) return res.status(acesso.status).json({ erro: acesso.erro });
     if (bloquearMutacaoNaoAutorizada(req, res, acesso.chamado)) return;
-    if (usuarioEhEquipe(req) || Number(acesso.chamado.usuario_id) !== Number(req.user.id)) return res.status(403).json({ erro: "Somente o solicitante pode avaliar este atendimento." });
+    if (usuarioEhEquipe(req) || !(await usuarioPodeAvaliarChamado(acesso.chamado, req.user))) return res.status(403).json({ erro: "Somente o solicitante ou o usuário vinculado ao ativo pode avaliar este atendimento." });
     if (!statusFinalizado(acesso.chamado.status)) return res.status(400).json({ erro: "Só é possível avaliar chamados concluídos" });
     const notaFinal = Number(nota);
     if (!Number.isInteger(notaFinal) || notaFinal < 1 || notaFinal > 5) return res.status(400).json({ erro: "Nota deve ser entre 1 e 5" });
