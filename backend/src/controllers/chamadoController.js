@@ -88,8 +88,7 @@ function formatarPrazo(minutos) {
   return `${Math.floor(total / 60)}h${total % 60}min`;
 }
 
-async function calcularSLAConfiguravel(prioridade) {
-  const config = await carregarConfiguracoesObjeto().catch(() => ({}));
+function montarSLAConfiguravel(prioridade, config = {}) {
   const normalizada = String(prioridade || "Media").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const prefixo = normalizada === "critica" ? "critica" : normalizada === "alta" ? "alta" : normalizada === "baixa" ? "baixa" : "media";
@@ -108,6 +107,51 @@ async function calcularSLAConfiguravel(prioridade) {
     resolucaoMinutos,
     label: `Responder em até ${formatarPrazo(respostaMinutos)} / resolver em até ${formatarPrazo(resolucaoMinutos)}`,
   };
+}
+
+async function calcularSLAConfiguravel(prioridade) {
+  const config = await carregarConfiguracoesObjeto().catch(() => ({}));
+  return montarSLAConfiguravel(prioridade, config);
+}
+
+let sincronizacaoSlaAtivos = null;
+async function sincronizarSlaChamadosAtivosUmaVez() {
+  if (!sincronizacaoSlaAtivos) {
+    sincronizacaoSlaAtivos = (async () => {
+      const config = await carregarConfiguracoesObjeto().catch(() => ({}));
+      const regras = {
+        critica: montarSLAConfiguravel("Critica", config),
+        alta: montarSLAConfiguravel("Alta", config),
+        media: montarSLAConfiguravel("Media", config),
+        baixa: montarSLAConfiguravel("Baixa", config),
+      };
+      const resposta = [regras.critica.respostaMinutos, regras.alta.respostaMinutos, regras.media.respostaMinutos, regras.baixa.respostaMinutos];
+      const resolucao = [regras.critica.resolucaoMinutos, regras.alta.resolucaoMinutos, regras.media.resolucaoMinutos, regras.baixa.resolucaoMinutos];
+      const labels = [regras.critica.label, regras.alta.label, regras.media.label, regras.baixa.label];
+      await pool.query(
+        `WITH regras AS (
+           SELECT c.id,
+             CASE WHEN LOWER(c.prioridade) IN ('critica','crítica') THEN $1::integer WHEN LOWER(c.prioridade)='alta' THEN $2::integer WHEN LOWER(c.prioridade) IN ('media','média') THEN $3::integer ELSE $4::integer END resposta,
+             CASE WHEN LOWER(c.prioridade) IN ('critica','crítica') THEN $5::integer WHEN LOWER(c.prioridade)='alta' THEN $6::integer WHEN LOWER(c.prioridade) IN ('media','média') THEN $7::integer ELSE $8::integer END resolucao,
+             CASE WHEN LOWER(c.prioridade) IN ('critica','crítica') THEN $9::text WHEN LOWER(c.prioridade)='alta' THEN $10::text WHEN LOWER(c.prioridade) IN ('media','média') THEN $11::text ELSE $12::text END label
+           FROM chamados c
+           WHERE c.status NOT IN ('RESOLVED','CLOSED','CANCELED')
+         )
+         UPDATE chamados c SET
+           sla_resposta_minutos=r.resposta, sla_resolucao_minutos=r.resolucao, sla=r.label,
+           sla_limite_resposta=c.criado_em + (r.resposta * INTERVAL '1 minute') + (COALESCE(c.sla_tempo_pausado_segundos,0) * INTERVAL '1 second'),
+           sla_limite_resolucao=c.criado_em + (r.resolucao * INTERVAL '1 minute') + (COALESCE(c.sla_tempo_pausado_segundos,0) * INTERVAL '1 second'),
+           vencido=FALSE, sla_alerta_enviado=FALSE, sla_escalado=FALSE
+         FROM regras r
+         WHERE c.id=r.id AND (c.sla_resposta_minutos IS DISTINCT FROM r.resposta OR c.sla_resolucao_minutos IS DISTINCT FROM r.resolucao)`,
+        [...resposta, ...resolucao, ...labels]
+      );
+    })().catch((error) => {
+      sincronizacaoSlaAtivos = null;
+      throw error;
+    });
+  }
+  return sincronizacaoSlaAtivos;
 }
 
 
@@ -627,6 +671,7 @@ function montarFiltrosChamados(query, req) {
 }
 
 async function consultarChamados(req) {
+  await sincronizarSlaChamadosAtivosUmaVez();
   const { params, whereSql } = montarFiltrosChamados(req.query || {}, req);
   const result = await pool.query(
     `SELECT c.*,
@@ -675,6 +720,7 @@ const listarChamados = async (req, res) => {
 
 const listarChamadosDoUsuario = async (req, res) => {
   try {
+    await sincronizarSlaChamadosAtivosUmaVez();
     await verificarAlertasSla(req);
     const email = normalizarEmail(req.user?.email);
     const result = await pool.query(
@@ -753,9 +799,11 @@ const atualizarChamado = async (req, res) => {
     }
 
     const anterior = acesso.chamado;
-    if (prioridade && prioridade !== anterior.prioridade && !normalizarTexto(prioridade_manual_motivo || "")) {
+    const prioridadeAlterada = Boolean(prioridade && prioridade !== anterior.prioridade);
+    if (prioridadeAlterada && !normalizarTexto(prioridade_manual_motivo || "")) {
       return res.status(400).json({ erro: "Informe o motivo da alteração de prioridade" });
     }
+    const novaRegraSla = prioridadeAlterada ? await calcularSLAConfiguravel(prioridade) : null;
     const statusCanonico = status == null ? null : canonicalizeStatus(status);
     if (status != null && !statusCanonico) return res.status(400).json({ erro: "Status de chamado inválido" });
     if (statusCanonico && !canTransition(anterior.status, statusCanonico)) {
@@ -798,13 +846,19 @@ const atualizarChamado = async (req, res) => {
           responsavel = CASE WHEN $11 THEN $3 ELSE responsavel END,
           responsavel_id = CASE WHEN $11 THEN $4 ELSE responsavel_id END,
           team_id = CASE WHEN $12 THEN $10 ELSE team_id END,
-          sla = COALESCE($5, sla),
+          sla = CASE WHEN $13::integer IS NOT NULL THEN $15 ELSE COALESCE($5, sla) END,
+          sla_resposta_minutos = COALESCE($13::integer, sla_resposta_minutos),
+          sla_resolucao_minutos = COALESCE($14::integer, sla_resolucao_minutos),
           tipo_chamado = COALESCE($6, tipo_chamado),
           sla_limite_resposta = CASE
+            WHEN $13::integer IS NOT NULL
+              THEN criado_em + ($13::integer * INTERVAL '1 minute') + (COALESCE(sla_tempo_pausado_segundos, 0) * INTERVAL '1 second')
             WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL AND primeira_resposta_em IS NULL
               THEN sla_limite_resposta + (CURRENT_TIMESTAMP - sla_pausado_em)
             ELSE sla_limite_resposta END,
           sla_limite_resolucao = CASE
+            WHEN $14::integer IS NOT NULL
+              THEN criado_em + ($14::integer * INTERVAL '1 minute') + (COALESCE(sla_tempo_pausado_segundos, 0) * INTERVAL '1 second')
             WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
               THEN sla_limite_resolucao + (CURRENT_TIMESTAMP - sla_pausado_em)
             ELSE sla_limite_resolucao END,
@@ -816,13 +870,13 @@ const atualizarChamado = async (req, res) => {
             WHEN $1 = 'WAITING_USER' THEN COALESCE(sla_pausado_em, CURRENT_TIMESTAMP)
             WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' THEN NULL
             ELSE sla_pausado_em END,
-          vencido = CASE WHEN $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE vencido END,
-          sla_alerta_enviado = CASE WHEN $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_alerta_enviado END,
-          sla_escalado = CASE WHEN $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_escalado END,
+          vencido = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE vencido END,
+          sla_alerta_enviado = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_alerta_enviado END,
+          sla_escalado = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_escalado END,
           finalizado_em = CASE WHEN $1 IN ('RESOLVED','CLOSED','CANCELED') THEN CURRENT_TIMESTAMP WHEN $1 IN ('OPEN','REOPENED') THEN NULL ELSE finalizado_em END,
           atualizado_em = CURRENT_TIMESTAMP
        WHERE id = $7 RETURNING *`,
-      [statusEfetivo, prioridade || null, responsavelNome, responsavelIdFinal, sla || null, tipo_chamado || null, id, prioridade_manual_motivo || null, req.user.id, teamIdFinal, alteraResponsavel, alteraEquipe]
+      [statusEfetivo, prioridade || null, responsavelNome, responsavelIdFinal, sla || null, tipo_chamado || null, id, prioridade_manual_motivo || null, req.user.id, teamIdFinal, alteraResponsavel, alteraEquipe, novaRegraSla?.respostaMinutos || null, novaRegraSla?.resolucaoMinutos || null, novaRegraSla?.label || null]
     );
     const atualizado = result.rows[0];
 
@@ -832,10 +886,10 @@ const atualizarChamado = async (req, res) => {
       enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusEfetivo)}.` }).catch(() => {});
       if (statusFinalizado(statusEfetivo)) await notificarUsuarioVinculadoAoAtivo(atualizado);
     }
-    if (prioridade && prioridade !== anterior.prioridade) {
+    if (prioridadeAlterada) {
       await registrarMovimentacao(id, req, "alteracao_prioridade", `Prioridade final alterada de ${anterior.prioridade} para ${prioridade}. Motivo: ${prioridade_manual_motivo || "não informado"}`);
     }
-    if (prioridade && prioridade !== anterior.prioridade) {
+    if (prioridadeAlterada) {
       await pool.query(`INSERT INTO prioridade_ia_feedback(chamado_id,prioridade_sugerida,prioridade_final,motivo,corrigido_por) VALUES($1,$2,$3,$4,$5)`, [id, anterior.prioridade_ia || anterior.prioridade, prioridade, prioridade_manual_motivo || null, req.user.id]).catch(() => {});
     }
     if (alteraResponsavel && Number(responsavelIdFinal || 0) !== Number(anterior.responsavel_id || 0)) {
