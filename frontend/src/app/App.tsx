@@ -1798,9 +1798,13 @@ function UserPortal({
   }
 
   async function abrirDetalhe(id: number) {
+    const resumo = chamados.find((item) => Number(item.id) === Number(id));
+    if (resumo) setSelecionado(resumo);
     try {
-      setSelecionado(await buscarChamado(id));
+      const detalhe = await buscarChamado(id);
+      setSelecionado((atual) => Number(atual?.id) === Number(id) ? detalhe : atual);
     } catch (e) {
+      setSelecionado((atual) => Number(atual?.id) === Number(id) ? null : atual);
       toast.error(e instanceof Error ? e.message : "Erro ao buscar chamado.");
     }
   }
@@ -4108,17 +4112,18 @@ function AdminPanel({
   }
 
   async function abrirDetalhe(id: number, somenteLeitura = false) {
+    const resumo = [chamados, filaChamados, carteiraEquipe, historicoEquipe]
+      .flat()
+      .find((item) => Number(item.id) === Number(id));
+    setDetalheSomenteLeitura(somenteLeitura);
+    if (resumo) setSelecionado(resumo);
+    if (!usuarios.length) listarUsuariosAdmin().then(setUsuarios).catch(() => {});
+    if (!respostasRapidas.length) listarRespostasRapidas().then(setRespostasRapidas).catch(() => {});
     try {
-      setDetalheSomenteLeitura(somenteLeitura);
-      const [detalhe, users, respostas] = await Promise.all([
-        buscarChamado(id),
-        usuarios.length ? Promise.resolve(null) : listarUsuariosAdmin().catch(() => null),
-        respostasRapidas.length ? Promise.resolve(null) : listarRespostasRapidas().catch(() => null),
-      ]);
-      if (users) setUsuarios(users);
-      if (respostas) setRespostasRapidas(respostas);
-      setSelecionado(detalhe);
+      const detalhe = await buscarChamado(id);
+      setSelecionado((atual) => Number(atual?.id) === Number(id) ? detalhe : atual);
     } catch (e) {
+      setSelecionado((atual) => Number(atual?.id) === Number(id) ? null : atual);
       toast.error(e instanceof Error ? e.message : "Erro ao abrir chamado.");
     }
   }
