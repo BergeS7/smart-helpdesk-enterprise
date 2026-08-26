@@ -24,6 +24,7 @@ const defaults = {
 };
 
 const chavesPermitidas = new Set(Object.keys(defaults));
+let inicializacaoConfiguracoes = null;
 
 function normalizarValorConfig(chave, valor) {
   if (valor === undefined || valor === null) return String(defaults[chave] ?? "");
@@ -49,23 +50,29 @@ function normalizarValorConfig(chave, valor) {
 }
 
 async function garantirTabelaConfiguracoes() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS configuracoes_sistema (
-      chave VARCHAR(120) PRIMARY KEY,
-      valor TEXT NOT NULL,
-      atualizado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
-      atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  for (const [chave, valor] of Object.entries(defaults)) {
-    await pool.query(
-      `INSERT INTO configuracoes_sistema (chave, valor)
-       VALUES ($1, $2)
-       ON CONFLICT (chave) DO NOTHING`,
-      [chave, String(valor)]
-    );
+  if (!inicializacaoConfiguracoes) {
+    inicializacaoConfiguracoes = (async () => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS configuracoes_sistema (
+          chave VARCHAR(120) PRIMARY KEY,
+          valor TEXT NOT NULL,
+          atualizado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+          atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      const entradas = Object.entries(defaults);
+      await pool.query(
+        `INSERT INTO configuracoes_sistema (chave, valor)
+         SELECT * FROM UNNEST($1::text[], $2::text[])
+         ON CONFLICT (chave) DO NOTHING`,
+        [entradas.map(([chave]) => chave), entradas.map(([, valor]) => String(valor))]
+      );
+    })().catch((error) => {
+      inicializacaoConfiguracoes = null;
+      throw error;
+    });
   }
+  return inicializacaoConfiguracoes;
 }
 
 async function carregarConfiguracoesObjeto() {
@@ -97,13 +104,14 @@ const salvarConfiguracoes = async (req, res) => {
 
     const entradas = Object.entries(req.body || {}).filter(([chave]) => chavesPermitidas.has(chave) && !["logo_url", "logo_1_url"].includes(chave));
 
-    for (const [chave, valor] of entradas) {
+    if (entradas.length) {
       await pool.query(
         `INSERT INTO configuracoes_sistema (chave, valor, atualizado_por)
-         VALUES ($1, $2, $3)
+         SELECT dados.chave, dados.valor, $3
+           FROM UNNEST($1::text[], $2::text[]) AS dados(chave, valor)
          ON CONFLICT (chave)
          DO UPDATE SET valor = EXCLUDED.valor, atualizado_por = EXCLUDED.atualizado_por, atualizado_em = CURRENT_TIMESTAMP`,
-        [chave, normalizarValorConfig(chave, valor), req.user.id]
+        [entradas.map(([chave]) => chave), entradas.map(([chave, valor]) => normalizarValorConfig(chave, valor)), req.user.id]
       );
     }
 

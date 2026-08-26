@@ -2,6 +2,7 @@ const pool = require("../config/database");
 const { calculateIndicators, updatePerformance, recordRating, ranking } = require("../services/performanceService");
 const { isFinal } = require("../domain/ticketStatus");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
+const { usuarioPodeAvaliarChamado } = require("../services/ticketEvaluationAccessService");
 const isAdmin = (user) => ["admin", "desenvolvedor", "super_admin"].includes(user?.perfil);
 const number = (value, min, max) => Number.isInteger(Number(value)) && Number(value) >= min && Number(value) <= max ? Number(value) : null;
 const period = (query) => ({ month: number(query.month,1,12) || new Date().getMonth()+1, year: number(query.year,2020,2100) || new Date().getFullYear() });
@@ -11,7 +12,7 @@ exports.rateTicket = async (req,res) => {
     const ticketId=number(req.params.id,1,Number.MAX_SAFE_INTEGER); if(!ticketId) return res.status(400).json({erro:"Chamado inválido"});
     const ticketResult=await pool.query("SELECT * FROM chamados WHERE id=$1",[ticketId]); const ticket=ticketResult.rows[0];
     if(!ticket) return res.status(404).json({erro:"Chamado não encontrado"});
-    if(ticket.usuario_id!==req.user.id) return res.status(403).json({erro:"Você só pode avaliar seus próprios chamados"});
+    if(!(await usuarioPodeAvaliarChamado(ticket,req.user))) return res.status(403).json({erro:"Somente o solicitante ou o usuário vinculado ao ativo pode avaliar este chamado"});
     if(!isFinal(ticket.status)) return res.status(400).json({erro:"A pesquisa fica disponível após o encerramento do chamado"});
     const fields=["overall_rating","courtesy_rating","communication_rating","resolution_rating","speed_rating"];
     const rating={nps_score:number(req.body.nps_score,0,10),comment:String(req.body.comment||"").trim().slice(0,4000)};

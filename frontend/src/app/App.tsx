@@ -119,7 +119,6 @@ import {
   atualizarMinhaFotoPerfil,
   atualizarUsuarioLocal,
   atualizarAvisoSistema,
-  avaliarChamado,
   baixarRelatorio,
   baixarAnexoChamado,
   buscarChamado,
@@ -775,16 +774,11 @@ export default function App() {
 
   async function handleAuthenticated(nextUser: UsuarioLogado) {
     setUsuarioEntrando(nextUser);
-    const startedAt = Date.now();
     const initialRequests: Promise<unknown>[] = [
       obterMeuPerfil(),
       obterMinhasPermissoes(),
     ];
-    if (isEquipeApp(nextUser.perfil)) initialRequests.push(obterDashboard());
-    else initialRequests.push(listarChamadosDoUsuario());
     await Promise.allSettled(initialRequests);
-    const remaining = Math.max(0, 2450 - (Date.now() - startedAt));
-    await new Promise((resolve) => window.setTimeout(resolve, remaining));
     setUsuario(nextUser);
     setUsuarioEntrando(null);
   }
@@ -1340,6 +1334,7 @@ function UserPortal({
     tipo_chamado: "Incidente",
   });
   const [selecionado, setSelecionado] = useState<ApiChamado | null>(null);
+  const chamadoSelecionadoUsuarioRef = useRef<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalChamadoAberto, setModalChamadoAberto] = useState(false);
   const [busca, setBusca] = useState("");
@@ -1568,22 +1563,28 @@ function UserPortal({
   }
 
   async function carregar() {
-    const [me, lista, tiposLista, baseLista, notificacoesLista] =
+    const [me, lista, notificacoesLista] =
       await Promise.all([
         obterMeuPerfil(),
         listarChamadosDoUsuario(),
-        listarCatalogo("tipos").catch(() => []),
-        listarBaseConhecimento().catch(() => []),
         listarNotificacoes().catch(() => []),
-        listarAvisosSistemaAdmin().catch(() => []),
       ]);
 
     setPerfil(me);
     setChamados(lista);
-    setTipos(tiposLista);
-    setArtigosBase(baseLista);
     setNotificacoes(notificacoesLista);
     setUsuario(me);
+  }
+
+  function sincronizarChamadoUsuario(atualizado: ApiChamado) {
+    setChamados((atuais) => atuais.map((item) => Number(item.id) === Number(atualizado.id) ? { ...item, ...atualizado } : item));
+    setSelecionado((atual) => atual && Number(atual.id) === Number(atualizado.id) ? { ...atual, ...atualizado } : atual);
+  }
+
+  async function sincronizarChamadosUsuario() {
+    setChamados(await listarChamadosDoUsuario());
+    const selecionadoId = chamadoSelecionadoUsuarioRef.current;
+    if (selecionadoId) buscarChamado(selecionadoId).then(sincronizarChamadoUsuario).catch(() => {});
   }
 
   function sincronizarFotoSolicitanteLocal(usuarioAtualizado: ApiUsuario) {
@@ -1642,6 +1643,24 @@ function UserPortal({
       carregarNotificacoesUsuario().catch(() => {});
     }, 30000);
     return () => window.clearInterval(intervalo);
+  }, []);
+
+  useEffect(() => {
+    if (tab === "base" && !artigosBase.length) listarBaseConhecimento().then(setArtigosBase).catch(() => {});
+  }, [tab, artigosBase.length]);
+
+  useEffect(() => {
+    if (modalChamadoAberto && !tipos.length) listarCatalogo("tipos").then(setTipos).catch(() => {});
+  }, [modalChamadoAberto, tipos.length]);
+
+  useEffect(() => { chamadoSelecionadoUsuarioRef.current = selecionado?.id || null; }, [selecionado?.id]);
+
+  useEffect(() => {
+    const sincronizarSeVisivel = () => { if (document.visibilityState === "visible") void sincronizarChamadosUsuario(); };
+    const intervalo = window.setInterval(sincronizarSeVisivel, 60000);
+    document.addEventListener("visibilitychange", sincronizarSeVisivel);
+    window.addEventListener("focus", sincronizarSeVisivel);
+    return () => { window.clearInterval(intervalo); document.removeEventListener("visibilitychange", sincronizarSeVisivel); window.removeEventListener("focus", sincronizarSeVisivel); };
   }, []);
 
   useEffect(() => {
@@ -1762,13 +1781,13 @@ function UserPortal({
     setLoading(true);
 
     try {
-      await criarChamado(novo);
+      const criado = await criarChamado(novo);
+      setChamados((atuais) => [criado, ...atuais.filter((item) => Number(item.id) !== Number(criado.id))]);
       setNovo({ titulo: "", descricao: "", tipo_chamado: "Incidente" });
       setBase([]);
       setModalChamadoAberto(false);
       setTab("chamados");
       toast.success("Chamado criado com sucesso.");
-      await carregar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao criar chamado.");
     } finally {
@@ -2528,8 +2547,7 @@ function UserPortal({
           onClose={() => setSelecionado(null)}
           onRefresh={async () => {
             const atualizado = await buscarChamado(selecionado.id);
-            setSelecionado(atualizado);
-            await carregar();
+            sincronizarChamadoUsuario(atualizado);
           }}
         />
       )}
@@ -3634,6 +3652,8 @@ function AdminPanel({
   const [usuarioPermissoes, setUsuarioPermissoes] = useState<ApiUsuario | null>(
     null,
   );
+  const sincronizandoTelaRef = useRef(false);
+  const abaPendenteRef = useRef<AdminTab | null>(null);
 
   const perfilAtual = normalizarPerfilApp(usuario.perfil);
   const desenvolvedor = isDevApp(usuario.perfil);
@@ -3717,62 +3737,75 @@ function AdminPanel({
     setUsuario(atualizado);
   }
 
-  async function carregar() {
-    const [
-      dash,
-      chamadosLista,
-      filaLista,
-      carteiraLista,
-      historicoLista,
-      relatorioLista,
-      users,
-      deps,
-      tiposLista,
-      baseLista,
-      respostasLista,
-      filtrosLista,
-      configLista,
-      nots,
-      avisosLista,
-    ] = await Promise.all([
-      obterDashboard().catch(() => null),
-      listarChamados({ ...filtros, meus: true }),
-      listarChamados({ ...filtros, fila: true }),
-      administrador ? listarChamados(filtros) : Promise.resolve([]),
-      listarChamados({ ...filtros, historico: true, closed: true }),
-      listarChamados({ closed: true }),
-      listarUsuariosAdmin().catch(() => []),
-      listarCatalogo("departamentos").catch(() => []),
-      listarCatalogo("tipos").catch(() => []),
-      listarBaseConhecimento().catch(() => []),
-      listarRespostasRapidas().catch(() => []),
-      listarFiltrosSalvos().catch(() => []),
-      obterConfiguracoesSistema().catch(() => null),
-      listarNotificacoes().catch(() => []),
-      listarAvisosSistemaAdmin().catch(() => []),
-    ]);
-    setDashboard(dash);
-    setChamados(chamadosLista);
-    setFilaChamados(filaLista);
-    setCarteiraEquipe(carteiraLista);
-    setHistoricoEquipe(historicoLista);
-    setChamadosRelatorio(relatorioLista);
-    setUsuarios(users);
-    setDepartamentos(deps);
-    setTipos(tiposLista);
-    setBase(baseLista);
-    setRespostasRapidas(respostasLista);
-    setFiltrosSalvos(filtrosLista);
-    setAvisosAdmin(avisosLista as ApiAvisoSistema[]);
-    if (configLista) {
-      const completo = { ...CONFIG_SISTEMA_PADRAO, ...configLista };
-      setConfigSistema(completo);
-      onConfigSistemaChange(completo);
+  function sincronizarChamadoEquipe(atualizado: ApiChamado) {
+    const substituir = (lista: ApiChamado[]) => lista.map((item) => Number(item.id) === Number(atualizado.id) ? { ...item, ...atualizado } : item);
+    setChamados(substituir);
+    setFilaChamados(substituir);
+    setCarteiraEquipe(substituir);
+    setHistoricoEquipe(substituir);
+    setChamadosRelatorio(substituir);
+    setSelecionado((atual) => atual && Number(atual.id) === Number(atualizado.id) ? { ...atual, ...atualizado } : atual);
+  }
+
+  async function carregar(aba: AdminTab = tab, filtrosAtuais: FiltrosChamados = filtros) {
+    if (sincronizandoTelaRef.current) { abaPendenteRef.current = aba; return; }
+    sincronizandoTelaRef.current = true;
+    try {
+      if (aba === "dashboard") {
+        setDashboard(await obterDashboard().catch(() => null));
+        return;
+      }
+      if (aba === "fila") {
+        const [fila, carteira, users, teamsLista, respostas] = await Promise.all([
+          listarChamados({ ...filtrosAtuais, fila: true }),
+          administrador ? listarChamados(filtrosAtuais) : Promise.resolve([]),
+          listarUsuariosAdmin().catch(() => []),
+          listarTeams().catch(() => []),
+          listarRespostasRapidas().catch(() => []),
+        ]);
+        setFilaChamados(fila); setCarteiraEquipe(carteira); setUsuarios(users); setTeams(teamsLista); setRespostasRapidas(respostas);
+        return;
+      }
+      if (["kanban", "chamados"].includes(aba)) {
+        const [lista, salvos] = await Promise.all([
+          listarChamados({ ...filtrosAtuais, meus: true }),
+          listarFiltrosSalvos().catch(() => []),
+        ]);
+        setChamados(lista); setFiltrosSalvos(salvos);
+        return;
+      }
+      if (aba === "historico") { setHistoricoEquipe(await listarChamados({ ...filtrosAtuais, historico: true, closed: true })); return; }
+      if (aba === "carteira") {
+        const [lista, users] = await Promise.all([listarChamados(filtrosAtuais), listarUsuariosAdmin().catch(() => [])]);
+        setCarteiraEquipe(lista); setUsuarios(users); return;
+      }
+      if (["usuarios", "acessos"].includes(aba)) { setUsuarios(await listarUsuariosAdmin().catch(() => [])); return; }
+      if (aba === "teams") {
+        const [users, teamsLista] = await Promise.all([listarUsuariosAdmin().catch(() => []), listarTeams().catch(() => [])]);
+        setUsuarios(users); setTeams(teamsLista); return;
+      }
+      if (aba === "catalogos") {
+        const [deps, tiposLista] = await Promise.all([listarCatalogo("departamentos").catch(() => []), listarCatalogo("tipos").catch(() => [])]);
+        setDepartamentos(deps); setTipos(tiposLista); return;
+      }
+      if (aba === "base") { setBase(await listarBaseConhecimento().catch(() => [])); return; }
+      if (["configuracoes", "config_sla", "config_integracoes"].includes(aba)) {
+        const [configLista, respostas] = await Promise.all([obterConfiguracoesSistema().catch(() => null), listarRespostasRapidas().catch(() => [])]);
+        setRespostasRapidas(respostas);
+        if (configLista) { const completo = { ...CONFIG_SISTEMA_PADRAO, ...configLista }; setConfigSistema(completo); onConfigSistemaChange(completo); }
+        return;
+      }
+      if (aba === "manutencao") { setAvisosAdmin(await listarAvisosSistemaAdmin().catch(() => []) as ApiAvisoSistema[]); return; }
+      if (["indicadores_operacao", "indicadores_sla", "indicadores_tecnicos", "indicadores_ativos", "relatorios"].includes(aba)) {
+        const [relatorio, historico] = await Promise.all([listarChamados({ closed: true }), listarChamados({ ...filtrosAtuais, historico: true, closed: true })]);
+        setChamadosRelatorio(relatorio); setHistoricoEquipe(historico);
+      }
+    } finally {
+      sincronizandoTelaRef.current = false;
+      const pendente = abaPendenteRef.current;
+      abaPendenteRef.current = null;
+      if (pendente) void carregar(pendente);
     }
-    setNotificacoes(nots);
-    listarTeams()
-      .then(setTeams)
-      .catch(() => setTeams([]));
   }
 
   async function criarNovaTeam(event: FormEvent) {
@@ -3815,8 +3848,8 @@ function AdminPanel({
   }
 
   useEffect(() => {
-    carregar().catch((e) => toast.error(e.message));
-  }, []);
+    carregar(tab).catch((e) => toast.error(e.message));
+  }, [tab]);
   useEffect(() => {
     obterMinhasPermissoes()
       .then(({ permissions }) => setPermissoesAtuais(permissions))
@@ -3839,14 +3872,19 @@ function AdminPanel({
   }, [administrador,desenvolvedor,permissoesAtuais,permissoesCarregadas,tab]);
 
   useEffect(() => {
+    carregarNotificacoes().catch(() => {});
     const timer = window.setInterval(() => carregarNotificacoes(), 30000);
     return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    if(!["fila","kanban","chamados","historico"].includes(tab))return;
-    const timer=window.setInterval(()=>void carregar(),20000);
-    return()=>window.clearInterval(timer);
+    const sincronizavel = ["dashboard", "fila", "kanban", "chamados", "historico", "carteira"].includes(tab);
+    if (!sincronizavel) return;
+    const sincronizarSeVisivel = () => { if (document.visibilityState === "visible") void carregar(tab); };
+    const timer = window.setInterval(sincronizarSeVisivel, 60000);
+    document.addEventListener("visibilitychange", sincronizarSeVisivel);
+    window.addEventListener("focus", sincronizarSeVisivel);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", sincronizarSeVisivel); window.removeEventListener("focus", sincronizarSeVisivel); };
   },[tab]);
 
   useEffect(() => {
@@ -3872,11 +3910,8 @@ function AdminPanel({
     event?.preventDefault();
     const applied=override??filtros;
     try {
-      setChamados(await listarChamados({ ...applied, meus: true }));
-      setFilaChamados(await listarChamados({...applied,fila:true}));
-      setHistoricoEquipe(await listarChamados({...applied,historico:true,closed:true}));
-      if (administrador) setCarteiraEquipe(await listarChamados(applied));
-      setDashboard(await obterDashboard());
+      setFiltros(applied);
+      await carregar(tab, applied);
       setMostrarFiltros(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao filtrar.");
@@ -3891,8 +3926,7 @@ function AdminPanel({
     try {
       setTab("kanban");
       setFiltros(novosFiltros);
-      setChamados(await listarChamados({ ...novosFiltros, meus: true }));
-      setDashboard(await obterDashboard());
+      await carregar("kanban", novosFiltros);
       toast.success(termo ? "Pesquisa aplicada." : "Pesquisa limpa.");
     } catch (e) {
       toast.error(
@@ -3905,8 +3939,7 @@ function AdminPanel({
     const { q: _q, ...novosFiltros } = filtros;
     try {
       setFiltros(novosFiltros);
-      setChamados(await listarChamados({ ...novosFiltros, meus: true }));
-      setDashboard(await obterDashboard());
+      await carregar(tab, novosFiltros);
       toast.success("Pesquisa limpa.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao limpar pesquisa.");
@@ -3916,8 +3949,7 @@ function AdminPanel({
   async function limparFiltros() {
     try {
       setFiltros({});
-      setChamados(await listarChamados({ meus: true }));
-      setDashboard(await obterDashboard());
+      await carregar(tab, {});
       setMostrarFiltros(false);
       toast.success("Filtros limpos.");
     } catch (e) {
@@ -3950,8 +3982,7 @@ function AdminPanel({
   async function assumirChamadoAdmin(id: number) {
     try {
       const atualizado = await assumirChamado(id);
-      setSelecionado(atualizado);
-      await carregar();
+      sincronizarChamadoEquipe(atualizado);
       toast.success("Chamado assumido.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao assumir chamado.");
@@ -4077,7 +4108,14 @@ function AdminPanel({
   async function abrirDetalhe(id: number, somenteLeitura = false) {
     try {
       setDetalheSomenteLeitura(somenteLeitura);
-      setSelecionado(await buscarChamado(id));
+      const [detalhe, users, respostas] = await Promise.all([
+        buscarChamado(id),
+        usuarios.length ? Promise.resolve(null) : listarUsuariosAdmin().catch(() => null),
+        respostasRapidas.length ? Promise.resolve(null) : listarRespostasRapidas().catch(() => null),
+      ]);
+      if (users) setUsuarios(users);
+      if (respostas) setRespostasRapidas(respostas);
+      setSelecionado(detalhe);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao abrir chamado.");
     }
@@ -5017,10 +5055,10 @@ function AdminPanel({
                 dark={dark}
                 onAbrir={abrirDetalhe}
                 onRedistribuir={async (chamadoId, tecnicoId) => {
-                  await atualizarChamado(chamadoId, {
+                  const atualizado = await atualizarChamado(chamadoId, {
                     responsavel_id: tecnicoId,
                   });
-                  await carregar();
+                  sincronizarChamadoEquipe(atualizado);
                   toast.success("Chamado redistribuído.");
                 }}
               />
@@ -6572,8 +6610,7 @@ function AdminPanel({
           }}
           onRefresh={async () => {
             const atualizado = await buscarChamado(selecionado.id);
-            setSelecionado(atualizado);
-            await carregar();
+            sincronizarChamadoEquipe(atualizado);
           }}
         />
       )}
@@ -7143,10 +7180,6 @@ function ChamadoDetalhe({
     () => () => arquivosComPrevia.forEach(({ url }) => url && URL.revokeObjectURL(url)),
     [arquivosComPrevia],
   );
-  const [nota, setNota] = useState(chamado.avaliacao?.nota || 5);
-  const [comentarioNota, setComentarioNota] = useState(
-    chamado.avaliacao?.comentario || "",
-  );
   const [motivoReabrir, setMotivoReabrir] = useState("");
   const [mostrarIA, setMostrarIA] = useState(false);
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
@@ -7177,12 +7210,6 @@ function ChamadoDetalhe({
       : chamado.sla_minutos_restantes != null
         ? `${formatarMinutos(chamado.sla_minutos_restantes)} restantes`
         : "SLA não calculado";
-  const [mostrarPesquisaPerformance, setMostrarPesquisaPerformance] = useState(
-    !somenteLeitura &&
-      concluido &&
-      normalizarPerfilApp(usuario.perfil) === "usuario" &&
-      !chamado.avaliacao,
-  );
 
   async function enviarComentario(event: FormEvent) {
     event.preventDefault();
@@ -7197,12 +7224,6 @@ function ChamadoDetalhe({
     await anexarArquivos(chamado.id, arquivos);
     setArquivos([]);
     if (arquivoInputRef.current) arquivoInputRef.current.value = "";
-    await onRefresh();
-  }
-  async function avaliar(event: FormEvent) {
-    event.preventDefault();
-    await avaliarChamado(chamado.id, nota, comentarioNota);
-    toast.success("Avaliação enviada.");
     await onRefresh();
   }
   async function reabrir(event: FormEvent) {
@@ -7224,21 +7245,6 @@ function ChamadoDetalhe({
     toast.success("Chamado atualizado.");
     await onRefresh();
   }
-
-  if (mostrarPesquisaPerformance)
-    return (
-      <Modal title="Avaliação do atendimento" onClose={onClose} wide>
-        <PerformanceRatingCard
-          chamado={chamado}
-          onLater={() => setMostrarPesquisaPerformance(false)}
-          onSubmit={async (dados) => {
-            await enviarAvaliacaoPerformance(chamado.id, dados);
-            toast.success("Avaliação enviada.");
-            await onRefresh();
-          }}
-        />
-      </Modal>
-    );
 
   return (
     <Modal
@@ -7625,30 +7631,18 @@ function ChamadoDetalhe({
               </Button>
             </form>
           </Card>
-          {concluido && normalizarPerfilApp(usuario.perfil) === "usuario" && (
+          {concluido && chamado.pode_avaliar && !chamado.avaliacao && (
             <Card>
               <h3 className="mb-3 flex items-center gap-2 font-black">
                 <Star size={18} />
-                Avaliação
+                Avalie este atendimento
               </h3>
-              <form onSubmit={avaliar} className="space-y-3">
-                <Select
-                  value={nota}
-                  onChange={(e) => setNota(Number(e.target.value))}
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {"⭐".repeat(n)} {n}
-                    </option>
-                  ))}
-                </Select>
-                <Textarea
-                  value={comentarioNota}
-                  onChange={(e) => setComentarioNota(e.target.value)}
-                  placeholder="Comentário opcional"
-                />
-                <Button className="w-full">Enviar avaliação</Button>
-              </form>
+              <PerformanceRatingCard chamado={chamado} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(chamado.id, dados); toast.success("Avaliação enviada."); await onRefresh(); }} />
+            </Card>
+          )}
+          {concluido && chamado.avaliacao && (
+            <Card>
+              <div className="flex items-center gap-3 text-emerald-700"><CheckCircle2 size={20} /><div><b className="block text-sm">Atendimento avaliado</b><span className="text-xs">Obrigado por compartilhar sua experiência.</span></div></div>
             </Card>
           )}
           {concluido && (
