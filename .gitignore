@@ -4,6 +4,8 @@ node_modules/
 backend/.env.backup
 dist/
 coverage/
+frontend/test-results/
+frontend/playwright-report/
 *.log
 
 # Configuracoes locais de editores e sistema operacional
@@ -35,6 +37,7 @@ backend/uploads/
 tmp/
 output/
 outputs/
+backups/
 *.dump
 *.backup
 *.zip

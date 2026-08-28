@@ -77,7 +77,10 @@ export type SystemDiagnostics = {
   ok:boolean;
   api:{status:string;uptimeSeconds:number;timestamp:string};
   database:{status:string;latencyMs:number};
+  redis?:{status:string;latencyMs:number};
   agent:{status:string;total:number;current:number;stale:number;lastHeartbeat?:string|null};
+  process?:{node:string;rssMb:number;heapUsedMb:number};
+  requests?:{totalRequests:number;errors5xx:number;last5Minutes:{requests:number;errors5xx:number;latencyP50Ms:number;latencyP95Ms:number}};
   recentErrors:Array<{id:string;timestamp:string;source:string;level:string;message:string;requestId?:string|null;path?:string|null}>;
 };
 

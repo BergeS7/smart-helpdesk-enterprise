@@ -1,4 +1,6 @@
 const pool = require("../config/database");
+const { getRedisClient } = require("../config/redis");
+const { metricsSnapshot } = require("./requestMetricsService");
 
 const startedAt = Date.now();
 const errors = [];
@@ -51,11 +53,27 @@ async function checkAgent() {
   }
 }
 
+async function checkRedis() {
+  const before = Date.now();
+  const client = getRedisClient();
+  if (!client) return { status: "not_configured", latencyMs: 0 };
+  try {
+    if (!client.isReady) return { status: "connecting", latencyMs: Date.now() - before };
+    await client.ping();
+    return { status: "operational", latencyMs: Date.now() - before };
+  } catch (error) {
+    recordError({ source: "health", message: error.message, context: "redis" });
+    return { status: "unavailable", latencyMs: Date.now() - before };
+  }
+}
+
 async function diagnostics() {
-  const [database, agent] = await Promise.all([checkDatabase(), checkAgent()]);
+  const [database, redis, agent] = await Promise.all([checkDatabase(), checkRedis(), checkAgent()]);
   const api = { status: "operational", uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000), timestamp: new Date().toISOString() };
   const ok = database.status === "operational";
-  return { ok, api, database, agent, recentErrors: errors.slice(0, 30) };
+  const memory = process.memoryUsage();
+  const processInfo = { node: process.version, rssMb: Number((memory.rss / 1048576).toFixed(1)), heapUsedMb: Number((memory.heapUsed / 1048576).toFixed(1)) };
+  return { ok, api, database, redis, agent, process: processInfo, requests: metricsSnapshot(), recentErrors: errors.slice(0, 30) };
 }
 
 module.exports = { recordError, diagnostics, errors };

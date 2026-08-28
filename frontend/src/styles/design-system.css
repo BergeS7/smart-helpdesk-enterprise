@@ -127,3 +127,16 @@
 @keyframes ds-drawer-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.ds-page,.ds-modal,.ds-drawer,.shd-modal-panel{animation:none!important}.shd-app *{transition-duration:.01ms!important}}
 @media(max-width:640px){.ds-card,.shd-card{border-radius:14px!important}.ds-modal,.shd-modal-panel{border-radius:18px!important}.shd-app main{padding-inline:12px!important}}
+
+/* Acessibilidade: contraste AA no tema claro e alvos de interação consistentes. */
+.shd-app:not(.admin-theme-dark):not(.usuario-theme-dark) .text-slate-400,
+.shd-app:not(.admin-theme-dark):not(.usuario-theme-dark) .text-zinc-400 { color:#475569!important; }
+.shd-app:not(.admin-theme-dark):not(.usuario-theme-dark) .text-slate-500,
+.shd-app:not(.admin-theme-dark):not(.usuario-theme-dark) .text-zinc-500 { color:#334155!important; }
+.shd-app:not(.admin-theme-dark):not(.usuario-theme-dark) .text-slate-600,
+.shd-app:not(.admin-theme-dark):not(.usuario-theme-dark) .text-zinc-600 { color:#1e293b!important; }
+.shd-app button,.shd-app [role="button"],.shd-app a { text-underline-offset:3px; }
+.shd-app button:not(.ds-badge),.shd-app [role="button"] { min-width:36px; min-height:36px; }
+.shd-app svg { min-width:16px; min-height:16px; }
+.shd-app :focus-visible { outline:3px solid #2563eb!important; outline-offset:2px!important; }
+@media (forced-colors:active) { .shd-app :focus-visible { outline:3px solid Highlight!important; } }

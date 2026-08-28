@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
+  CheckCircle2,
   Clock3,
+  Copy,
   Filter,
+  MapPin,
   Maximize2,
   Minimize2,
   RefreshCw,
+  Terminal,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +25,7 @@ import {
   getMunicipioSummary,
   updateDeviceLocation,
   updateDeviceStatus,
+  type AssetLocation,
 } from "../../services/deviceService";
 import { criarChamado } from "../../services/api";
 import type {
@@ -50,7 +56,12 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
     [selected, setSelected] = useState<Device | null>(null),
     [loading, setLoading] = useState(true),
     [filtersOpen, setFiltersOpen] = useState(false),
-    [mapExpanded, setMapExpanded] = useState(false);
+    [mapExpanded, setMapExpanded] = useState(false),
+    [agentWizardOpen, setAgentWizardOpen] = useState(false),
+    [agentLocations, setAgentLocations] = useState<AssetLocation[]>([]),
+    [agentLocationId, setAgentLocationId] = useState(""),
+    [agentCommand, setAgentCommand] = useState(""),
+    [agentInviteLoading, setAgentInviteLoading] = useState(false);
   const [history, setHistory] = useState<DeviceHistory[]>([]),
     [historyOpen, setHistoryOpen] = useState(false),
     [diagnostics, setDiagnostics] = useState<Device | null>(null),
@@ -90,7 +101,7 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
   useEffect(() => {
     const open = (e: Event) =>
         setDiagnostics((e as CustomEvent<Device>).detail),
-      invite = () => void generateInvite(),
+      invite = () => void openAgentWizard(),
       showFilters = () => setFiltersOpen(true),
       refresh = () => void reload();
     window.addEventListener("asset-diagnostics-open", open);
@@ -226,14 +237,33 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
       );
     }
   }
+  async function openAgentWizard() {
+    try {
+      setAgentWizardOpen(true);
+      setAgentCommand("");
+      const locations = await getAssetLocations();
+      setAgentLocations(locations);
+      setAgentLocationId((current) => current || String(locations[0]?.id || ""));
+    } catch (e) {
+      setAgentWizardOpen(false);
+      toast.error(e instanceof Error ? e.message : "Erro ao carregar unidades");
+    }
+  }
   async function generateInvite() {
+    const location = agentLocations.find((item) => String(item.id) === agentLocationId);
+    if (!location) return void toast.error("Selecione a unidade do computador.");
+    setAgentInviteLoading(true);
     try {
       const result = await createAgentInvite(2);
-      await navigator.clipboard?.writeText(result.convite);
-      window.prompt("Convite de uso único válido por 2 horas:", result.convite);
-      toast.success("Convite criado.");
+      const insecure = window.location.protocol === "http:" ? " -AllowInsecureHttp" : "";
+      const command = `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\\SmartHelpDeskAgent.ps1" -ServerUrl "${window.location.origin}/api/assets" -EnrollmentKey "${result.convite}" -Municipio "${location.municipio}" -Unidade "${location.nome}" -Latitude ${location.latitude} -Longitude ${location.longitude} -Install${insecure}`;
+      setAgentCommand(command);
+      await navigator.clipboard?.writeText(command);
+      toast.success("Comando de instalação criado e copiado.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar convite");
+    } finally {
+      setAgentInviteLoading(false);
     }
   }
   return (
@@ -420,6 +450,23 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
           onAction={action}
         />
       )}
+      {agentWizardOpen && (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/45 p-4" role="dialog" aria-modal="true" aria-labelledby="agent-wizard-title">
+          <section className="w-full max-w-2xl overflow-hidden rounded-2xl border bg-white shadow-2xl">
+            <header className="flex items-start justify-between border-b p-5">
+              <div><h2 id="agent-wizard-title" className="text-lg font-black text-slate-950">Instalar agente neste computador</h2><p className="mt-1 text-sm text-slate-600">Vincule o equipamento à unidade correta antes da primeira coleta.</p></div>
+              <button type="button" onClick={()=>setAgentWizardOpen(false)} className="grid h-10 w-10 place-items-center rounded-lg border" aria-label="Fechar assistente"><X size={18}/></button>
+            </header>
+            <div className="space-y-5 p-5">
+              <div className="grid gap-3 sm:grid-cols-3"><WizardStep icon={<MapPin size={17}/>} number="1" label="Escolher unidade" active={!agentCommand}/><WizardStep icon={<Terminal size={17}/>} number="2" label="Gerar comando" active={Boolean(agentCommand)}/><WizardStep icon={<CheckCircle2 size={17}/>} number="3" label="Confirmar no mapa"/></div>
+              <label className="block"><span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-700">Município e unidade</span><select value={agentLocationId} onChange={(event)=>{setAgentLocationId(event.target.value);setAgentCommand("")}} className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"><option value="">Selecione...</option>{agentLocations.map(location=><option key={location.id} value={location.id}>{location.municipio} — {location.nome}</option>)}</select></label>
+              {!agentCommand?<button type="button" onClick={()=>void generateInvite()} disabled={!agentLocationId||agentInviteLoading} className="ds-button ds-button--primary w-full justify-center disabled:cursor-not-allowed disabled:opacity-50">{agentInviteLoading?<RefreshCw className="animate-spin" size={17}/>:<Terminal size={17}/>}Gerar comando de instalação</button>:<div className="space-y-3"><div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="font-black text-emerald-900">Convite pronto por duas horas</p><p className="mt-1 text-xs text-emerald-800">Abra o PowerShell como administrador na pasta que contém SmartHelpDeskAgent.ps1.</p></div><pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-950 p-4 text-xs leading-5 text-slate-100">{agentCommand}</pre><button type="button" onClick={()=>navigator.clipboard?.writeText(agentCommand).then(()=>toast.success("Comando copiado."))} className="ds-button ds-button--secondary w-full justify-center"><Copy size={17}/>Copiar novamente</button><p className="text-xs leading-5 text-slate-600">Depois da execução, aguarde a coleta e confirme o equipamento em Ativos. O sistema exibirá hostname, usuário, memória, discos e números de série.</p></div>}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
+
+function WizardStep({icon,number,label,active=false}:{icon:ReactNode;number:string;label:string;active?:boolean}){return <div className={`flex items-center gap-3 rounded-xl border p-3 ${active?"border-blue-300 bg-blue-50 text-blue-900":"border-slate-200 text-slate-600"}`}><span className="grid h-8 w-8 place-items-center rounded-lg bg-white">{icon}</span><span><b className="block text-[10px] uppercase">Etapa {number}</b><span className="text-xs font-bold">{label}</span></span></div>}

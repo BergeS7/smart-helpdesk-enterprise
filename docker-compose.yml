@@ -76,6 +76,7 @@ services:
       SMTP_FROM: "${SMTP_FROM:-}"
 
       REDIS_URL: "${REDIS_URL:-redis://redis:6379}"
+      ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
 
     volumes:
       - backend_uploads:/app/uploads
