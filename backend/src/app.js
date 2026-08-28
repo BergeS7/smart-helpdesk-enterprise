@@ -1,5 +1,7 @@
 const express = require("express");
 const path = require("path");
+const swaggerUi = require("swagger-ui-express");
+const { openapiDocument } = require("./docs/openapi");
 const { corsMiddleware, helmetMiddleware, requestContext, apiLimiter, notFound, errorHandler } = require("./middlewares/securityMiddleware");
 
 const userRoutes = require("./routes/userRoutes");
@@ -63,6 +65,8 @@ app.get("/", (req, res) => {
 
 app.use("/api/system", systemRoutes);
 app.get("/api/health", require("./controllers/systemController").health);
+app.get("/api/docs.json", (req, res) => res.json(openapiDocument));
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
 
 app.use("/api/usuarios", userRoutes);
 app.use("/api/chamados", chamadoRoutes);
