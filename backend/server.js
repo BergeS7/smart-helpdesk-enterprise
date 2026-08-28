@@ -4,6 +4,7 @@ validateProductionSecurity();
 const app = require("./src/app");
 const { recordError } = require("./src/services/systemDiagnosticsService");
 const { runMigrations } = require("./scripts/migrate");
+const { startOperationalAlerts } = require("./src/services/operationalAlertService");
 
 process.on("unhandledRejection", (reason) => {
   recordError({ source: "backend-process", message: reason instanceof Error ? reason.message : String(reason), context: "unhandledRejection" });
@@ -19,6 +20,7 @@ async function startServer() {
   await runMigrations("up");
   app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
+    startOperationalAlerts();
   });
 }
 

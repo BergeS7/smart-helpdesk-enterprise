@@ -31,14 +31,19 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "node-pg-migrate": "^9.0.0",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "^9.0.6",
     "pdfkit": "^0.17.2",
-    "pg": "^8.22.0",
+    "pg": "^8.23.0",
     "rate-limit-redis": "^4.2.2",
     "redis": "^4.7.0",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
   }
 }

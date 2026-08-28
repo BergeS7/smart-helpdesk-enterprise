@@ -3,6 +3,7 @@ const path = require("path");
 const swaggerUi = require("swagger-ui-express");
 const { openapiDocument } = require("./docs/openapi");
 const { corsMiddleware, helmetMiddleware, requestContext, apiLimiter, notFound, errorHandler } = require("./middlewares/securityMiddleware");
+const { requestMetrics } = require("./services/requestMetricsService");
 
 const userRoutes = require("./routes/userRoutes");
 const chamadoRoutes = require("./routes/chamadoRoutes");
@@ -17,12 +18,7 @@ const performanceRoutes = require("./routes/performanceRoutes");
 const assetRoutes = require("./routes/assetRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const systemRoutes = require("./routes/systemRoutes");
-const { ensureAssetSchema } = require("./services/assetSchemaService");
-const { ensurePrioritySchema } = require("./services/prioritySchemaService");
-const { ensurePermissionSchema } = require("./services/permissionService");
-const { ensurePrivacyComplianceSchema, startPrivacyRetentionSchedule } = require("./services/privacyComplianceService");
-const { ensureSlaPauseSchema } = require("./services/slaPauseSchemaService");
-const { ensureEmailVerificationSchema } = require("./services/emailVerificationSchemaService");
+const { startPrivacyRetentionSchedule } = require("./services/privacyComplianceService");
 
 const app = express();
 
@@ -30,6 +26,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 app.use(requestContext);
+app.use(requestMetrics);
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
 app.use(express.json({ limit: "10mb" }));
@@ -83,13 +80,6 @@ app.use("/api/permissoes", permissionRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-ensureAssetSchema().catch((error) => console.error("Erro ao preparar módulo de ativos:", error));
-ensurePrioritySchema().catch((error) => console.error("Erro ao preparar IA de prioridades:", error));
-ensurePermissionSchema().catch((error) => console.error("Erro ao preparar permissões:", error));
-ensureSlaPauseSchema().catch((error) => console.error("Erro ao preparar pausa de SLA:", error));
-ensureEmailVerificationSchema().catch((error) => console.error("Erro ao preparar verificação de e-mail:", error));
-ensurePrivacyComplianceSchema()
-  .then(startPrivacyRetentionSchedule)
-  .catch((error) => console.error("Erro ao preparar conformidade LGPD:", error));
+startPrivacyRetentionSchedule();
 
 module.exports = app;

@@ -138,9 +138,6 @@ import {
   excluirAvisoSistema,
   excluirChamado,
   excluirUsuarioAdmin,
-  getSessaoPersistida,
-  getUsuarioLogado,
-  limparSessao,
   listarAvisosSistemaAdmin,
   listarAvisosSistemaAtivos,
   listarBaseConhecimento,
@@ -186,6 +183,7 @@ import {
   type UsuarioLogado,
   type PermissionKey,
 } from "./services/api";
+import { useSmartHelpDeskSession } from "./hooks/useSmartHelpDeskSession";
 
 type LoginMode = "usuario" | "admin";
 type TelaAuth = "login" | "cadastro" | "verificar" | "recuperar";
@@ -734,11 +732,7 @@ function AvisosSistemaBanner({
 }
 
 export default function App() {
-  const [usuario, setUsuario] = useState<UsuarioLogado | null>(null);
-  const [sessaoVerificada, setSessaoVerificada] = useState(false);
-  const [usuarioEntrando, setUsuarioEntrando] = useState<UsuarioLogado | null>(
-    null,
-  );
+  const { usuario, setUsuario, usuarioEntrando, sessaoVerificada, logout, authenticated } = useSmartHelpDeskSession();
   const [configSistemaGlobal, setConfigSistemaGlobal] =
     useState<ConfiguracoesSistema>(CONFIG_SISTEMA_PADRAO);
   const [avisosSistemaGlobal, setAvisosSistemaGlobal] = useState<
@@ -756,51 +750,6 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    let ativo = true;
-    const sessaoSalva = getSessaoPersistida();
-
-    if (!sessaoSalva) {
-      setSessaoVerificada(true);
-      return () => { ativo = false; };
-    }
-
-    // Só monta os painéis e dispara suas consultas depois que o servidor
-    // confirmar a sessão persistida e devolver o perfil atualizado.
-    obterMeuPerfil()
-      .then((perfilAtualizado) => {
-        if (!ativo) return;
-        atualizarUsuarioLocal(perfilAtualizado);
-        setUsuario(perfilAtualizado);
-      })
-      .catch(() => {
-        if (!ativo) return;
-        limparSessao();
-        setUsuario(null);
-      })
-      .finally(() => {
-        if (ativo) setSessaoVerificada(true);
-      });
-
-    return () => { ativo = false; };
-  }, []);
-
-  function handleLogout() {
-    limparSessao();
-    setUsuario(null);
-  }
-
-  async function handleAuthenticated(nextUser: UsuarioLogado) {
-    setUsuarioEntrando(nextUser);
-    const initialRequests: Promise<unknown>[] = [
-      obterMeuPerfil(),
-      obterMinhasPermissoes(),
-    ];
-    await Promise.allSettled(initialRequests);
-    setUsuario(nextUser);
-    setUsuarioEntrando(null);
-  }
-
   const content = !sessaoVerificada ? (
     <div className="grid min-h-screen place-items-center bg-zinc-50 text-zinc-900">
       <div className="flex items-center gap-3 text-sm font-bold">
@@ -810,7 +759,7 @@ export default function App() {
     </div>
   ) : !usuario ? (
     <LoginScreen
-      onLogin={handleAuthenticated}
+      onLogin={authenticated}
       configSistema={configSistemaGlobal}
       avisosSistema={avisosSistemaGlobal}
     />
@@ -818,7 +767,7 @@ export default function App() {
     <AdminPanel
       usuario={usuario}
       setUsuario={setUsuario}
-      onLogout={handleLogout}
+      onLogout={logout}
       configSistemaInicial={configSistemaGlobal}
       onConfigSistemaChange={setConfigSistemaGlobal}
       avisosSistema={avisosSistemaGlobal}
@@ -828,7 +777,7 @@ export default function App() {
     <UserPortal
       usuario={usuario}
       setUsuario={setUsuario}
-      onLogout={handleLogout}
+      onLogout={logout}
       configSistema={configSistemaGlobal}
       avisosSistema={avisosSistemaGlobal}
     />
