@@ -27,6 +27,23 @@ services:
     networks:
       - smart_helpdesk_network
 
+  redis:
+    image: redis:7-alpine
+    container_name: smart-helpdesk-redis
+    restart: unless-stopped
+
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - smart_helpdesk_network
+
   backend:
     build:
       context: ./backend
@@ -58,11 +75,15 @@ services:
       SMTP_PASS: "${SMTP_PASS:-}"
       SMTP_FROM: "${SMTP_FROM:-}"
 
+      REDIS_URL: "${REDIS_URL:-redis://redis:6379}"
+
     volumes:
       - backend_uploads:/app/uploads
 
     depends_on:
       database:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
     healthcheck:

@@ -63,6 +63,16 @@ export function limparSessao() {
   localStorage.removeItem("smart_helpdesk_usuario");
 }
 
+export function getSessaoPersistida(): LoginResposta | null {
+  const token = getToken();
+  const usuario = getUsuarioLogado();
+  if (!token || !usuario) {
+    if (token || usuario) limparSessao();
+    return null;
+  }
+  return { token, usuario };
+}
+
 export type SystemDiagnostics = {
   ok:boolean;
   api:{status:string;uptimeSeconds:number;timestamp:string};

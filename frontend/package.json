@@ -6,7 +6,9 @@
   "scripts": {
     "check:jsx": "node scripts/check-jsx-bindings.mjs",
     "build": "npm run check:jsx && vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -71,9 +73,11 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "4.7.0",
+    "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
     "tailwindcss": "4.1.12",
-    "vite": "^6.4.3"
+    "vite": "^6.4.3",
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "react": "18.3.1",

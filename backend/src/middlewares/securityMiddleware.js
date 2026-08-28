@@ -1,7 +1,9 @@
 const cors = require("cors");
 const helmet = require("helmet");
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
+const { RedisStore } = require("rate-limit-redis");
 const { correlationId } = require("../config/security");
+const { getRedisClient } = require("../config/redis");
 
 const production = process.env.NODE_ENV === "production";
 const origins = String(process.env.ALLOWED_ORIGINS || "http://localhost:8090")
@@ -43,9 +45,30 @@ function requestContext(req, res, next) {
   next();
 }
 
+// Rate limiting distribuído: se REDIS_URL estiver configurada, os contadores
+// são compartilhados entre todas as instâncias do backend via Redis. Sem
+// REDIS_URL, cada instância usa memória local (comportamento anterior,
+// adequado apenas para uma única instância).
+//
+// Decisão de disponibilidade: `passOnStoreError: true` faz o limiter deixar a
+// requisição passar (fail-open) se o Redis estiver indisponível no momento,
+// em vez de responder 500 para todo mundo. Perder o rate limit por alguns
+// segundos durante uma falha do Redis é um risco aceitável; derrubar login,
+// recuperação de senha e toda a API por causa do Redis não é.
+function buildStore(prefix) {
+  const client = getRedisClient();
+  if (!client) return undefined;
+  return new RedisStore({
+    prefix: `rl:${prefix}:`,
+    sendCommand: (...args) => client.sendCommand(args),
+  });
+}
+
 function limiter({ windowMs, limit, prefix }) {
   return rateLimit({
     windowMs, limit, standardHeaders: "draft-7", legacyHeaders: false,
+    store: buildStore(prefix),
+    passOnStoreError: true,
     keyGenerator: (req) => `${prefix}:${ipKeyGenerator(req.ip)}:${String(req.body?.email || req.body?.deviceId || "-").trim().toLowerCase().slice(0, 160)}`,
     handler: (req, res) => res.status(429).json({ erro: "Muitas tentativas. Aguarde antes de tentar novamente.", requestId: req.id }),
   });

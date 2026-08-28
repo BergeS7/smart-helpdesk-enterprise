@@ -138,6 +138,7 @@ import {
   excluirAvisoSistema,
   excluirChamado,
   excluirUsuarioAdmin,
+  getSessaoPersistida,
   getUsuarioLogado,
   limparSessao,
   listarAvisosSistemaAdmin,
@@ -733,9 +734,8 @@ function AvisosSistemaBanner({
 }
 
 export default function App() {
-  const [usuario, setUsuario] = useState<UsuarioLogado | null>(() =>
-    getUsuarioLogado(),
-  );
+  const [usuario, setUsuario] = useState<UsuarioLogado | null>(null);
+  const [sessaoVerificada, setSessaoVerificada] = useState(false);
   const [usuarioEntrando, setUsuarioEntrando] = useState<UsuarioLogado | null>(
     null,
   );
@@ -757,16 +757,32 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!usuario) return;
+    let ativo = true;
+    const sessaoSalva = getSessaoPersistida();
 
-    // Renova a URL assinada do avatar ao restaurar uma sessão salva. Sem isso,
-    // o painel administrativo reutilizava indefinidamente a URL do login.
+    if (!sessaoSalva) {
+      setSessaoVerificada(true);
+      return () => { ativo = false; };
+    }
+
+    // Só monta os painéis e dispara suas consultas depois que o servidor
+    // confirmar a sessão persistida e devolver o perfil atualizado.
     obterMeuPerfil()
       .then((perfilAtualizado) => {
+        if (!ativo) return;
         atualizarUsuarioLocal(perfilAtualizado);
         setUsuario(perfilAtualizado);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!ativo) return;
+        limparSessao();
+        setUsuario(null);
+      })
+      .finally(() => {
+        if (ativo) setSessaoVerificada(true);
+      });
+
+    return () => { ativo = false; };
   }, []);
 
   function handleLogout() {
@@ -785,7 +801,14 @@ export default function App() {
     setUsuarioEntrando(null);
   }
 
-  const content = !usuario ? (
+  const content = !sessaoVerificada ? (
+    <div className="grid min-h-screen place-items-center bg-zinc-50 text-zinc-900">
+      <div className="flex items-center gap-3 text-sm font-bold">
+        <RefreshCw size={20} className="animate-spin text-blue-600" />
+        Validando sessão…
+      </div>
+    </div>
+  ) : !usuario ? (
     <LoginScreen
       onLogin={handleAuthenticated}
       configSistema={configSistemaGlobal}
