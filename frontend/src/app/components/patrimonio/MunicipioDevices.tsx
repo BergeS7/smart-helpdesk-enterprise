@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de municipio devices; apresenta dados e interações do usuário.
+ */
 import { AlertTriangle, ChevronRight, Monitor, Wifi, WifiOff } from "lucide-react";
 import type { Device } from "../../types/device";
 export function MunicipioDevices({ municipio, devices, onSelect, onClear }: { municipio: string; devices: Device[]; onSelect: (device: Device) => void; onClear: () => void }) {

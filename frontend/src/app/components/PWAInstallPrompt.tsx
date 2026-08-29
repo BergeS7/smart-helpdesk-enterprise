@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de pwainstall prompt; apresenta dados e interações do usuário.
+ */
 import { useEffect, useState } from "react";
 import { Download, Share, Smartphone, X } from "lucide-react";
 

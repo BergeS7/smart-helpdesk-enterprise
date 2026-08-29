@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de auth; associa endpoints aos middlewares e controladores autorizados.
+ */
 const express = require("express");
 const router = express.Router();
 const { login, loginUsuario, loginAdmin, solicitarRecuperacaoSenha, redefinirSenha } = require("../controllers/authController");

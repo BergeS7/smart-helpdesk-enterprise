@@ -1,4 +1,7 @@
 /**
+ * Responsabilidade: Estrutura ou migração de banco relacionada a 1735689600000 baseline.
+ */
+/**
  * Marco de adoção do node-pg-migrate.
  *
  * O schema até esta data foi aplicado manualmente via docker/postgres/init/*.sql

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo funcional de kanban workspace; reúne interface e ações do respectivo fluxo.
+ */
 import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { AlertTriangle, ArrowRight, CheckCircle2, CircleDot, Clock3, Columns3, List, Mail, MapPin, MessageSquare, Monitor, Paperclip, PauseCircle, RefreshCw, Rows3, Ticket } from "lucide-react";
 import { type ApiChamado } from "../../services/api";

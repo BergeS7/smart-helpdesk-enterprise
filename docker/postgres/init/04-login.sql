@@ -1,3 +1,4 @@
+-- Responsabilidade: Configuração de infraestrutura de 04 login.
 ALTER TABLE usuarios
 ADD COLUMN IF NOT EXISTS perfil VARCHAR(20) NOT NULL DEFAULT 'usuario';
 

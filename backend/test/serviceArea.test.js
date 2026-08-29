@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam service area.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { municipalities, unitFor, validLocation } = require('../src/domain/serviceArea');

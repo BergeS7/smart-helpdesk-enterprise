@@ -1,3 +1,4 @@
+-- Responsabilidade: Configuração de infraestrutura de 02 update schema.
 -- Rode este arquivo no banco smart_helpdesk se você já criou as tabelas antes.
 -- Ele adiciona os campos novos sem apagar os chamados existentes.
 

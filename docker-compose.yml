@@ -1,3 +1,4 @@
+# Responsabilidade: orquestra banco, Redis, API e frontend na stack conteinerizada.
 services:
   database:
     image: postgres:16-alpine

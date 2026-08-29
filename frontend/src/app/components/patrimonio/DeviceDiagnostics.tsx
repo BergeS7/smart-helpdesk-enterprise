@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de device diagnostics; apresenta dados e interações do usuário.
+ */
 import { Activity, Cpu, HardDrive, History, Laptop, MapPin, MemoryStick, RefreshCw, ShieldCheck, Ticket, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Device } from "../../types/device";

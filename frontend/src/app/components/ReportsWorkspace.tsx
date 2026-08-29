@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de reports workspace; apresenta dados e interações do usuário.
+ */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BarChart3, CalendarDays, CheckCircle2, Clock3, Download, FileSpreadsheet, FileText, Gauge, ShieldCheck, Star, Users } from "lucide-react";
 import { obterMetricasRelatorio, type ApiChamado, type FiltrosChamados, type ReportMetrics } from "../services/api";

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de my satisfaction page; apresenta dados e interações do usuário.
+ */
 import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, Clock3, MessageSquare, ShieldCheck, Star, Target } from "lucide-react";
 import { obterMinhaPerformance, type MyPerformanceDashboard } from "../services/api";

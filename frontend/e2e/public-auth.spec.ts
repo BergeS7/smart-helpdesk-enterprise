@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de public auth spec; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {

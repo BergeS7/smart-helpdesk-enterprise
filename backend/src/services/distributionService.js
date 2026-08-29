@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de distribution; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool = require("../config/database");
 
 const ACTIVE_STATUSES = ["OPEN", "IN_PROGRESS", "WAITING_USER", "WAITING_THIRD_PARTY", "REOPENED"];

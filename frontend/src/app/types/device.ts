@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Tipos compartilhados do domínio de device.
+ */
 export type DeviceStatus = "online" | "warning" | "offline";
 
 export type DeviceMetrics = {

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Funções utilitárias de profile photo, sem responsabilidade de interface.
+ */
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");

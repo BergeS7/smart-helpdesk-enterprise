@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260826 asset user ratings.
 -- Permite que o usuário diretamente vinculado ao ativo avalie chamados
 -- abertos pela equipe técnica em nome dele.
 ALTER TABLE ativos

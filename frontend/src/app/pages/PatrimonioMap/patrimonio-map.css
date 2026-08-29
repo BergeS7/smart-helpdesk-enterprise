@@ -1,3 +1,4 @@
+/* Responsabilidade: Página de patrimonio map; compõe a experiência e os dados desta área do sistema. */
 .patrimonio-module .leaflet-container { background-color: #b9dcd3; background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,.28) 0 2px, transparent 3px), radial-gradient(circle at 70% 65%, rgba(23,57,74,.08) 0 1px, transparent 2px); background-size: 38px 38px, 24px 24px; font-family: inherit; z-index: 0; }
 .patrimonio-module .leaflet-control-zoom a { color: #334155; border-radius: 8px !important; }
 .patrimonio-module .leaflet-tooltip { border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 14px 35px rgba(15,23,42,.14); padding: 10px 12px; }

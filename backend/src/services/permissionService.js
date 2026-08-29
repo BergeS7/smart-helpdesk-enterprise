@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de permission; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool = require("../config/database");
 const { normalizarPerfil } = require("../utils/permissoes");
 

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de ticket status; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 export const TICKET_STATUS = {
   OPEN: "OPEN",
   IN_PROGRESS: "IN_PROGRESS",

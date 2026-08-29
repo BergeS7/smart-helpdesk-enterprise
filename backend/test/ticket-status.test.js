@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam ticket status.
+ */
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { STATUS, canonicalize, label, isFinal, canTransition } = require("../src/domain/ticketStatus");

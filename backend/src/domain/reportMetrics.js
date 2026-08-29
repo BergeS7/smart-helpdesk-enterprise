@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de report metrics; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 const { isFinal, label: statusLabel } = require('./ticketStatus');
 
 const validDate = (value) => {

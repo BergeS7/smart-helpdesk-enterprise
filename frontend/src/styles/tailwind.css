@@ -1,3 +1,4 @@
+/* Responsabilidade: Estilos de tailwind; define apresentação, estados visuais e responsividade. */
 @import 'tailwindcss' source(none);
 @source '../**/*.{js,ts,jsx,tsx}';
 

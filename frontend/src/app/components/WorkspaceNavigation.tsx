@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de workspace navigation; apresenta dados e interações do usuário.
+ */
 import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { TAB_ICONS, TAB_LABELS, type AdminRouteKey, type NavigationArea } from "../navigation/adminNavigation";

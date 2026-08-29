@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260720 teams enterprise.
 -- Enterprise Teams: idempotent migration for existing installations.
 CREATE TABLE IF NOT EXISTS teams (
   id SERIAL PRIMARY KEY,

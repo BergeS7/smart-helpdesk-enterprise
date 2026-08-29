@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Automação de check jsx bindings; executa uma tarefa operacional ou de geração do projeto.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { parse } from "@babel/parser";

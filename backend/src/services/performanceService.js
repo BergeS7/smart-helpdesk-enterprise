@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de performance; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool = require("../config/database");
 const FINAL = ["RESOLVED", "CLOSED", "CANCELED"];
 const clamp = (value, min, max) =>

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de notification; valida a requisição e coordena regras e persistência.
+ */
 const pool = require("../config/database");
 
 const listarNotificacoes = async (req, res) => {

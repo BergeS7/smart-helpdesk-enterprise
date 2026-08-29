@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam ticket policy.
+ */
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const policy = require("../src/policies/ticketPolicy");

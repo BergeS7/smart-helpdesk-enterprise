@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Configuração compartilhada de test connection; inicializa integrações e parâmetros de infraestrutura.
+ */
 const pool = require("./database");
 
 async function testConnection() {

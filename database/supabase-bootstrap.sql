@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a supabase bootstrap.
 \set ON_ERROR_STOP on
 
 -- Bootstrap completo para um projeto Supabase/PostgreSQL vazio.

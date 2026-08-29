@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Funções utilitárias de supabase storage, sem responsabilidade de interface.
+ */
 const crypto = require("crypto");
 const path = require("path");
 const { obterSupabase } = require("../config/supabase");

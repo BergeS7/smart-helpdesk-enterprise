@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260818 p1 ticket location.
 BEGIN;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS municipio VARCHAR(150);
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS unidade VARCHAR(180);

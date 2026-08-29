@@ -1,3 +1,8 @@
+/**
+ * Responsabilidade: análise de satisfação e desempenho da equipe.
+ * Compartilha filtros mensais entre a gaveta resumida e a visão analítica,
+ * apresentando métricas, ranking, notas e comentários recebidos da API.
+ */
 import { useEffect, useMemo, useState } from "react";
 import {
   Award,

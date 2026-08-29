@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de user; associa endpoints aos middlewares e controladores autorizados.
+ */
 const express = require("express");
 const router = express.Router();
 const { registrationLimiter, uploadLimiter } = require("../middlewares/securityMiddleware");

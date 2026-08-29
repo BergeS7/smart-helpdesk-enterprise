@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a funcionalidades usuario update.
 -- Smart HelpDesk — funcionalidades do portal do usuário e chamados
 -- Execute este arquivo no banco smart_helpdesk.
 

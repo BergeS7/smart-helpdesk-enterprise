@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de asset schema; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool = require("../config/database");
 async function ensureAssetSchema() {
   await pool.query(`

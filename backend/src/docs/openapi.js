@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de openapi; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 // Documento OpenAPI estático, escrito a partir da leitura real das rotas em
 // backend/src/routes/*.js e montado no app.js. Cobre método, caminho,
 // autenticação exigida e agrupamento por domínio; não inventa endpoints nem

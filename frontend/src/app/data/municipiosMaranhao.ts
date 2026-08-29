@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de municipios maranhao; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 import type { Municipio } from "../types/device";
 
 export const municipiosMaranhao: Municipio[] = [

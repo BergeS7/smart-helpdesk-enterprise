@@ -1,3 +1,8 @@
+/**
+ * Responsabilidade: ciclo de vida completo dos chamados.
+ * Coordena autorização, SLA, prioridade, distribuição, comentários, anexos,
+ * auditoria, notificações e relatórios para solicitantes e equipe.
+ */
 const pool = require("../config/database");
 const { decidirPrioridadeChamado } = require("../services/prioridadeIAService");
 const { carregarConfiguracoesObjeto } = require("./settingsController");
@@ -116,6 +121,7 @@ async function calcularSLAConfiguravel(prioridade) {
 }
 
 let sincronizacaoSlaAtivos = null;
+// Normaliza prazos antigos uma única vez por processo antes das leituras de SLA.
 async function sincronizarSlaChamadosAtivosUmaVez() {
   if (!sincronizacaoSlaAtivos) {
     sincronizacaoSlaAtivos = (async () => {
@@ -219,6 +225,7 @@ async function escolherResponsavelAutomatico({ departamento, categoria }) {
   return result.rows[0] || null;
 }
 
+// Detecta chamados próximos do vencimento e evita repetir alertas já enviados.
 async function verificarAlertasSla(req = null) {
   const sistemaReq = req || { user: { id: null, nome: "Sistema", perfil: "sistema" } };
   const result = await pool.query(
@@ -376,6 +383,7 @@ async function registrarMovimentacao(chamadoId, req, tipo, descricao) {
   await registrarAuditoria(req, "chamado", chamadoId, tipo, descricao);
 }
 
+// Monta a visão agregada consumida pela tela de detalhes e pelo PDF histórico.
 async function carregarDetalhesChamado(req, chamado) {
   const [comentarios, anexos, movimentacoes, avaliacao] = await Promise.all([
     pool.query(
@@ -473,6 +481,7 @@ async function detectarDuplicidade({ setor, titulo, descricao, categoria }) {
   return null;
 }
 
+// Criação transacional: classifica, calcula SLA, detecta duplicidade e distribui.
 const criarChamado = async (req, res) => {
   try {
     const { titulo, descricao, tipo_chamado, ativo_id } = req.body;
@@ -605,6 +614,7 @@ const criarChamado = async (req, res) => {
   }
 };
 
+// Converte filtros da API em SQL parametrizado e limitado ao escopo do perfil.
 function montarFiltrosChamados(query, req) {
   const params = [];
   const where = [];
@@ -780,6 +790,7 @@ const buscarChamadoPorId = async (req, res) => {
   }
 };
 
+// Atualiza atributos operacionais e registra mudanças relevantes no histórico.
 const atualizarChamado = async (req, res) => {
   try {
     const { id } = req.params;

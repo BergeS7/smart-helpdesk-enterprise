@@ -1,3 +1,8 @@
+/**
+ * Responsabilidade: composição principal da aplicação Smart HelpDesk.
+ * Mantém o shell e as jornadas históricas de login, portal do solicitante,
+ * painel da equipe e detalhe; módulos recentes são carregados sob demanda.
+ */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CSSProperties,
@@ -191,6 +196,7 @@ type AdminTab = AdminRouteKey;
 type UsuarioTab =
   "home" | "chamados" | "base" | "avisos" | "dashboard" | "relatorios";
 
+// Restaura filtros compartilháveis diretamente da URL do navegador.
 function ticketFiltersFromUrl():FiltrosChamados{
   const params=new URLSearchParams(window.location.search),result:FiltrosChamados={};
   const textKeys=(['q','status','prioridade','departamento','municipio','unidade','team_id','usuario','data_inicio','data_fim','responsavel','responsavel_id','tipo_chamado','categoria'] as const);
@@ -391,6 +397,7 @@ function variaveisTemaSistema(
   } as CSSProperties;
 }
 
+// Converte a identidade configurada no backend em variáveis CSS globais.
 function SystemThemeStyle() {
   return (
     <style>{`
@@ -792,6 +799,7 @@ export default function App() {
   );
 }
 
+// Jornada pública de autenticação, recuperação e primeiro acesso.
 function LoginScreen({
   onLogin,
   configSistema,
@@ -1283,6 +1291,7 @@ function LoginScreen({
   );
 }
 
+// Área do solicitante: abertura, consulta, comentários e acompanhamento.
 function UserPortal({
   usuario,
   setUsuario,
@@ -3510,6 +3519,7 @@ function UsuarioCampoReadOnly({
   );
 }
 
+// Shell autenticado da equipe, responsável por navegação e dados operacionais.
 function AdminPanel({
   usuario,
   setUsuario,
@@ -7126,6 +7136,7 @@ function DashboardView({
   );
 }
 
+// Visão consolidada do chamado com histórico, anexos e ações autorizadas.
 function ChamadoDetalhe({
   chamado,
   usuario,

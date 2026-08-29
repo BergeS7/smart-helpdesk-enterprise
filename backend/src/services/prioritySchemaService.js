@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de priority schema; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool=require("../config/database");
 async function ensurePrioritySchema(){await pool.query(`
  ALTER TABLE chamados ADD COLUMN IF NOT EXISTS prioridade_ia_confianca NUMERIC(5,2);

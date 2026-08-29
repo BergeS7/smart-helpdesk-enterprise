@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260820 asset inventory history.
 BEGIN;
 ALTER TABLE ativos ADD COLUMN IF NOT EXISTS inventory_json JSONB;
 ALTER TABLE ativos ADD COLUMN IF NOT EXISTS schema_version INTEGER;

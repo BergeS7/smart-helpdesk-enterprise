@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de municipio summary; apresenta dados e interações do usuário.
+ */
 import type { MunicipioSummary as Summary } from "../../types/device";
 
 export function MunicipioSummary({ rows, expanded, onToggle, onSelect }: { rows: Summary[]; expanded: boolean; onToggle: () => void; onSelect: (municipio: string) => void }) {

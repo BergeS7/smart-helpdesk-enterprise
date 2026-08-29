@@ -1,3 +1,4 @@
+-- Responsabilidade: Configuração de infraestrutura de 07 profiles permissions.
 -- Atualização de perfis e permissões do Smart HelpDesk
 -- Perfis oficiais: usuario, tecnico, admin, desenvolvedor
 

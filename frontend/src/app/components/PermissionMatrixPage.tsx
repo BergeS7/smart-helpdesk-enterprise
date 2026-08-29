@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de permission matrix page; apresenta dados e interações do usuário.
+ */
 import { useCallback, useEffect, useState } from "react";
 import { Check, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { listarCatalogoPermissoes, obterPermissoesUsuario, type ApiUsuario, type PermissionDefinition, type PermissionKey } from "../services/api";

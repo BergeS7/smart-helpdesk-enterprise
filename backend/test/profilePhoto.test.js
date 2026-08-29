@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam profile photo.
+ */
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const uploadFotoPerfil = require("../src/middlewares/profilePhotoUploadMiddleware");

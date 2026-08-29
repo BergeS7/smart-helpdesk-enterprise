@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de ticket kanban; apresenta dados e interações do usuário.
+ */
 import React from "react";
 
 const columns = [

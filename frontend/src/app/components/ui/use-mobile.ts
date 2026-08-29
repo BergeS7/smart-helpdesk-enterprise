@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de use mobile, usado como base consistente da interface.
+ */
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;

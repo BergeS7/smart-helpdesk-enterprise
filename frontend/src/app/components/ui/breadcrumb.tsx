@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de breadcrumb, usado como base consistente da interface.
+ */
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { ChevronRight, MoreHorizontal } from "lucide-react";

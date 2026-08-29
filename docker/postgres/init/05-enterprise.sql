@@ -1,3 +1,4 @@
+-- Responsabilidade: Configuração de infraestrutura de 05 enterprise.
 -- Smart HelpDesk - atualização empresarial completa
 -- Execute no banco smart_helpdesk:
 -- & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -d smart_helpdesk -f database\helpdesk_empresarial_update.sql

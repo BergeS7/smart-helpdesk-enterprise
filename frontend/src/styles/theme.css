@@ -1,3 +1,4 @@
+/* Responsabilidade: Estilos de theme; define apresentação, estados visuais e responsividade. */
 @custom-variant dark (&:is(.dark *));
 
 :root {

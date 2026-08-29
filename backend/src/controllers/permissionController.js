@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de permission; valida a requisição e coordena regras e persistência.
+ */
 const pool = require("../config/database");
 const { PERMISSIONS, listUserPermissions, replaceUserPermissions } = require("../services/permissionService");
 

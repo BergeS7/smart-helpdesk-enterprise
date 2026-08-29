@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de admin navigation; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 import { Activity, BarChart3, BookOpen, Headphones, LayoutDashboard, MapPinned, Settings, ShieldCheck, Ticket, Users } from "lucide-react";
 import type { PermissionKey } from "../services/api";
 

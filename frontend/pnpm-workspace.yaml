@@ -1,3 +1,4 @@
+# Responsabilidade: Configuração de infraestrutura de pnpm workspace.
 packages:
   - '.'
 supportedArchitectures:

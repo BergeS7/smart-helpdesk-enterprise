@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de device details; apresenta dados e interações do usuário.
+ */
 import { Activity, Clock3, History, MapPin, ShieldCheck, Ticket, X } from "lucide-react";
 import type { Device } from "../../types/device";
 

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de settings; valida a requisição e coordena regras e persistência.
+ */
 const pool = require("../config/database");
 const { ehDesenvolvedor } = require("../utils/permissoes");
 const { enviarArquivo, removerArquivo, urlPublica, lerReferencia } = require("../utils/supabaseStorage");

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de system diagnostics; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool = require("../config/database");
 const { getRedisClient } = require("../config/redis");
 const { metricsSnapshot } = require("./requestMetricsService");

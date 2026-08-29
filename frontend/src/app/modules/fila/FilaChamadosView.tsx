@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo funcional de fila chamados view; reúne interface e ações do respectivo fluxo.
+ */
 import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type SelectHTMLAttributes } from "react";
 import { AlertTriangle, Check, CheckCircle2, ChevronDown, Clock3, Headphones, ListChecks, MapPin, MessageSquare, Monitor, ShieldAlert, SlidersHorizontal, Ticket, UserCheck, UserCog, Users, X } from "lucide-react";
 import { toast } from "sonner";

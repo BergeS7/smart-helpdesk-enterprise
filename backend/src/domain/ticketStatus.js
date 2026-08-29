@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de ticket status; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 const STATUS = Object.freeze({
   OPEN: "OPEN",
   IN_PROGRESS: "IN_PROGRESS",

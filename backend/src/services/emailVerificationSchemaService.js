@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de email verification schema; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool = require("../config/database");
 
 async function ensureEmailVerificationSchema() {

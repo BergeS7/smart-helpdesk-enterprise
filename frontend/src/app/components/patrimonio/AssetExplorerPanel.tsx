@@ -1,3 +1,8 @@
+/**
+ * Responsabilidade: exploração detalhada do inventário de um ativo.
+ * Coordena abas, snapshots, alertas, mudanças e diagnóstico do dispositivo,
+ * carregando dados complementares conforme a necessidade.
+ */
 import {
   Activity,
   AlertTriangle,

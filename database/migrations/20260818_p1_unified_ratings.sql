@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260818 p1 unified ratings.
 BEGIN;
 
 ALTER TABLE performance_ratings ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'detailed';

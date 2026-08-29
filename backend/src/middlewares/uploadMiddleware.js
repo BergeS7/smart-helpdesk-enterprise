@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Middleware de upload; intercepta requisições antes ou depois dos controladores.
+ */
 const multer = require("multer");
 
 const tiposPermitidos = [

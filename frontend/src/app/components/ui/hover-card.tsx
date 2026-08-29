@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de hover card, usado como base consistente da interface.
+ */
 "use client";
 
 import * as React from "react";

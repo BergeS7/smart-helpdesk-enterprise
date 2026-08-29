@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam permissions.
+ */
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { normalizarPerfil, ehEquipe, ehAdmin } = require("../src/utils/permissoes");

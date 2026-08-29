@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de redis cache; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const { getRedisClient } = require("../config/redis");
 
 function readyClient() {

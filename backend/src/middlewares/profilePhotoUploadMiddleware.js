@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Middleware de profile photo upload; intercepta requisições antes ou depois dos controladores.
+ */
 const multer = require("multer");
 const tiposPermitidos = new Set(["image/png", "image/jpeg", "image/webp"]);
 const limiteFotoPerfilBytes = 5 * 1024 * 1024;

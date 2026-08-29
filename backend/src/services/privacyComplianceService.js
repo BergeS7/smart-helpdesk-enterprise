@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de privacy compliance; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool = require("../config/database");
 
 const LEGAL_VERSION = "2026-08-08";

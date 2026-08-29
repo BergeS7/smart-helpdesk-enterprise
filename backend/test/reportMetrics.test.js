@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam report metrics.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { buildReportMetrics } = require('../src/domain/reportMetrics');

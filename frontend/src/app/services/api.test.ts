@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam api.
+ */
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {

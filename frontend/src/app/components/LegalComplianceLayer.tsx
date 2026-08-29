@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de legal compliance layer; apresenta dados e interações do usuário.
+ */
 import { useEffect, useState } from "react";
 import { Cookie, FileText, X } from "lucide-react";
 

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de team; valida a requisição e coordena regras e persistência.
+ */
 const pool = require("../config/database");
 
 const MODES = new Set(["manual", "round_robin", "least_load"]);

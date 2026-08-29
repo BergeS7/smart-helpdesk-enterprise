@@ -1,3 +1,4 @@
+-- Responsabilidade: Configuração de infraestrutura de 06 full features.
 -- Smart HelpDesk — pacote completo de melhorias funcionais
 -- Execute no banco smart_helpdesk depois das atualizações anteriores.
 -- Windows exemplo:

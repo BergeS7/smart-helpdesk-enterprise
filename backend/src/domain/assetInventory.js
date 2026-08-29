@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de asset inventory; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 const crypto = require("crypto");
 
 const CHANGE_RULES = [

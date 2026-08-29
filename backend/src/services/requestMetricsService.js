@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de request metrics; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const samples = [];
 const counters = { total: 0, errors5xx: 0 };
 const MAX_SAMPLES = 1000;

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Página de patrimonio map page; compõe a experiência e os dados desta área do sistema.
+ */
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {

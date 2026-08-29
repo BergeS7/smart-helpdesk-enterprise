@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de patrimonio map; apresenta dados e interações do usuário.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";

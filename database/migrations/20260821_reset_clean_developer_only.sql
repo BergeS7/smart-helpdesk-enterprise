@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260821 reset clean developer only.
 -- ATENCAO: limpeza destrutiva e irreversivel sem backup.
 -- Mantem somente contas com perfil desenvolvedor e configuracoes tecnicas neutras.
 -- Execute manualmente apenas depois de confirmar o backup e as contas preservadas.
