@@ -1,3 +1,7 @@
+/**
+ * Responsabilidade: contrato único de comunicação do frontend com a API.
+ * Centraliza tipos, sessão, autenticação, erros e operações de cada recurso.
+ */
 export const API_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
 
@@ -103,6 +107,7 @@ export async function reportFrontendError(error: Error, componentStack?: string)
   } catch { /* O registro de erro não pode provocar uma segunda falha na interface. */ }
 }
 
+// Executa JSON autenticado, normaliza falhas e encerra sessões expiradas.
 async function request<T>(
   path: string,
   options: RequestOptions = {},
@@ -802,6 +807,7 @@ export function anexarArquivos(
     isFormData: true,
   });
 }
+// Usa Blob para baixar conteúdo protegido sem colocar o token na URL.
 export async function baixarAnexoChamado(
   chamadoId: number | string,
   anexo: ApiAnexo,
@@ -892,6 +898,7 @@ export function urlRelatorio(
   if (token) qs.set("download_token_ignored", "1");
   return `${API_URL}/chamados/relatorios/${formato}${qs.toString() ? `?${qs}` : ""}`;
 }
+// Baixa relatórios autenticados e preserva o nome indicado pelo servidor.
 export async function baixarRelatorio(
   formato: "csv" | "excel" | "pdf",
   filtros: FiltrosChamados = {},

@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260820 pause sla waiting user.
 ALTER TABLE chamados
   ADD COLUMN IF NOT EXISTS sla_pausado_em TIMESTAMP,
   ADD COLUMN IF NOT EXISTS sla_tempo_pausado_segundos BIGINT NOT NULL DEFAULT 0;

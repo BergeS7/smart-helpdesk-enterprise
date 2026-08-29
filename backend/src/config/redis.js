@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Configuração compartilhada de redis; inicializa integrações e parâmetros de infraestrutura.
+ */
 const { createClient } = require("redis");
 
 const redisUrl = process.env.REDIS_URL || "";

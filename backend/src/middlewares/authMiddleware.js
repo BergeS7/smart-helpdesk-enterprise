@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Middleware de auth; intercepta requisições antes ou depois dos controladores.
+ */
 const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
 const { normalizarPerfil, temPerfil } = require("../utils/permissoes");

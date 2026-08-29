@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de performance rating card; apresenta dados e interações do usuário.
+ */
 import { useMemo, useState } from "react";
 import { CheckCircle2, MessageSquare, Send, Star } from "lucide-react";
 import type { ApiChamado } from "../services/api";

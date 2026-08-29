@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de app; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 const express = require("express");
 const path = require("path");
 const swaggerUi = require("swagger-ui-express");

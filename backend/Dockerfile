@@ -1,3 +1,4 @@
+# Responsabilidade: Imagem de contêiner de dockerfile; prepara dependências e execução do serviço.
 FROM node:22-bookworm-slim
 
 ENV NODE_ENV=production

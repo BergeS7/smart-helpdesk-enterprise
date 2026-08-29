@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a smart helpdesk full features update.
 -- Smart HelpDesk — pacote completo de melhorias funcionais
 -- Execute no banco smart_helpdesk depois das atualizações anteriores.
 -- Windows exemplo:

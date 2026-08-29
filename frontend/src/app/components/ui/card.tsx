@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de card, usado como base consistente da interface.
+ */
 import * as React from "react";
 
 import { cn } from "./utils";

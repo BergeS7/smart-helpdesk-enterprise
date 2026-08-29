@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a schema.
 CREATE DATABASE smart_helpdesk;
 
 \c smart_helpdesk;

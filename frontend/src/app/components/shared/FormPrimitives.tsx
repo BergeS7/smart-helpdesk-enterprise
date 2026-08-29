@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de form primitives; apresenta dados e interações do usuário.
+ */
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
 

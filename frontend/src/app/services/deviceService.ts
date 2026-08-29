@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de device; concentra regras reutilizáveis fora da camada HTTP.
+ */
 import { API_URL, getToken } from "./api";
 import type { AssetAlert, AssetChange, AssetInventory, AssetSnapshot, Device, DeviceAlert, DeviceHistory, MunicipioSummary } from "../types/device";
 async function assetRequest<T>(path: string): Promise<T> { const response=await fetch(`${API_URL}/assets${path}`,{headers:{Authorization:`Bearer ${getToken()||""}`}}); const data=await response.json().catch(()=>null); if(!response.ok) throw new Error(data?.erro||"Erro ao consultar ativos"); return data as T; }

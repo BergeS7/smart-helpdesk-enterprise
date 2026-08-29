@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de ticket evaluation access; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const pool = require("../config/database");
 
 function emailNormalizado(value) {

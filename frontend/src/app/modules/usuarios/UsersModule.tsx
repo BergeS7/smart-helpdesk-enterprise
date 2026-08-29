@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo funcional de users module; reúne interface e ações do respectivo fluxo.
+ */
 import { useEffect, useState, type FormEvent } from "react";
 import { MapPin, Search, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de performance; associa endpoints aos middlewares e controladores autorizados.
+ */
 const router=require("express").Router();
 const auth=require("../middlewares/authMiddleware");
 const performance=require("../controllers/performanceController");

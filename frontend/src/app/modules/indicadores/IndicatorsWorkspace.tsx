@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo funcional de indicators workspace; reúne interface e ações do respectivo fluxo.
+ */
 import { useMemo, useState, type ReactNode } from "react";
 import { Activity, AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock3, Filter, MapPin, Monitor, PauseCircle, RotateCcw, Ticket, UserRound, Users, X } from "lucide-react";
 import type { ApiChamado } from "../../services/api";

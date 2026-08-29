@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a login update.
 ALTER TABLE usuarios
 ADD COLUMN IF NOT EXISTS perfil VARCHAR(20) NOT NULL DEFAULT 'usuario';
 

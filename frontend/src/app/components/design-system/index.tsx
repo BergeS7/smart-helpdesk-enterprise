@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de index; apresenta dados e interações do usuário.
+ */
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 

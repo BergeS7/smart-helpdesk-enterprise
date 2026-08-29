@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de app error boundary; apresenta dados e interações do usuário.
+ */
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw, RotateCcw } from "lucide-react";
 import { reportFrontendError } from "../services/api";

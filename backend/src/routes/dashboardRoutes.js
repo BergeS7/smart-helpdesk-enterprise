@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de dashboard; associa endpoints aos middlewares e controladores autorizados.
+ */
 const express = require("express");
 const router = express.Router();
 const { obterDashboard } = require("../controllers/dashboardController");

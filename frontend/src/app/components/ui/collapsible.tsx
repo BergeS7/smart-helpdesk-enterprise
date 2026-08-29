@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de collapsible, usado como base consistente da interface.
+ */
 "use client";
 
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de operational state; apresenta dados e interações do usuário.
+ */
 import type { LucideIcon } from "lucide-react";
 import { AlertTriangle, Inbox, LoaderCircle, RefreshCw } from "lucide-react";
 

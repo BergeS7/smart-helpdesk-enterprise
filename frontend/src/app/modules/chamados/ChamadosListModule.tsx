@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo funcional de chamados list module; reúne interface e ações do respectivo fluxo.
+ */
 import { useMemo, useState, type ReactNode } from "react";
 import { AlertTriangle, ArrowRight, Clock3, Grid2X2, List, MapPin, Monitor, Rows3, Search, Ticket, UserRound, X } from "lucide-react";
 import type { ApiChamado } from "../../services/api";

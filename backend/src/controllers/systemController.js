@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de system; valida a requisição e coordena regras e persistência.
+ */
 const { diagnostics, recordError } = require("../services/systemDiagnosticsService");
 
 async function health(_req, res) {

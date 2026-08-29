@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Hook React de use smart help desk session; encapsula estado e efeitos reutilizáveis.
+ */
 import { useCallback, useEffect, useState } from "react";
 import {
   atualizarUsuarioLocal,

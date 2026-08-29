@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Página de operational dashboard; compõe a experiência e os dados desta área do sistema.
+ */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,

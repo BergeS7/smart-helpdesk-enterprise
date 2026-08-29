@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Middleware de security; intercepta requisições antes ou depois dos controladores.
+ */
 const cors = require("cors");
 const helmet = require("helmet");
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");

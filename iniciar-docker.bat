@@ -1,4 +1,5 @@
 @echo off
+REM Responsabilidade: valida a configuração e inicia os contêineres do Smart HelpDesk.
 setlocal
 cd /d "%~dp0"
 if not exist .env (

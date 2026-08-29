@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de permission dialog; apresenta dados e interações do usuário.
+ */
 import { useEffect, useState } from "react";
 import { BarChart3, Check, Download, FilePenLine, MapPinned, Settings, ShieldCheck, Ticket, UserCog, X } from "lucide-react";
 import { atualizarPermissoesUsuario, listarCatalogoPermissoes, obterPermissoesUsuario, type ApiUsuario, type PermissionDefinition, type PermissionKey } from "../services/api";

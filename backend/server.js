@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de server; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 require("dotenv").config();
 const { validateProductionSecurity } = require("./src/config/security");
 validateProductionSecurity();

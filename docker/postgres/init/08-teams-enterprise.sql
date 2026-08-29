@@ -1,3 +1,4 @@
+-- Responsabilidade: Configuração de infraestrutura de 08 teams enterprise.
 -- Kept in the Docker initialization folder for fresh volumes.
 CREATE TABLE IF NOT EXISTS teams (
   id SERIAL PRIMARY KEY,

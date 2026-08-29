@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de enterprise dashboard; apresenta dados e interações do usuário.
+ */
 import React from "react";
 
 export default function EnterpriseDashboard() {

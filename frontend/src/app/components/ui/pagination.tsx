@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de pagination, usado como base consistente da interface.
+ */
 import * as React from "react";
 import {
   ChevronLeftIcon,

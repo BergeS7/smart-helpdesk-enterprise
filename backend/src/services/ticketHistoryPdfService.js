@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de ticket history pdf; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const PDFDocument = require("pdfkit");
 
 const COLORS = {

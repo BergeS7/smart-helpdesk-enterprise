@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de global command palette; apresenta dados e interações do usuário.
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,

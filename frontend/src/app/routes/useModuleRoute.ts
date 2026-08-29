@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de use module route; associa endpoints aos middlewares e controladores autorizados.
+ */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type RouteValue = string | readonly string[];

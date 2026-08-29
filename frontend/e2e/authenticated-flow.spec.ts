@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de authenticated flow spec; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 import { expect, test } from "@playwright/test";
 
 const email = process.env.E2E_EMAIL;

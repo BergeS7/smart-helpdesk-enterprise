@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de aspect ratio, usado como base consistente da interface.
+ */
 "use client";
 
 import * as AspectRatioPrimitive from "@radix-ui/react-aspect-ratio";

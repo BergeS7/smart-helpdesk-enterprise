@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de device filters; apresenta dados e interações do usuário.
+ */
 import { Search, X } from "lucide-react";
 import type { DeviceStatus } from "../../types/device";
 

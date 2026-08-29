@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de report; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const ExcelJS = require("exceljs");
 const PDFDocument = require("pdfkit");
 

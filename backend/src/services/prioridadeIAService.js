@@ -1,3 +1,8 @@
+/**
+ * Responsabilidade: classificação explicável de prioridade e categoria.
+ * A decisão é determinística e combina texto, impacto, urgência, departamento
+ * e casos empresariais, devolvendo justificativas auditáveis.
+ */
 function normalizarTexto(valor) {
   return String(valor || "")
     .normalize("NFD")
@@ -198,6 +203,7 @@ const pesosPorDepartamento = [
   { departamento: "marketing", peso: -5, motivo: "Departamento marketing tende a ter menor urgência técnica, salvo casos críticos." },
 ];
 
+// Reconhece situações conhecidas que elevam impacto ou urgência operacional.
 function analisarCasosEmpresariais({ setor, titulo, descricao }) {
   const textoSetor = normalizarTexto(setor);
   const textoGeral = normalizarTexto(`${setor} ${titulo} ${descricao}`);
@@ -275,6 +281,7 @@ function gerarRespostaInicial({ titulo, setor, categoria, prioridade }) {
   return `Olá, recebemos seu chamado da área ${area}. A prioridade inicial foi classificada como ${prioridade} e o suporte iniciará a triagem.`;
 }
 
+// Pontua impacto e urgência separadamente antes da prioridade final.
 function analisarDimensoes({ titulo, descricao, setor, casos }) {
   const texto=normalizarTexto(`${titulo} ${descricao}`), tem=(termos)=>termos.filter(t=>contemTermo(texto,t));
   const negacoes=["nao esta fora do ar","nao parou","sem impacto","nao e urgente","sem urgencia"];
@@ -302,6 +309,7 @@ function analisarDimensoes({ titulo, descricao, setor, casos }) {
   return {prioridade,pontuacao,confianca,dimensoes:{impacto,urgencia,abrangencia,risco},sinais,negacao_detectada:negado,perguntas_pendentes:perguntas,regra_decisiva:decisivo,requer_triagem:confianca<65};
 }
 
+// Ponto de entrada público da classificação, com decisão e explicações.
 function decidirPrioridadeChamado({ setor, titulo, descricao }) {
   const motivos = [];
   const casos = analisarCasosEmpresariais({ setor, titulo, descricao });

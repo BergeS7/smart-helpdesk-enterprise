@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260821 email verification.
 BEGIN;
 
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado_em TIMESTAMPTZ;

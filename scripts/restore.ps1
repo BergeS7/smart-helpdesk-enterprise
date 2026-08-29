@@ -1,3 +1,4 @@
+# Responsabilidade: Automação de restore; executa uma tarefa operacional ou de geração do projeto.
 param(
   [Parameter(Mandatory=$true)][string]$DatabaseBackup,
   [string]$UploadsBackup = ""

@@ -1,4 +1,5 @@
 @echo off
+REM Responsabilidade: encerra a stack Docker do Smart HelpDesk de forma controlada.
 setlocal
 cd /d "%~dp0"
 docker compose down

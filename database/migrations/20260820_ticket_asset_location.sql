@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260820 ticket asset location.
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_id BIGINT;
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_hostname VARCHAR(255);
 ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_patrimonio VARCHAR(100);

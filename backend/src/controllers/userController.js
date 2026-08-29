@@ -1,3 +1,8 @@
+/**
+ * Responsabilidade: cadastro, aprovação, perfil e ciclo de vida dos usuários.
+ * Separa jornadas pública e administrativa, protege credenciais e códigos e
+ * registra ações sensíveis na auditoria.
+ */
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const pool = require("../config/database");
@@ -73,6 +78,7 @@ function usuarioIdDoRequest(req) {
   return req.user?.id || req.usuario?.id || null;
 }
 
+// Produz o contrato seguro devolvido ao frontend e resolve a foto de perfil.
 async function montarUsuarioPublico(usuario, req = null) {
   return {
     id: usuario.id,
@@ -154,6 +160,7 @@ async function registrarAuditoria(req, entidadeId, acao, descricao) {
     .catch(() => {});
 }
 
+// Bootstrap controlado: só funciona enquanto ainda não existe administrador.
 async function criarPrimeiroAdmin(req, res) {
   try {
     const total = await pool.query("SELECT COUNT(*)::int AS total FROM usuarios");
@@ -218,6 +225,7 @@ async function criarPrimeiroAdmin(req, res) {
   }
 }
 
+// Cadastro público cria conta pendente e inicia a confirmação do e-mail.
 async function cadastrarUsuarioPublico(req, res) {
   try {
     const { nome, email, senha, telefone, departamento, municipio, unidade, cargo, aceitaTermos } = req.body;
@@ -586,6 +594,7 @@ async function rejeitarUsuario(req, res) {
   }
 }
 
+// Edição administrativa aplica restrições de hierarquia e unicidade.
 async function atualizarUsuarioAdmin(req, res) {
   try {
     const perfilAutor = perfilDoRequest(req);

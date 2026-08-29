@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Configuração compartilhada de security; inicializa integrações e parâmetros de infraestrutura.
+ */
 const crypto = require("crypto");
 
 const INSECURE_VALUES = new Set([

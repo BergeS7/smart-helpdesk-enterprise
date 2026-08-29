@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260818 p1 ticket assignment.
 BEGIN;
 
 DO $$

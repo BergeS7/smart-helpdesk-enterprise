@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Página de settings workspace; compõe a experiência e os dados desta área do sistema.
+ */
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Check, Eye, MessageSquare, Palette, Settings, Upload } from "lucide-react";
 import type { ConfiguracoesSistema, RespostaRapida } from "../../services/api";

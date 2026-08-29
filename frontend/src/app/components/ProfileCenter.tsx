@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de profile center; apresenta dados e interações do usuário.
+ */
 import { useEffect, useState, type FormEvent } from "react";
 import { Bell, Camera, Check, ChevronRight, Download, Eye, LogOut, MonitorCog, Palette, ShieldCheck, Trash2, UserCog, X } from "lucide-react";
 import type { ApiUsuario } from "../services/api";

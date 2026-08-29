@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de ticket workspace toolbar; apresenta dados e interações do usuário.
+ */
 import { Filter, Search, X } from "lucide-react";
 import { useState } from "react";
 import type { FiltrosChamados } from "../services/api";

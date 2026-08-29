@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Automação de migrate; executa uma tarefa operacional ou de geração do projeto.
+ */
 require("dotenv").config();
 const path = require("path");
 const { runner } = require("node-pg-migrate");

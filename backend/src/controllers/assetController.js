@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de asset; valida a requisição e coordena regras e persistência.
+ */
 const crypto = require("crypto");
 const pool = require("../config/database");
 const hash = (value) => crypto.createHash("sha256").update(String(value)).digest("hex");

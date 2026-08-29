@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de patrimonio stats; apresenta dados e interações do usuário.
+ */
 import { AlertTriangle, CheckCircle2, Monitor, XCircle } from "lucide-react";
 import type { Device } from "../../types/device";
 

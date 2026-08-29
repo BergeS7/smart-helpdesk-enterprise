@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de playwright config; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({

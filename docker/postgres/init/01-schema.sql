@@ -1,3 +1,4 @@
+-- Responsabilidade: Configuração de infraestrutura de 01 schema.
 -- Base schema prepared for Docker initialization.
 -- The database itself is created by POSTGRES_DB in docker-compose.yml.
 

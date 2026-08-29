@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de asset inventory panel; apresenta dados e interações do usuário.
+ */
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { acknowledgeDeviceAlert, getDeviceAlerts, getDeviceChanges, getDeviceInventory, getDeviceSnapshots } from "../../services/deviceService";

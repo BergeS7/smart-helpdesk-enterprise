@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de asset; associa endpoints aos middlewares e controladores autorizados.
+ */
 const router=require("express").Router();
 const auth=require("../middlewares/authMiddleware"); const {exigirPerfis,exigirPermissao}=require("../middlewares/authMiddleware");
 const c=require("../controllers/assetController");

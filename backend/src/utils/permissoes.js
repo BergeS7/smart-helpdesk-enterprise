@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Funções utilitárias de permissoes, sem responsabilidade de interface.
+ */
 const PERFIS = {
   USUARIO: 'usuario',
   TECNICO: 'tecnico',

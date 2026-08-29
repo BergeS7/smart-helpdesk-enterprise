@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Configuração compartilhada de supabase; inicializa integrações e parâmetros de infraestrutura.
+ */
 const { createClient } = require("@supabase/supabase-js");
 
 let clienteSupabase;

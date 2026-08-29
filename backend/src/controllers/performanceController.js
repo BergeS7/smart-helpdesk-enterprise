@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de performance; valida a requisição e coordena regras e persistência.
+ */
 const pool = require("../config/database");
 const { calculateIndicators, updatePerformance, recordRating, ranking } = require("../services/performanceService");
 const { isFinal } = require("../domain/ticketStatus");

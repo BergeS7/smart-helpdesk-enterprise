@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de system diagnostics page; apresenta dados e interações do usuário.
+ */
 import { useCallback, useEffect, useState } from "react";
 import { Activity, AlertTriangle, Bot, CheckCircle2, Clock3, Database, Gauge, RefreshCw, Server, XCircle } from "lucide-react";
 import { getSystemDiagnostics, type SystemDiagnostics } from "../services/api";

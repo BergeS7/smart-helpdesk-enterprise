@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a smart helpdesk perfis permissoes update.
 -- Atualização de perfis e permissões do Smart HelpDesk
 -- Perfis oficiais: usuario, tecnico, admin, desenvolvedor
 

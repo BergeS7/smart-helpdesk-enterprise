@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de auth; valida a requisição e coordena regras e persistência.
+ */
 const crypto = require("crypto");
 const pool = require("../config/database");
 const bcrypt = require("bcrypt");

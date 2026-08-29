@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de operational alert; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const { diagnostics } = require("./systemDiagnosticsService");
 
 let previousFingerprint = "";

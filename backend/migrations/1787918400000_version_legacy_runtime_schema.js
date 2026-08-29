@@ -1,4 +1,7 @@
 /**
+ * Responsabilidade: Estrutura ou migração de banco relacionada a 1787918400000 version legacy runtime schema.
+ */
+/**
  * Consolida as rotinas legadas que alteravam o schema depois que o Express já
  * estava aceitando tráfego. Cada rotina é idempotente e passa a ser registrada
  * pelo node-pg-migrate como uma única etapa de compatibilidade.

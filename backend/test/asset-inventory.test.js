@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam asset inventory.
+ */
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const inventory = require("../src/domain/assetInventory");

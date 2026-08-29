@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de index; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);

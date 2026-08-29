@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Configuração compartilhada de database; inicializa integrações e parâmetros de infraestrutura.
+ */
 require("dotenv").config();
 
 const { Pool } = require("pg");

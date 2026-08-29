@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de service area; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 const municipalities = Object.freeze([
   'Santa Inês', 'Santa Luzia do Tide', 'Bom Jardim', 'Pio XII', 'Brejo de Areia',
   'Alto Alegre do Pindaré', 'Vitória do Mearim', 'Luís Domingues', 'Amapá do Maranhão',

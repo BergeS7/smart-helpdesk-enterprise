@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Controlador HTTP de maintenance; valida a requisição e coordena regras e persistência.
+ */
 const pool = require("../config/database");
 
 function normalizarTexto(valor) {

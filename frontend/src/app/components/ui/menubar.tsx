@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de menubar, usado como base consistente da interface.
+ */
 "use client";
 
 import * as React from "react";

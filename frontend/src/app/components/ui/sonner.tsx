@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de sonner, usado como base consistente da interface.
+ */
 "use client";
 
 import { useTheme } from "next-themes";

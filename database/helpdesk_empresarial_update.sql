@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a helpdesk empresarial update.
 -- Smart HelpDesk - atualização empresarial completa
 -- Execute no banco smart_helpdesk:
 -- & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -d smart_helpdesk -f database\helpdesk_empresarial_update.sql

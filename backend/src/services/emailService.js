@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de email; concentra regras reutilizáveis fora da camada HTTP.
+ */
 const nodemailer = require("nodemailer");
 
 function emailConfigurado() {

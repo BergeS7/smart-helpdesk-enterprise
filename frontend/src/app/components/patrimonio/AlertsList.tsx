@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de alerts list; apresenta dados e interações do usuário.
+ */
 import { AlertTriangle, Info, XCircle } from "lucide-react";
 import type { DeviceAlert } from "../../types/device";
 

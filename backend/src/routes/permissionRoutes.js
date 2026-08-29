@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de permission; associa endpoints aos middlewares e controladores autorizados.
+ */
 const express = require("express");
 const auth = require("../middlewares/authMiddleware");
 const { exigirPerfis } = require("../middlewares/authMiddleware");

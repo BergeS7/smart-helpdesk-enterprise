@@ -1,3 +1,4 @@
+# Responsabilidade: Automação de instalar smart help desk; executa uma tarefa operacional ou de geração do projeto.
 $ErrorActionPreference="Stop"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing

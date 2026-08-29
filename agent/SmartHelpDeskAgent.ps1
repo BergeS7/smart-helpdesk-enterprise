@@ -1,3 +1,4 @@
+# Responsabilidade: Automação de smart help desk agent; executa uma tarefa operacional ou de geração do projeto.
 param([Parameter(Mandatory=$true)][string]$ServerUrl,[string]$EnrollmentKey="",[string]$Municipio="",[string]$Unidade="",[double]$Latitude=0,[double]$Longitude=0,[switch]$Install,[switch]$AllowInsecureHttp)
 $ErrorActionPreference="Stop";$AgentVersion="2.0.0";$SchemaVersion=1
 $DataDir=Join-Path $env:ProgramData "SmartHelpDeskAgent";$ConfigFile=Join-Path $DataDir "agent.json";$LogFile=Join-Path $DataDir "agent.log"

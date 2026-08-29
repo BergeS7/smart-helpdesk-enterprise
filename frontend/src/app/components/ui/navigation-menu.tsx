@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente visual reutilizável de navigation menu, usado como base consistente da interface.
+ */
 import * as React from "react";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
 import { cva } from "class-variance-authority";

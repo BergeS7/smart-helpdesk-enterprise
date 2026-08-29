@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Middleware de system logo upload; intercepta requisições antes ou depois dos controladores.
+ */
 const multer = require("multer");
 
 const tiposPermitidos = ["image/png", "image/jpeg", "image/jpg", "image/webp"];

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Serviço de domínio de query cache; concentra regras reutilizáveis fora da camada HTTP.
+ */
 import { useCallback, useEffect, useState } from "react";
 
 type Entry<T>={data:T;expires:number};

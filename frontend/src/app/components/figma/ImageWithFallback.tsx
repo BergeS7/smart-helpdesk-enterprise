@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de image with fallback; apresenta dados e interações do usuário.
+ */
 import React, { useState } from 'react'
 
 const ERROR_IMG_SRC =

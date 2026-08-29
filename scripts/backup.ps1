@@ -1,3 +1,4 @@
+# Responsabilidade: Automação de backup; executa uma tarefa operacional ou de geração do projeto.
 param(
   [string]$Destination = (Join-Path $PSScriptRoot "..\backups"),
   [int]$RetentionDays = 14

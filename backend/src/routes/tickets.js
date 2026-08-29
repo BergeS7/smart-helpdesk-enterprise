@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de tickets; associa endpoints aos middlewares e controladores autorizados.
+ */
 router.post("/", async (req, res) => {
   const { titulo, status } = req.body;
   const userId = req.user.id;

@@ -1,3 +1,4 @@
+# Responsabilidade: Automação de install backup task; executa uma tarefa operacional ou de geração do projeto.
 param([string]$At = "02:00", [int]$RetentionDays = 14, [switch]$System)
 $ErrorActionPreference = "Stop"
 $backupScript = (Resolve-Path (Join-Path $PSScriptRoot "backup.ps1")).Path

@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a 20260818 p0 security.
 -- P0 security hardening (additive and safe for existing data).
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(128);

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Componente de interface de login motorcycle loader; apresenta dados e interações do usuário.
+ */
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import motorcycleLottie from "../../assets/motorcycle-loading.lottie?url";
 

@@ -1,3 +1,4 @@
+-- Responsabilidade: Estrutura ou migração de banco relacionada a update schema.
 -- Rode este arquivo no banco smart_helpdesk se você já criou as tabelas antes.
 -- Ele adiciona os campos novos sem apagar os chamados existentes.
 

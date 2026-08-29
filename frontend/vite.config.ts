@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de vite config; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'

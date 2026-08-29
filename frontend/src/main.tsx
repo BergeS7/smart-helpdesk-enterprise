@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de main; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 
   import { createRoot } from "react-dom/client";
   import App from "./app/App.tsx";

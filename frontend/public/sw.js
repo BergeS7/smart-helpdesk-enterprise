@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de sw; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 const CACHE = "smart-helpdesk-shell-v3";
 const SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/pwa-192.png", "/pwa-512.png"];
 

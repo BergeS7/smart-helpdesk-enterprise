@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam security.
+ */
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { validateProductionSecurity } = require("../src/config/security");

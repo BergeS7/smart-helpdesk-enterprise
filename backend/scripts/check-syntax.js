@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Automação de check syntax; executa uma tarefa operacional ou de geração do projeto.
+ */
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");

@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Módulo de ticket policy; implementa esta responsabilidade dentro do Smart HelpDesk.
+ */
 const { isFinal } = require("../domain/ticketStatus");
 const profile = (user) => String(user?.perfil || "usuario").toLowerCase();
 const isAdmin = (user) => ["admin", "desenvolvedor", "super_admin"].includes(profile(user));

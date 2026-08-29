@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Rotas de settings; associa endpoints aos middlewares e controladores autorizados.
+ */
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");

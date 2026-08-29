@@ -1,3 +1,6 @@
+/**
+ * Responsabilidade: Testes automatizados que verificam operational alert.
+ */
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { activeProblems } = require("../src/services/operationalAlertService");
