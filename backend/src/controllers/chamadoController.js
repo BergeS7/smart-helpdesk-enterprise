@@ -4,6 +4,7 @@ const { carregarConfiguracoesObjeto } = require("./settingsController");
 const { enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
 const { enviarArquivo, baixarArquivo, removerArquivo, lerReferencia } = require("../utils/supabaseStorage");
+const { getJson, setJson, remove: removeCache } = require("../services/redisCacheService");
 const { usuarioPodeAvaliarChamado } = require("../services/ticketEvaluationAccessService");
 const { normalizarPerfil, ehAdmin, ehEquipe, ehDesenvolvedor } = require("../utils/permissoes");
 const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../services/distributionService");
@@ -991,6 +992,7 @@ const adicionarComentario = async (req, res) => {
     } else {
       await notificarAdmins("Novo comentário", `${acesso.chamado.numero_chamado || `#${id}`} recebeu comentário do usuário.`, "info", `/chamados/${id}`);
     }
+    await removeCache(`cache:ticket:${id}:comments`);
     return res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error(error);
@@ -1002,7 +1004,11 @@ const listarComentarios = async (req, res) => {
   try {
     const acesso = await buscarChamadoAutorizado(req, req.params.id);
     if (acesso.erro) return res.status(acesso.status).json({ erro: acesso.erro });
+    const cacheKey = `cache:ticket:${req.params.id}:comments`;
+    const cached = await getJson(cacheKey);
+    if (cached) return res.json(cached);
     const result = await pool.query("SELECT * FROM chamado_comentarios WHERE chamado_id = $1 ORDER BY criado_em ASC", [req.params.id]);
+    await setJson(cacheKey, result.rows, 60);
     return res.json(result.rows);
   } catch (error) {
     console.error(error);

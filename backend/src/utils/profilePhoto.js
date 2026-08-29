@@ -3,6 +3,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { obterSupabase } = require("../config/supabase");
 const { garantirBucket } = require("./supabaseStorage");
+const { getJson, setJson, remove: removeCache } = require("../services/redisCacheService");
 
 const pastaPerfis = path.join(__dirname, "../../uploads/perfis");
 const bucketAvatares = "avatars";
@@ -113,6 +114,13 @@ async function gerarUrlAvatar(caminho) {
   const cached = cacheUrlsAvatar.get(caminho);
   if (cached && cached.expiresAt > Date.now()) return cached.url;
 
+  const redisKey = `cache:avatar-url:${crypto.createHash("sha256").update(caminho).digest("hex")}`;
+  const shared = await getJson(redisKey);
+  if (shared?.url && shared.expiresAt > Date.now()) {
+    cacheUrlsAvatar.set(caminho, shared);
+    return shared.url;
+  }
+
   await garantirBucket(bucketAvatares, false);
 
   const { data, error } = await obterSupabase()
@@ -123,10 +131,12 @@ async function gerarUrlAvatar(caminho) {
   if (error) throw error;
   const url = data?.signedUrl || "";
   if (url) {
-    cacheUrlsAvatar.set(caminho, {
+    const cacheEntry = {
       url,
       expiresAt: Date.now() + duracaoUrlAssinada * 1000 - margemCacheUrlMs,
-    });
+    };
+    cacheUrlsAvatar.set(caminho, cacheEntry);
+    await setJson(redisKey, cacheEntry, duracaoUrlAssinada - Math.ceil(margemCacheUrlMs / 1000));
     if (cacheUrlsAvatar.size > 1000) cacheUrlsAvatar.delete(cacheUrlsAvatar.keys().next().value);
   }
   return url;
@@ -176,6 +186,7 @@ async function removerAvatar(usuarioId, caminho) {
 
   if (error) throw error;
   cacheUrlsAvatar.delete(caminho);
+  await removeCache(`cache:avatar-url:${crypto.createHash("sha256").update(caminho).digest("hex")}`);
 }
 
 function limparFotosPerfil(usuarioId, manterArquivo = "") {
