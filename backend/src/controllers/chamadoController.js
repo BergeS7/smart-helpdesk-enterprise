@@ -483,6 +483,7 @@ async function detectarDuplicidade({ setor, titulo, descricao, categoria }) {
 
 // Criação transacional: classifica, calcula SLA, detecta duplicidade e distribui.
 const criarChamado = async (req, res) => {
+  let chamadoCriado = null;
   try {
     const { titulo, descricao, tipo_chamado, ativo_id } = req.body;
     const usuario = await obterUsuarioAtual(req);
@@ -571,11 +572,13 @@ const criarChamado = async (req, res) => {
     );
 
     let chamado = result.rows[0];
+    chamadoCriado = chamado;
     const analisePersistida = await pool.query(
       `UPDATE chamados SET prioridade_ia_confianca=$1, prioridade_ia_analise=$2::jsonb WHERE id=$3 RETURNING *`,
       [analiseIA.confianca || 0, JSON.stringify(analiseIA.analise_explicavel || {}), chamado.id]
     );
     chamado = analisePersistida.rows[0];
+    chamadoCriado = chamado;
     // Backwards-compatible routing: a department-named team wins over the legacy technician picker.
     const teamResult = await pool.query(
       `SELECT id, distribution_mode FROM teams
@@ -592,6 +595,7 @@ const criarChamado = async (req, res) => {
         [team.id, responsavelAutomatico?.id || null, responsavelAutomatico?.nome || null, chamado.id]
       );
       chamado = routed.rows[0];
+      chamadoCriado = chamado;
       await registrarMovimentacao(chamado.id, { user: { id: null, nome: "Roteamento", perfil: "sistema" } }, "equipe_atribuida", `Chamado enviado para a equipe ${team.id}.`);
     }
     await registrarMovimentacao(chamado.id, req, "criacao", `Chamado ${chamado.numero_chamado} criado por ${usuario.nome}.`);
@@ -610,6 +614,12 @@ const criarChamado = async (req, res) => {
     return res.status(201).json({ ...(await carregarDetalhesChamado(req, chamado)), ia: analiseIA });
   } catch (error) {
     console.error(error);
+    if (chamadoCriado) {
+      return res.status(201).json({
+        ...chamadoCriado,
+        aviso: "O chamado foi criado, mas uma etapa complementar não pôde ser concluída.",
+      });
+    }
     return res.status(500).json({ erro: "Erro ao criar chamado", detalhe: error.message });
   }
 };

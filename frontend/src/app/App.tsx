@@ -171,6 +171,7 @@ import {
   salvarFiltroChamados,
   reabrirChamado,
   redefinirSenha,
+  reportFrontendError,
   removerMinhaFotoPerfil,
   rejeitarUsuario,
   salvarSessao,
@@ -1710,13 +1711,22 @@ function UserPortal({
       const criado = await criarChamado(novo);
       const developmentNature:Record<string,string>={"Bug":"bug","Melhoria":"melhoria","Automação":"automacao","Integração":"integracao","Dashboard / Relatório":"dashboard_relatorio","Novo Sistema":"novo_sistema"};
       const nature=developmentNature[novo.tipo_chamado];
-      if(nature) await criarDemandaDesenvolvimento({ticket_id:criado.id,nature,current_process:novo.processo_atual,problem:novo.problema||novo.descricao,expected_result:novo.resultado_esperado,frequency:novo.frequencia,people_involved:novo.pessoas?Number(novo.pessoas):undefined,current_time_minutes:novo.tempo_minutos?Number(novo.tempo_minutos):undefined,systems:novo.sistemas.split(",").map(v=>v.trim()).filter(Boolean),no_delivery_impact:novo.impacto_nao_execucao,expected_benefits:novo.beneficios.split(",").map(v=>v.trim()).filter(Boolean)});
+      let complementoPendente = false;
+      if(nature) {
+        try {
+          await criarDemandaDesenvolvimento({ticket_id:criado.id,nature,current_process:novo.processo_atual,problem:novo.problema||novo.descricao,expected_result:novo.resultado_esperado,frequency:novo.frequencia,people_involved:novo.pessoas?Number(novo.pessoas):undefined,current_time_minutes:novo.tempo_minutos?Number(novo.tempo_minutos):undefined,systems:novo.sistemas.split(",").map(v=>v.trim()).filter(Boolean),no_delivery_impact:novo.impacto_nao_execucao,expected_benefits:novo.beneficios.split(",").map(v=>v.trim()).filter(Boolean)});
+        } catch (error) {
+          complementoPendente = true;
+          void reportFrontendError(error instanceof Error ? error : new Error("Falha ao registrar dados complementares da demanda"));
+        }
+      }
       setChamados((atuais) => [criado, ...atuais.filter((item) => Number(item.id) !== Number(criado.id))]);
       setNovo({ titulo: "", descricao: "", tipo_chamado: "Incidente", processo_atual:"", problema:"", resultado_esperado:"", frequencia:"", pessoas:"", tempo_minutos:"", sistemas:"", impacto_nao_execucao:"", beneficios:"" });
       setBase([]);
       setModalChamadoAberto(false);
       setTab("chamados");
-      toast.success("Chamado criado com sucesso.");
+      if (complementoPendente) toast.warning("Chamado criado. Os dados complementares serão revisados pela equipe de TI.");
+      else toast.success("Chamado criado com sucesso.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao criar chamado.");
     } finally {
