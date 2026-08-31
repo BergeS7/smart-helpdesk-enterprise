@@ -1,0 +1,14 @@
+const router=require("express").Router();
+const auth=require("../middlewares/authMiddleware");
+const { exigirPermissao }=require("../middlewares/authMiddleware");
+const c=require("../controllers/developmentController");
+router.use(auth);
+router.get("/dashboard",exigirPermissao("desenvolvimento_visualizar"),c.dashboard);
+router.get("/projects",c.listProjects); router.post("/projects",exigirPermissao("desenvolvimento_converter_projeto"),c.createProject);
+router.get("/projects/:id",c.getProject); router.post("/projects/:id/tasks",exigirPermissao("desenvolvimento_editar"),c.addTask);
+router.get("/",c.listRequests); router.post("/",c.createRequest); router.get("/:id",c.getRequest);
+router.put("/:id",exigirPermissao("desenvolvimento_editar"),c.updateRequest);
+router.patch("/:id/status",exigirPermissao("desenvolvimento_editar"),c.changeStatus);
+router.post("/:id/decisions",c.decide); router.post("/:id/deployments",exigirPermissao("desenvolvimento_implantar"),c.deploy);
+router.post("/:id/convert-project",exigirPermissao("desenvolvimento_converter_projeto"),c.convertProject);
+module.exports=router;

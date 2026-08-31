@@ -109,6 +109,7 @@ const KanbanWorkspace = lazy(() => import("./modules/kanban/KanbanWorkspace").th
 const ChamadosListModule = lazy(() => import("./modules/chamados/ChamadosListModule").then(module => ({ default:module.ChamadosListModule })));
 const UsersModule = lazy(() => import("./modules/usuarios/UsersModule").then(module => ({ default:module.UsersModule })));
 const IndicatorsWorkspace = lazy(() => import("./modules/indicadores/IndicatorsWorkspace").then(module => ({ default:module.IndicatorsWorkspace })));
+const DevelopmentWorkspace = lazy(() => import("./modules/desenvolvimento/DevelopmentWorkspace").then(module => ({ default:module.DevelopmentWorkspace })));
 const SystemDiagnosticsPage = lazy(() =>
   import("./components/SystemDiagnosticsPage").then((module) => ({ default: module.SystemDiagnosticsPage })),
 );
@@ -136,6 +137,7 @@ import {
   criarCatalogo,
   criarRespostaRapida,
   criarChamado,
+  criarDemandaDesenvolvimento,
   criarTeam,
   criarUsuarioAdmin,
   encerrarChamado,
@@ -1315,6 +1317,15 @@ function UserPortal({
     titulo: "",
     descricao: "",
     tipo_chamado: "Incidente",
+    processo_atual: "",
+    problema: "",
+    resultado_esperado: "",
+    frequencia: "",
+    pessoas: "",
+    tempo_minutos: "",
+    sistemas: "",
+    impacto_nao_execucao: "",
+    beneficios: "",
   });
   const [selecionado, setSelecionado] = useState<ApiChamado | null>(null);
   const chamadoSelecionadoUsuarioRef = useRef<number | null>(null);
@@ -1765,8 +1776,11 @@ function UserPortal({
 
     try {
       const criado = await criarChamado(novo);
+      const developmentNature:Record<string,string>={"Bug":"bug","Melhoria":"melhoria","Automação":"automacao","Integração":"integracao","Dashboard / Relatório":"dashboard_relatorio","Novo Sistema":"novo_sistema"};
+      const nature=developmentNature[novo.tipo_chamado];
+      if(nature) await criarDemandaDesenvolvimento({ticket_id:criado.id,nature,current_process:novo.processo_atual,problem:novo.problema||novo.descricao,expected_result:novo.resultado_esperado,frequency:novo.frequencia,people_involved:novo.pessoas?Number(novo.pessoas):undefined,current_time_minutes:novo.tempo_minutos?Number(novo.tempo_minutos):undefined,systems:novo.sistemas.split(",").map(v=>v.trim()).filter(Boolean),no_delivery_impact:novo.impacto_nao_execucao,expected_benefits:novo.beneficios.split(",").map(v=>v.trim()).filter(Boolean)});
       setChamados((atuais) => [criado, ...atuais.filter((item) => Number(item.id) !== Number(criado.id))]);
-      setNovo({ titulo: "", descricao: "", tipo_chamado: "Incidente" });
+      setNovo({ titulo: "", descricao: "", tipo_chamado: "Incidente", processo_atual:"", problema:"", resultado_esperado:"", frequencia:"", pessoas:"", tempo_minutos:"", sistemas:"", impacto_nao_execucao:"", beneficios:"" });
       setBase([]);
       setModalChamadoAberto(false);
       setTab("chamados");
@@ -3352,9 +3366,9 @@ function UsuarioNovoChamadoModal({
 }: {
   perfil: UsuarioLogado | ApiUsuario;
   tipos: CatalogoItem[];
-  novo: { titulo: string; descricao: string; tipo_chamado: string };
+  novo: { titulo: string; descricao: string; tipo_chamado: string; processo_atual:string; problema:string; resultado_esperado:string; frequencia:string; pessoas:string; tempo_minutos:string; sistemas:string; impacto_nao_execucao:string; beneficios:string };
   setNovo: Dispatch<
-    SetStateAction<{ titulo: string; descricao: string; tipo_chamado: string }>
+    SetStateAction<{ titulo: string; descricao: string; tipo_chamado: string; processo_atual:string; problema:string; resultado_esperado:string; frequencia:string; pessoas:string; tempo_minutos:string; sistemas:string; impacto_nao_execucao:string; beneficios:string }>
   >;
   base: ArtigoBase[];
   loading: boolean;
@@ -3372,6 +3386,8 @@ function UsuarioNovoChamadoModal({
           "Acesso",
           "Equipamento",
         ];
+  const allTypes=Array.from(new Set([...tiposDisponiveis,"Bug","Melhoria","Automação","Integração","Dashboard / Relatório","Novo Sistema"]));
+  const developmentType=["Bug","Melhoria","Automação","Integração","Dashboard / Relatório","Novo Sistema"].includes(novo.tipo_chamado);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
@@ -3423,7 +3439,7 @@ function UsuarioNovoChamadoModal({
                   setNovo((prev) => ({ ...prev, tipo_chamado: e.target.value }))
                 }
               >
-                {tiposDisponiveis.map((tipo) => (
+                {allTypes.map((tipo) => (
                   <option key={tipo}>{tipo}</option>
                 ))}
               </Select>
@@ -3459,6 +3475,18 @@ function UsuarioNovoChamadoModal({
                 className="min-h-[150px]"
               />
             </Field>
+            {developmentType && <div className="grid gap-4 rounded-2xl border border-violet-200 bg-violet-50/50 p-4 md:grid-cols-2">
+              <div className="md:col-span-2"><p className="font-black text-violet-900">Conte-nos sobre o resultado que você precisa</p><p className="text-sm text-violet-700">Não é necessário conhecer a solução técnica. A equipe de TI fará essa análise.</p></div>
+              <Field label="Como o processo funciona atualmente?"><Textarea required value={novo.processo_atual} onChange={e=>setNovo(prev=>({...prev,processo_atual:e.target.value}))} className="min-h-24"/></Field>
+              <Field label="Qual problema você quer resolver?"><Textarea required value={novo.problema} onChange={e=>setNovo(prev=>({...prev,problema:e.target.value}))} className="min-h-24"/></Field>
+              <Field label="Resultado esperado"><Textarea value={novo.resultado_esperado} onChange={e=>setNovo(prev=>({...prev,resultado_esperado:e.target.value}))}/></Field>
+              <Field label="Frequência"><Select value={novo.frequencia} onChange={e=>setNovo(prev=>({...prev,frequencia:e.target.value}))}><option value="">Selecione</option><option value="varias_dia">Várias vezes ao dia</option><option value="diaria">Diariamente</option><option value="semanal">Semanalmente</option><option value="mensal">Mensalmente</option><option value="ocasional">Ocasionalmente</option><option value="outro">Outro</option></Select></Field>
+              <Field label="Pessoas envolvidas"><Input type="number" min="0" value={novo.pessoas} onChange={e=>setNovo(prev=>({...prev,pessoas:e.target.value}))}/></Field>
+              <Field label="Tempo atual por execução (minutos)"><Input type="number" min="0" value={novo.tempo_minutos} onChange={e=>setNovo(prev=>({...prev,tempo_minutos:e.target.value}))}/></Field>
+              <Field label="Sistemas envolvidos"><Input value={novo.sistemas} onChange={e=>setNovo(prev=>({...prev,sistemas:e.target.value}))} placeholder="ERP, Excel, Power BI"/></Field>
+              <Field label="Impacto se não for executada"><Textarea value={novo.impacto_nao_execucao} onChange={e=>setNovo(prev=>({...prev,impacto_nao_execucao:e.target.value}))}/></Field>
+              <Field label="Benefícios esperados"><Input value={novo.beneficios} onChange={e=>setNovo(prev=>({...prev,beneficios:e.target.value}))} placeholder="Redução de tempo, erros, retrabalho"/></Field>
+            </div>}
           </div>
 
           {base.length > 0 && (
@@ -3856,7 +3884,8 @@ function AdminPanel({
     const deniedAnalytics=analyticsTabs.includes(tab)&&!administrador&&!permissoesAtuais.includes("visualizar_relatorios")&&!permissoesAtuais.includes("baixar_relatorios");
     const deniedAssets=tab==="patrimonio"&&!permissoesAtuais.includes("visualizar_patrimonio");
     const deniedKnowledge=tab==="base"&&!permissoesAtuais.includes("gerenciar_base");
-    if(deniedDashboard||deniedTeam||deniedDeveloper||deniedCatalog||deniedAnalytics||deniedAssets||deniedKnowledge)setTab("fila");
+    const deniedDevelopment=["desenvolvimento","projetos"].includes(tab)&&!administrador&&!desenvolvedor&&!permissoesAtuais.includes("desenvolvimento_visualizar");
+    if(deniedDashboard||deniedTeam||deniedDeveloper||deniedCatalog||deniedAnalytics||deniedAssets||deniedKnowledge||deniedDevelopment)setTab("fila");
   }, [administrador,desenvolvedor,permissoesAtuais,permissoesCarregadas,tab]);
 
   useEffect(() => {
@@ -4328,6 +4357,20 @@ function AdminPanel({
   }
 
   const adminTabs = [
+    {
+      key: "desenvolvimento" as AdminTab,
+      icon: BrainCircuit,
+      label: "Demandas",
+      title: "Desenvolvimento",
+      show: administrador || desenvolvedor || permissoesAtuais.includes("desenvolvimento_visualizar"),
+    },
+    {
+      key: "projetos" as AdminTab,
+      icon: ListChecks,
+      label: "Projetos",
+      title: "Projetos de desenvolvimento",
+      show: administrador || desenvolvedor || permissoesAtuais.includes("desenvolvimento_visualizar"),
+    },
     ...(["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos"] as AdminTab[]).map((key)=>({
       key,
       icon: BarChart3,
@@ -5173,6 +5216,7 @@ function AdminPanel({
             )}
 
             {tab === "chamados" && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando chamados…</strong></div>}><ChamadosListModule chamados={chamados} onOpen={abrirDetalhe} dark={dark}/></Suspense>}
+            {["desenvolvimento","projetos"].includes(tab) && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando desenvolvimento…</strong></div>}><DevelopmentWorkspace dark={dark}/></Suspense>}
             {tab === "historico" && (
               <HistoricoEquipeView
                 chamados={historicoEquipe}

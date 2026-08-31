@@ -21,6 +21,7 @@ const performanceRoutes = require("./routes/performanceRoutes");
 const assetRoutes = require("./routes/assetRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const systemRoutes = require("./routes/systemRoutes");
+const developmentRoutes = require("./routes/developmentRoutes");
 const { startPrivacyRetentionSchedule } = require("./services/privacyComplianceService");
 
 const app = express();
@@ -80,6 +81,7 @@ app.use("/api/teams", teamRoutes);
 app.use("/api/performance", performanceRoutes);
 app.use("/api/assets", assetRoutes);
 app.use("/api/permissoes", permissionRoutes);
+app.use("/api/development", developmentRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
