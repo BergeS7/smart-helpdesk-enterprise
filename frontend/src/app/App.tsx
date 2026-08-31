@@ -2245,7 +2245,7 @@ function UserPortal({
                     setMostrarPerfil(true);
                     setNotificacoesAberta(false);
                   }}
-                  className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-full border border-zinc-200 bg-white shadow-sm transition hover:ring-4 hover:ring-blue-500/10"
+                  className="relative grid h-10 w-10 place-items-center rounded-full border border-zinc-200 bg-white shadow-sm transition hover:ring-4 hover:ring-blue-500/10"
                   title="Meu perfil"
                   aria-label="Abrir meu perfil"
                 >
@@ -2253,14 +2253,14 @@ function UserPortal({
                     <img
                       src={fotoPerfil}
                       alt={usuarioAtual.nome}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full rounded-full object-cover"
                     />
                   ) : (
-                    <span className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500 to-sky-400 text-base font-black text-white">
+                    <span className="grid h-full w-full place-items-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-base font-black text-white">
                       {inicialPerfil}
                     </span>
                   )}
-                  <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-emerald-500 shadow-sm" title="Online" aria-label="Status online" />
                 </button>
               </div>
             </div>
