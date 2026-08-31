@@ -39,7 +39,7 @@ export function ProfileCenter({ profile, draft, setDraft, photo, initials, uploa
     Promise.all([listarCatalogo("departamentos"), listarCatalogo("cargos")])
       .then(([departmentItems, roleItems]) => {
         setDepartamentos(departmentItems.filter((item) => item.ativo !== false).map((item) => item.nome));
-        setCargos(roleItems.filter((item) => item.ativo !== false).map((item) => item.nome));
+        setCargos(roleItems.filter((item) => item.ativo !== false && !["desenvolvedor", "developer"].includes(item.nome.trim().toLocaleLowerCase("pt-BR"))).map((item) => item.nome));
       })
       .catch(() => {
         setDepartamentos([]);

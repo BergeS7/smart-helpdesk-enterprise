@@ -16,6 +16,7 @@ const listarCatalogo = async (req, res) => {
         `SELECT MIN(id) AS id, TRIM(cargo) AS nome, NULL::text AS descricao, TRUE AS ativo
          FROM usuarios
          WHERE NULLIF(TRIM(COALESCE(cargo, '')), '') IS NOT NULL
+           AND LOWER(TRIM(cargo)) NOT IN ('desenvolvedor', 'developer')
          GROUP BY TRIM(cargo)
          ORDER BY TRIM(cargo) ASC`
       );
