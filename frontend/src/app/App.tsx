@@ -1328,6 +1328,7 @@ function UserPortal({
     beneficios: "",
   });
   const [selecionado, setSelecionado] = useState<ApiChamado | null>(null);
+  const [avaliando, setAvaliando] = useState<ApiChamado | null>(null);
   const chamadoSelecionadoUsuarioRef = useRef<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalChamadoAberto, setModalChamadoAberto] = useState(false);
@@ -1804,6 +1805,24 @@ function UserPortal({
     }
   }
 
+  async function abrirAvaliacao(id: number) {
+    try {
+      const detalhe = await buscarChamado(id);
+      if (detalhe.avaliacao || detalhe.avaliacao_nota) {
+        sincronizarChamadoUsuario(detalhe);
+        toast.info("Este atendimento já foi avaliado.");
+        return;
+      }
+      if (!detalhe.pode_avaliar) {
+        toast.error("Este atendimento ainda não está disponível para avaliação.");
+        return;
+      }
+      setAvaliando(detalhe);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao abrir avaliação.");
+    }
+  }
+
   function executarPesquisa(event: FormEvent) {
     event.preventDefault();
     setTab("chamados");
@@ -1888,6 +1907,7 @@ function UserPortal({
         <UsuarioChamadoLista
           chamados={chamadosFiltrados}
           onAbrir={abrirDetalhe}
+          onAvaliar={abrirAvaliacao}
           busca={busca}
         />
       );
@@ -1935,6 +1955,7 @@ function UserPortal({
             <UsuarioKanbanLeitura
               colunas={chamadosBoardUsuario}
               onAbrir={abrirDetalhe}
+              onAvaliar={abrirAvaliacao}
               onVerTodos={() => setTab("chamados")}
             />
           </div>
@@ -2572,6 +2593,17 @@ function UserPortal({
           }}
         />
       )}
+      {avaliando && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="avaliacao-title" onMouseDown={() => setAvaliando(null)}>
+          <div className={`w-full max-w-xl overflow-hidden rounded-3xl border shadow-2xl ${temaEscuroUsuario ? "border-white/10 bg-[#111827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`} onMouseDown={(event) => event.stopPropagation()}>
+            <header className={`flex items-start justify-between gap-4 border-b p-5 ${temaEscuroUsuario ? "border-white/10" : "border-zinc-100"}`}>
+              <div><span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700"><Star size={14} fill="currentColor" />Sua opinião importa</span><h2 id="avaliacao-title" className="mt-3 text-xl font-black">Avalie este atendimento</h2><p className={`mt-1 text-sm ${temaEscuroUsuario ? "text-white/55" : "text-zinc-500"}`}>{avaliando.numero_chamado || `#${avaliando.id}`} · {avaliando.titulo}</p></div>
+              <button type="button" onClick={() => setAvaliando(null)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl transition hover:bg-zinc-500/10" aria-label="Fechar avaliação"><X size={19} /></button>
+            </header>
+            <div className="p-5"><PerformanceRatingCard chamado={avaliando} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(avaliando.id, dados); toast.success("Avaliação enviada. Obrigado!"); setAvaliando(null); await sincronizarChamadosUsuario(); }} /></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2785,18 +2817,18 @@ function UsuarioResumoCard({
 function UsuarioMiniChamadoCard({
   chamado,
   onAbrir,
+  onAvaliar,
   resolvido = false,
 }: {
   chamado: ApiChamado;
   onAbrir: (id: number) => void;
+  onAvaliar?: (id: number) => void;
   resolvido?: boolean;
 }) {
+  const avaliado = Boolean(chamado.avaliacao || chamado.avaliacao_nota);
   return (
-    <button
-      type="button"
-      onClick={() => onAbrir(chamado.id)}
-      className="user-ticket-card w-full rounded-xl border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
-    >
+    <article className="user-ticket-card w-full rounded-xl border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+      <button type="button" onClick={() => onAbrir(chamado.id)} className="block w-full text-left">
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <span className="truncate text-xs font-black text-blue-700">
           {chamado.numero_chamado || `#${chamado.id}`}
@@ -2838,7 +2870,17 @@ function UsuarioMiniChamadoCard({
           SLA vencido
         </Badge>
       )}
-    </button>
+      </button>
+      {resolvido && (
+        <div className="mt-3 border-t border-zinc-100 pt-3">
+          {avaliado ? (
+            <span className="inline-flex items-center gap-2 text-xs font-black text-emerald-600"><CheckCircle2 size={15} />Atendimento avaliado</span>
+          ) : (
+            <button type="button" onClick={() => onAvaliar?.(chamado.id)} className="flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-amber-50 text-xs font-black text-amber-700 transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"><Star size={16} />Avaliar atendimento</button>
+          )}
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -2855,10 +2897,12 @@ type UsuarioBoardColuna = {
 function UsuarioKanbanLeitura({
   colunas,
   onAbrir,
+  onAvaliar,
   onVerTodos,
 }: {
   colunas: UsuarioBoardColuna[];
   onAbrir: (id: number) => void;
+  onAvaliar?: (id: number) => void;
   onVerTodos?: () => void;
 }) {
   return (
@@ -2904,6 +2948,7 @@ function UsuarioKanbanLeitura({
                   key={chamado.id}
                   chamado={chamado}
                   onAbrir={onAbrir}
+                  onAvaliar={onAvaliar}
                   resolvido={coluna.id === "resolvidos"}
                 />
               ))}
@@ -2932,12 +2977,14 @@ function UsuarioKanbanLeitura({
 function UsuarioChamadoLista({
   chamados,
   onAbrir,
+  onAvaliar,
   titulo = "Meus chamados",
   compacto = false,
   busca,
 }: {
   chamados: ApiChamado[];
   onAbrir: (id: number) => void;
+  onAvaliar?: (id: number) => void;
   titulo?: string;
   compacto?: boolean;
   busca?: string;
@@ -2968,12 +3015,11 @@ function UsuarioChamadoLista({
             </p>
           </div>
         ) : (
-          chamados.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onAbrir(c.id)}
-              className="user-ticket-list-item w-full rounded-xl px-2 py-4 text-left transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            >
+          chamados.map((c) => {
+            const concluido=normalizeStatus(c.status)===TICKET_STATUS.CLOSED;
+            const avaliado=Boolean(c.avaliacao||c.avaliacao_nota);
+            return <article key={c.id} className="user-ticket-list-item rounded-xl px-2 py-4 transition hover:bg-zinc-50">
+            <button onClick={() => onAbrir(c.id)} className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex min-h-0 min-w-0 flex-1 items-start gap-3">
                   <ResponsavelAvatar chamado={c} size="sm" />
@@ -3012,7 +3058,9 @@ function UsuarioChamadoLista({
                 </div>
               </div>
             </button>
-          ))
+            {concluido&&!avaliado&&<div className="mt-3 flex justify-end border-t border-zinc-100 pt-3"><button type="button" onClick={()=>onAvaliar?.(c.id)} className="inline-flex h-9 items-center gap-2 rounded-xl bg-amber-50 px-4 text-xs font-black text-amber-700 transition hover:bg-amber-100"><Star size={15}/>Avaliar atendimento</button></div>}
+            {concluido&&avaliado&&<div className="mt-3 flex justify-end border-t border-zinc-100 pt-3"><span className="inline-flex items-center gap-2 text-xs font-black text-emerald-600"><CheckCircle2 size={15}/>Atendimento avaliado</span></div>}
+          </article>})
         )}
       </div>
     </div>
