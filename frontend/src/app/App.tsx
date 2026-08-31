@@ -649,56 +649,6 @@ function UsuarioSistemaAvatar({
   );
 }
 
-function ResponsavelAtendimentoCard({
-  chamado,
-  onAbrir,
-}: {
-  chamado?: ApiChamado | null;
-  onAbrir?: (id: number) => void;
-}) {
-  const nome = chamado ? nomeResponsavelChamado(chamado) : "";
-
-  return (
-    <button
-      type="button"
-      disabled={!chamado}
-      onClick={() => chamado && onAbrir?.(chamado.id)}
-      className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40 disabled:cursor-default disabled:hover:border-zinc-200 disabled:hover:bg-white"
-    >
-      {chamado ? (
-        <ResponsavelAvatar chamado={chamado} size="lg" />
-      ) : (
-        <ResponsavelAvatar
-          chamado={
-            {
-              id: 0,
-              titulo: "",
-              descricao: "",
-              prioridade: "",
-              status: "",
-            } as ApiChamado
-          }
-          size="lg"
-        />
-      )}
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs font-bold text-zinc-500">
-          Responsável pelo atendimento
-        </span>
-        <span className="mt-0.5 block truncate text-sm font-black text-zinc-900">
-          {nome || "Sem responsável definido"}
-        </span>
-        <span className="mt-0.5 block truncate text-[11px] font-semibold text-zinc-400">
-          {chamado
-            ? `${chamado.numero_chamado || `#${chamado.id}`} • ${ticketStatusLabel(chamado.status)}`
-            : "Assim que alguém assumir, a foto aparecerá aqui."}
-        </span>
-      </span>
-      {chamado && <ArrowRight size={16} className="shrink-0 text-zinc-400" />}
-    </button>
-  );
-}
-
 function AvisosSistemaBanner({
   avisos,
   dark = false,
@@ -1436,7 +1386,7 @@ function UserPortal({
         id: "abertos",
         titulo: "Abertos",
         resumo: "Aguardando atendimento",
-        border: "border-blue-300",
+        topBorder: "border-t-sky-500",
         accent: "bg-blue-500",
         badge: "bg-blue-50 text-blue-700",
         chamados: colunaAberta,
@@ -1445,7 +1395,7 @@ function UserPortal({
         id: "andamento",
         titulo: "Em andamento",
         resumo: "Sendo tratados",
-        border: "border-amber-300",
+        topBorder: "border-t-amber-500",
         accent: "bg-amber-500",
         badge: "bg-amber-50 text-amber-700",
         chamados: colunaAndamento,
@@ -1454,7 +1404,7 @@ function UserPortal({
         id: "resolvidos",
         titulo: "Resolvidos",
         resumo: "Últimos 30 dias",
-        border: "border-emerald-300",
+        topBorder: "border-t-emerald-500",
         accent: "bg-emerald-500",
         badge: "bg-emerald-50 text-emerald-700",
         chamados: colunaResolvida,
@@ -1466,28 +1416,6 @@ function UserPortal({
     () => artigosBase.slice(0, 3),
     [artigosBase],
   );
-
-  const chamadoComResponsavelDestaque = useMemo(() => {
-    const ativoComResponsavel = chamadosFiltrados.find((chamado) => {
-      const status = normalizeStatus(chamado.status);
-      return (
-        status !== TICKET_STATUS.CLOSED &&
-        (chamado.responsavel_id || nomeResponsavelChamado(chamado))
-      );
-    });
-
-    return (
-      ativoComResponsavel ||
-      chamadosFiltrados.find(
-        (chamado) => chamado.responsavel_id || nomeResponsavelChamado(chamado),
-      ) ||
-      chamadosFiltrados.find(
-        (chamado) => normalizeStatus(chamado.status) !== TICKET_STATUS.CLOSED,
-      ) ||
-      chamadosFiltrados[0] ||
-      null
-    );
-  }, [chamadosFiltrados]);
 
   const usuarioTabs = [
     {
@@ -1931,30 +1859,6 @@ function UserPortal({
         </section>
         <section className="grid min-h-full flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_310px]">
           <div className="flex min-w-0 flex-col gap-4 lg:min-h-0">
-            <section className="grid shrink-0 gap-3 md:grid-cols-3">
-              <UsuarioResumoCard
-                icon={<MessageSquare size={22} />}
-                valor={resumoUsuario.abertos}
-                titulo="Abertos"
-                subtitulo="Aguardando atendimento"
-                tom="blue"
-              />
-              <UsuarioResumoCard
-                icon={<Clock3 size={22} />}
-                valor={resumoUsuario.andamento}
-                titulo="Em andamento"
-                subtitulo="Sendo tratados"
-                tom="amber"
-              />
-              <UsuarioResumoCard
-                icon={<CheckCircle2 size={22} />}
-                valor={resumoUsuario.concluidos}
-                titulo="Resolvidos"
-                subtitulo="Últimos 30 dias"
-                tom="emerald"
-              />
-            </section>
-
             <UsuarioKanbanLeitura
               colunas={chamadosBoardUsuario}
               onAbrir={abrirDetalhe}
@@ -1964,55 +1868,6 @@ function UserPortal({
           </div>
 
           <aside className="flex min-h-0 flex-col gap-4">
-            <div className="rounded-[20px] border border-zinc-200 bg-white p-4 text-center shadow-sm shadow-slate-200/60">
-              <button
-                type="button"
-                onClick={() => setMostrarPerfil(true)}
-                className="relative mx-auto grid h-20 w-20 place-items-center overflow-visible rounded-full border border-zinc-100 bg-zinc-50 shadow-sm transition hover:ring-4 hover:ring-blue-500/10"
-                title="Editar perfil"
-              >
-                <span className="grid h-full w-full place-items-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-2xl font-black text-white">
-                  {fotoPerfil ? (
-                    <img
-                      src={fotoPerfil}
-                      alt={usuarioAtual.nome}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    inicialPerfil
-                  )}
-                </span>
-                <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border border-zinc-200 bg-white text-zinc-600 shadow-md">
-                  <Camera size={16} />
-                </span>
-              </button>
-              <h3 className="mt-3 text-base font-black text-zinc-900">
-                Olá, {usuarioAtual.nome || "Usuário"}! 👋
-              </h3>
-              <p className="mt-1 text-xs font-medium text-zinc-500">
-                Como podemos te ajudar hoje?
-              </p>
-
-              <div className="user-open-summary mt-3 flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-3 text-left">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-blue-700 shadow-sm">
-                  <Clock3 size={20} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-zinc-500">
-                    Chamados em aberto
-                  </p>
-                  <p className="text-base font-black text-zinc-900">
-                    {resumoUsuario.abertos} aguardando
-                  </p>
-                </div>
-              </div>
-
-              <ResponsavelAtendimentoCard
-                chamado={chamadoComResponsavelDestaque}
-                onAbrir={abrirDetalhe}
-              />
-            </div>
-
             <div className="min-h-0 flex-1 overflow-hidden rounded-[20px] border border-zinc-200 bg-white p-4 shadow-sm shadow-slate-200/60">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="font-black text-zinc-900">Artigos sugeridos</h3>
@@ -2112,7 +1967,7 @@ function UserPortal({
         <AvisosSistemaBanner avisos={avisosSistema} dark={temaEscuroUsuario} />
       </div>
       <div className="flex h-screen overflow-hidden">
-        <aside className="hidden w-[256px] shrink-0 flex-col border-r border-white/5 bg-gradient-to-b from-[#101c29] via-[#0d1925] to-[#08131d] text-white shadow-2xl lg:flex">
+        <aside className="hidden w-[216px] shrink-0 flex-col border-r border-white/5 bg-gradient-to-b from-[#101c29] via-[#0d1925] to-[#08131d] text-white shadow-2xl lg:flex xl:w-[224px]">
           <div className="flex items-center gap-3 border-b border-white/8 px-4 py-4">
             <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/95 p-1 shadow-xl shadow-black/20">
               <img
@@ -2768,55 +2623,6 @@ function UsuarioSidebarButton({
   );
 }
 
-function UsuarioResumoCard({
-  icon,
-  valor,
-  titulo,
-  subtitulo,
-  destaque = false,
-  tom = "blue",
-}: {
-  icon: ReactNode;
-  valor: number | string;
-  titulo: string;
-  subtitulo: string;
-  destaque?: boolean;
-  tom?: "blue" | "amber" | "emerald";
-}) {
-  const tons = {
-    blue: "bg-blue-50 text-blue-700",
-    amber: "bg-amber-50 text-amber-700",
-    emerald: "bg-emerald-50 text-emerald-700",
-  }[tom];
-
-  return (
-    <button
-      type="button"
-      className={`user-summary-card w-full rounded-[18px] border bg-white p-3 text-left shadow-sm shadow-slate-200/60 transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md ${destaque ? "border-red-200" : "border-zinc-200"}`}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <div
-          className={`grid h-10 w-10 place-items-center rounded-full ${tons}`}
-        >
-          {icon}
-        </div>
-        {destaque ? (
-          <span className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-black text-red-700">
-            Atenção
-          </span>
-        ) : (
-          <ArrowRight size={20} className="text-zinc-400" />
-        )}
-      </div>
-      <div className="mt-2 flex items-end gap-2">
-        <p className="text-2xl font-black text-zinc-900">{valor}</p>
-        <p className="pb-0.5 text-xs font-black text-zinc-700">{titulo}</p>
-      </div>
-      <p className="mt-0.5 text-xs font-medium text-zinc-500">{subtitulo}</p>
-    </button>
-  );
-}
-
 function UsuarioMiniChamadoCard({
   chamado,
   onAbrir,
@@ -2891,7 +2697,7 @@ type UsuarioBoardColuna = {
   id: string;
   titulo: string;
   resumo: string;
-  border: string;
+  topBorder: string;
   accent: string;
   badge: string;
   chamados: ApiChamado[];
@@ -2924,11 +2730,11 @@ function UsuarioKanbanLeitura({
           </button>
         )}
       </div>
-      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-3">
+      <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-3">
         {colunas.map((coluna) => (
           <div
             key={coluna.id}
-            className={`user-kanban-column flex min-h-0 flex-col overflow-hidden rounded-[18px] border border-zinc-200 border-t-4 ${coluna.border} bg-white/80 p-3 shadow-sm shadow-slate-200/50`}
+            className={`user-kanban-column flex min-h-[260px] flex-col overflow-hidden rounded-[18px] border border-zinc-200 border-t-[5px] ${coluna.topBorder} bg-white/90 p-3 shadow-sm shadow-slate-200/50 lg:min-h-0`}
           >
             <div className="mb-2 flex shrink-0 items-center justify-between gap-2 px-1 py-1">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -2945,7 +2751,7 @@ function UsuarioKanbanLeitura({
                 {coluna.chamados.length}
               </span>
             </div>
-            <div className="min-h-0 flex-1 space-y-2 overflow-hidden">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
               {coluna.chamados.slice(0, 3).map((chamado) => (
                 <UsuarioMiniChamadoCard
                   key={chamado.id}
