@@ -1,5 +1,7 @@
 # Smart HelpDesk Profissional — Docker
 
+Demandas de desenvolvimento, automações, melhorias e projetos são integradas ao chamado original. Consulte [docs/DESENVOLVIMENTO_E_PROJETOS.md](docs/DESENVOLVIMENTO_E_PROJETOS.md) para arquitetura, migration, API, fluxo e permissões.
+
 O projeto está preparado para executar em três containers:
 
 - **frontend**: React/Vite compilado e servido pelo Nginx;

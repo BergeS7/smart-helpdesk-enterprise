@@ -19,6 +19,11 @@ const PERMISSIONS = Object.freeze([
   { key: "gerenciar_usuarios", label: "Gerenciar usuários", description: "Cadastrar, editar e conceder acessos." },
   { key: "alterar_configuracoes", label: "Alterar configurações", description: "Modificar parâmetros globais do sistema." },
   { key: "gerenciar_base", label: "Gerenciar base", description: "Criar e editar artigos da base de conhecimento." },
+  { key: "desenvolvimento_visualizar", label: "Visualizar desenvolvimento", description: "Consultar demandas, backlog, projetos e indicadores." },
+  { key: "desenvolvimento_analisar", label: "Analisar desenvolvimento", description: "Avaliar viabilidade, esforço e pontuação de demandas." },
+  { key: "desenvolvimento_editar", label: "Gerenciar desenvolvimento", description: "Editar, atribuir e movimentar demandas e tarefas." },
+  { key: "desenvolvimento_implantar", label: "Registrar implantação", description: "Registrar versões e implantações de entregas." },
+  { key: "desenvolvimento_converter_projeto", label: "Gerenciar projetos", description: "Criar projetos e converter demandas aprovadas." },
 ]);
 const KEYS = new Set(PERMISSIONS.map((permission) => permission.key));
 
@@ -42,7 +47,7 @@ function hasFullAccess(user) {
 const PROFILE_DEFAULTS = Object.freeze({
   usuario: [],
   tecnico: ["assumir_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados"],
-  supervisor: ["visualizar_dashboard", "visualizar_relatorios", "assumir_chamados", "delegar_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados"],
+  supervisor: ["visualizar_dashboard", "visualizar_relatorios", "assumir_chamados", "delegar_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados", "desenvolvimento_visualizar"],
 });
 
 async function listUserPermissions(userId, user) {
