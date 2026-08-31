@@ -957,7 +957,7 @@ export function obterMetricasRelatorio(filtros: FiltrosChamados = {}) {
   return request<ReportMetrics>(`/chamados/relatorios/resumo/metricas${qs.toString() ? `?${qs}` : ""}`);
 }
 
-export function listarCatalogo(tipo: "departamentos" | "tipos") {
+export function listarCatalogo(tipo: "departamentos" | "tipos" | "cargos") {
   return request<CatalogoItem[]>(`/catalogos/${tipo}`);
 }
 export function criarCatalogo(

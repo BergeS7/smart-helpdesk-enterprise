@@ -3,7 +3,7 @@
  */
 import { useEffect, useState, type FormEvent } from "react";
 import { Bell, Camera, Check, ChevronRight, Download, Eye, LogOut, MonitorCog, Palette, ShieldCheck, Trash2, UserCog, X } from "lucide-react";
-import type { ApiUsuario } from "../services/api";
+import { listarCatalogo, type ApiUsuario } from "../services/api";
 
 type Draft = Pick<ApiUsuario, "nome" | "telefone" | "departamento" | "cargo">;
 type Section = "geral" | "preferencias" | "notificacoes" | "seguranca" | "privacidade";
@@ -28,11 +28,27 @@ export function ProfileCenter({ profile, draft, setDraft, photo, initials, uploa
   onLogout: () => void;
 }) {
   const [section, setSection] = useState<Section>("geral");
+  const [departamentos, setDepartamentos] = useState<string[]>([]);
+  const [cargos, setCargos] = useState<string[]>([]);
   const storageKey = `smart_helpdesk_profile_preferences_${profile.id}`;
   const [preferences, setPreferences] = useState<Preferences>(() => {
     try { return { ...defaults, ...JSON.parse(localStorage.getItem(storageKey) || "{}") }; } catch { return defaults; }
   });
   useEffect(() => localStorage.setItem(storageKey, JSON.stringify(preferences)), [preferences, storageKey]);
+  useEffect(() => {
+    Promise.all([listarCatalogo("departamentos"), listarCatalogo("cargos")])
+      .then(([departmentItems, roleItems]) => {
+        setDepartamentos(departmentItems.filter((item) => item.ativo !== false).map((item) => item.nome));
+        setCargos(roleItems.filter((item) => item.ativo !== false).map((item) => item.nome));
+      })
+      .catch(() => {
+        setDepartamentos([]);
+        setCargos([]);
+      });
+  }, []);
+
+  const departmentOptions = Array.from(new Set(departamentos)).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const roleOptions = Array.from(new Set(cargos)).sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   const sections = [
     { id: "geral" as const, label: "Visão geral", icon: UserCog, hint: "Dados e atividade" },
@@ -72,7 +88,7 @@ export function ProfileCenter({ profile, draft, setDraft, photo, initials, uploa
               <div><h2 className="text-xl font-black">Visão geral</h2><p className={`text-sm ${muted}`}>Mantenha seus dados atualizados para identificação e triagem.</p></div>
               {stats && <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[["Abertos",stats.abertos,"text-blue-600"],["Em andamento",stats.andamento,"text-amber-600"],["Resolvidos",stats.concluidos,"text-emerald-600"],["SLA vencido",stats.atrasados,"text-red-600"]].map(([label,value,color]) => <div key={String(label)} className={`rounded-2xl border p-4 ${panel}`}><p className={`text-xs font-bold uppercase ${muted}`}>{label}</p><p className={`mt-1 text-2xl font-black ${color}`}>{value}</p></div>)}</div>}
               <div className={`flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center ${panel}`}><div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-sky-400 text-2xl font-black text-white">{photo ? <img src={photo} alt={profile.nome} className="h-full w-full object-cover" /> : initials}</div><div className="flex-1"><p className="font-black">Foto do perfil</p><p className={`mb-3 text-xs ${muted}`}>PNG, JPG ou WEBP, até 5 MB.</p><div className="flex flex-wrap gap-2"><label className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white ${uploading ? "pointer-events-none opacity-60" : ""}`}><Camera size={14}/>{uploading ? "Enviando..." : "Trocar foto"}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPhoto}/></label>{photo && <button type="button" onClick={onRemovePhoto} className="inline-flex h-9 items-center gap-2 rounded-xl border border-red-200 px-3 text-xs font-bold text-red-600"><Trash2 size={14}/>Remover</button>}</div></div><span className="self-start rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Conta ativa</span></div>
-              <form onSubmit={onSave} className={`rounded-2xl border p-5 ${panel}`}><div className="grid gap-4 sm:grid-cols-2"><ProfileField label="Nome"><input required className={input} value={draft.nome || ""} onChange={(e)=>setDraft({...draft,nome:e.target.value})}/></ProfileField><ProfileField label="E-mail"><input className={`${input} opacity-60`} value={profile.email} disabled/></ProfileField><ProfileField label="Telefone"><input className={input} value={draft.telefone || ""} onChange={(e)=>setDraft({...draft,telefone:e.target.value})}/></ProfileField><ProfileField label="Cargo"><input className={input} value={draft.cargo || ""} onChange={(e)=>setDraft({...draft,cargo:e.target.value})}/></ProfileField><ProfileField label="Departamento"><input className={input} value={draft.departamento || ""} onChange={(e)=>setDraft({...draft,departamento:e.target.value})}/></ProfileField><ProfileField label="Perfil de acesso"><input className={`${input} capitalize opacity-60`} value={profile.perfil} disabled/></ProfileField></div><button disabled={saving} className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"><Check size={16}/>{saving ? "Salvando..." : "Salvar alterações"}</button></form>
+              <form onSubmit={onSave} className={`rounded-2xl border p-5 ${panel}`}><div className="grid gap-4 sm:grid-cols-2"><ProfileField label="Nome"><input required className={input} value={draft.nome || ""} onChange={(e)=>setDraft({...draft,nome:e.target.value})}/></ProfileField><ProfileField label="E-mail"><input className={`${input} opacity-60`} value={profile.email} disabled/></ProfileField><ProfileField label="Telefone"><input className={input} value={draft.telefone || ""} onChange={(e)=>setDraft({...draft,telefone:e.target.value})}/></ProfileField><ProfileField label="Cargo"><select className={input} value={draft.cargo || ""} onChange={(e)=>setDraft({...draft,cargo:e.target.value})}><option value="">Selecione o cargo</option>{roleOptions.map((role)=><option key={role} value={role}>{role}</option>)}</select></ProfileField><ProfileField label="Departamento"><select className={input} value={draft.departamento || ""} onChange={(e)=>setDraft({...draft,departamento:e.target.value})}><option value="">Selecione o departamento</option>{departmentOptions.map((department)=><option key={department} value={department}>{department}</option>)}</select></ProfileField><ProfileField label="Perfil de acesso"><input className={`${input} capitalize opacity-60`} value={profile.perfil} disabled/></ProfileField></div><button disabled={saving} className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"><Check size={16}/>{saving ? "Salvando..." : "Salvar alterações"}</button></form>
             </div>}
             {section === "preferencias" && <ProfileSettings title="Preferências" description="Ajuste como o sistema se comporta neste navegador." panel={panel} muted={muted}><Choice title="Densidade da interface" description="Escolha quanto conteúdo aparece na tela."><select className={input} value={preferences.density} onChange={(e)=>updatePreference("density",e.target.value as Preferences["density"])}><option value="compacta">Compacta</option><option value="confortavel">Confortável</option></select></Choice><Toggle title="Alertas sonoros" description="Tocar som em eventos importantes." value={preferences.sound} onChange={(v)=>updatePreference("sound",v)}/></ProfileSettings>}
             {section === "notificacoes" && <ProfileSettings title="Notificações" description="Defina quais alertas deseja receber." panel={panel} muted={muted}><Toggle title="Notificações no sistema" description="Exibir alertas enquanto estiver usando o HelpDesk." value={preferences.desktop} onChange={(v)=>updatePreference("desktop",v)}/><Toggle title="Avisos por e-mail" description={`Enviar para ${profile.email}.`} value={preferences.email} onChange={(v)=>updatePreference("email",v)}/><Toggle title="Alertas de SLA" description="Avisar quando um chamado estiver perto do vencimento." value={preferences.sla} onChange={(v)=>updatePreference("sla",v)}/><Toggle title="Novas mensagens" description="Avisar quando houver interação em um chamado." value={preferences.messages} onChange={(v)=>updatePreference("messages",v)}/></ProfileSettings>}

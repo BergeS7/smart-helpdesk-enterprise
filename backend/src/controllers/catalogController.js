@@ -11,6 +11,16 @@ function tabelaValida(tipo) {
 
 const listarCatalogo = async (req, res) => {
   try {
+    if (req.params.tipo === "cargos") {
+      const result = await pool.query(
+        `SELECT MIN(id) AS id, TRIM(cargo) AS nome, NULL::text AS descricao, TRUE AS ativo
+         FROM usuarios
+         WHERE NULLIF(TRIM(COALESCE(cargo, '')), '') IS NOT NULL
+         GROUP BY TRIM(cargo)
+         ORDER BY TRIM(cargo) ASC`
+      );
+      return res.json(result.rows);
+    }
     const tabela = tabelaValida(req.params.tipo);
     if (!tabela) return res.status(400).json({ erro: "Catálogo inválido" });
     const result = await pool.query(`SELECT * FROM ${tabela} ORDER BY ativo DESC, nome ASC`);
