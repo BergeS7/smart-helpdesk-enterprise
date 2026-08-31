@@ -7308,6 +7308,32 @@ function ChamadoDetalhe({
               </div>
             </div>
           </Card>
+          {chamado.demanda_desenvolvimento && (() => {
+            const demanda = chamado.demanda_desenvolvimento;
+            const frequencias: Record<string, string> = { varias_dia: "Várias vezes ao dia", diaria: "Diariamente", semanal: "Semanalmente", mensal: "Mensalmente", ocasional: "Ocasionalmente", outro: "Outro" };
+            const naturezas: Record<string, string> = { bug: "Bug", melhoria: "Melhoria", automacao: "Automação", integracao: "Integração", dashboard_relatorio: "Dashboard / Relatório", novo_sistema: "Novo sistema" };
+            const info = [
+              ["Como funciona atualmente", demanda.current_process],
+              ["Problema a resolver", demanda.problem],
+              ["Resultado esperado", demanda.expected_result],
+              ["Frequência", frequencias[demanda.frequency || ""] || demanda.frequency],
+              ["Pessoas envolvidas", demanda.people_involved?.toString()],
+              ["Tempo atual por execução", demanda.current_time_minutes != null ? `${demanda.current_time_minutes} minutos` : ""],
+              ["Sistemas envolvidos", demanda.systems?.join(", ")],
+              ["Impacto se não for executada", demanda.no_delivery_impact],
+              ["Benefícios esperados", demanda.expected_benefits?.join(", ")],
+            ];
+            return <Card className="overflow-hidden !p-0">
+              <div className="flex flex-wrap items-center gap-3 border-b border-violet-100 bg-violet-50 px-5 py-4">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-600 text-white"><FileText size={18}/></span>
+                <span className="min-w-0 flex-1"><b className="block text-sm text-violet-950">Informações para desenvolvimento</b><span className="text-xs text-violet-700">{demanda.code || "Demanda vinculada"} · {naturezas[demanda.nature || ""] || demanda.nature || "Desenvolvimento"}</span></span>
+                <Button type="button" variant="secondary" onClick={() => baixarHistoricoChamadoPdf(chamado).catch((error) => toast.error(error.message))}><Download size={16}/>Baixar relatório PDF</Button>
+              </div>
+              <div className="grid gap-4 p-5 sm:grid-cols-2">
+                {info.map(([label, value]) => <div key={label} className="rounded-xl border border-zinc-100 bg-zinc-50 p-3"><span className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">{label}</span><p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-zinc-700">{value || "Não informado"}</p></div>)}
+              </div>
+            </Card>;
+          })()}
           <Card className="!p-0">
             <button
               type="button"

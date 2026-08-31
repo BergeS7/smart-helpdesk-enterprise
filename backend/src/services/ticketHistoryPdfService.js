@@ -31,6 +31,11 @@ function size(bytes) {
   return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function list(value) {
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "Não informado";
+  return text(value);
+}
+
 function generateTicketHistoryPdf({ chamado, generatedBy, loadAttachment }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 42, bufferPages: true, info: {
@@ -107,6 +112,19 @@ function generateTicketHistoryPdf({ chamado, generatedBy, loadAttachment }) {
       section("Descrição");
       resetX();
       doc.fillColor(COLORS.primary).font("Helvetica").fontSize(10).text(text(chamado.descricao), { width: pageWidth, lineGap: 3 });
+
+      if (chamado.demanda_desenvolvimento) {
+        const demand = chamado.demanda_desenvolvimento;
+        section("Informações da solicitação de desenvolvimento");
+        row([["Código", demand.code], ["Natureza", demand.nature], ["Status", demand.status]]);
+        entry("Como o processo funciona atualmente", "Informado pelo solicitante", demand.current_process);
+        entry("Problema que precisa ser resolvido", "Informado pelo solicitante", demand.problem);
+        entry("Resultado esperado", "Informado pelo solicitante", demand.expected_result);
+        row([["Frequência", demand.frequency], ["Pessoas envolvidas", demand.people_involved], ["Tempo atual por execução", demand.current_time_minutes != null ? `${demand.current_time_minutes} minutos` : null]]);
+        row([["Sistemas envolvidos", list(demand.systems)], ["Execuções por mês", demand.executions_per_month], ["Criada em", date(demand.created_at)]]);
+        entry("Impacto se não for executada", "Informado pelo solicitante", demand.no_delivery_impact);
+        entry("Benefícios esperados", "Informado pelo solicitante", list(demand.expected_benefits));
+      }
 
       section("Análise e classificação automática");
       row([["Prioridade sugerida", chamado.prioridade_ia], ["Confiança", chamado.prioridade_ia_confianca != null ? `${Math.round(Number(chamado.prioridade_ia_confianca) * (Number(chamado.prioridade_ia_confianca) <= 1 ? 100 : 1))}%` : "Não informada"], ["Responsável sugerido", chamado.ia_responsavel_sugerido]]);
