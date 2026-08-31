@@ -1425,7 +1425,10 @@ function UserPortal({
       return status === TICKET_STATUS.IN_PROGRESS || status === TICKET_STATUS.WAITING_USER;
     });
     const colunaResolvida = chamadosFiltrados.filter(
-      (chamado) => normalizeStatus(chamado.status) === TICKET_STATUS.CLOSED,
+      (chamado) =>
+        normalizeStatus(chamado.status) === TICKET_STATUS.CLOSED &&
+        !chamado.avaliacao &&
+        !chamado.avaliacao_nota,
     );
 
     return [
@@ -2594,13 +2597,13 @@ function UserPortal({
         />
       )}
       {avaliando && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="avaliacao-title" onMouseDown={() => setAvaliando(null)}>
-          <div className={`w-full max-w-xl overflow-hidden rounded-3xl border shadow-2xl ${temaEscuroUsuario ? "border-white/10 bg-[#111827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`} onMouseDown={(event) => event.stopPropagation()}>
-            <header className={`flex items-start justify-between gap-4 border-b p-5 ${temaEscuroUsuario ? "border-white/10" : "border-zinc-100"}`}>
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 p-2 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="avaliacao-title" onMouseDown={() => setAvaliando(null)}>
+          <div className={`flex max-h-[calc(100dvh-16px)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border shadow-2xl sm:max-h-[calc(100dvh-32px)] ${temaEscuroUsuario ? "border-white/10 bg-[#111827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`} onMouseDown={(event) => event.stopPropagation()}>
+            <header className={`flex shrink-0 items-start justify-between gap-4 border-b p-4 sm:p-5 ${temaEscuroUsuario ? "border-white/10" : "border-zinc-100"}`}>
               <div><span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700"><Star size={14} fill="currentColor" />Sua opinião importa</span><h2 id="avaliacao-title" className="mt-3 text-xl font-black">Avalie este atendimento</h2><p className={`mt-1 text-sm ${temaEscuroUsuario ? "text-white/55" : "text-zinc-500"}`}>{avaliando.numero_chamado || `#${avaliando.id}`} · {avaliando.titulo}</p></div>
               <button type="button" onClick={() => setAvaliando(null)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl transition hover:bg-zinc-500/10" aria-label="Fechar avaliação"><X size={19} /></button>
             </header>
-            <div className="p-5"><PerformanceRatingCard chamado={avaliando} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(avaliando.id, dados); toast.success("Avaliação enviada. Obrigado!"); setAvaliando(null); await sincronizarChamadosUsuario(); }} /></div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5"><PerformanceRatingCard chamado={avaliando} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(avaliando.id, dados); toast.success("Avaliação enviada. Obrigado!"); setAvaliando(null); await sincronizarChamadosUsuario(); }} /></div>
           </div>
         </div>
       )}
