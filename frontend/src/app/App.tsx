@@ -2418,7 +2418,6 @@ function UserPortal({
           initials={inicialPerfil}
           uploading={enviandoFoto}
           saving={salvandoPerfil}
-          stats={resumoUsuario}
           onSave={salvarPerfil}
           onPhoto={trocarFotoPerfil}
           onRemovePhoto={removerFotoPerfil}
