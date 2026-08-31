@@ -1136,6 +1136,8 @@ const avaliarChamado = async (req, res) => {
     if (!statusFinalizado(acesso.chamado.status)) return res.status(400).json({ erro: "Só é possível avaliar chamados concluídos" });
     const notaFinal = Number(nota);
     if (!Number.isInteger(notaFinal) || notaFinal < 1 || notaFinal > 5) return res.status(400).json({ erro: "Nota deve ser entre 1 e 5" });
+    const comentarioFinal = normalizarTexto(comentario || "").trim();
+    if (!comentarioFinal) return res.status(400).json({ erro: "O comentário da avaliação é obrigatório" });
     const result = await pool.query(
       `INSERT INTO performance_ratings
        (ticket_id,technician_id,team_id,client_id,overall_rating,courtesy_rating,communication_rating,resolution_rating,speed_rating,nps_score,comment,source)
@@ -1148,7 +1150,7 @@ const avaliarChamado = async (req, res) => {
          client_id=EXCLUDED.client_id,source='simple',updated_at=CURRENT_TIMESTAMP
        WHERE performance_ratings.source IN ('simple','legacy_migration')
        RETURNING id,ticket_id AS chamado_id,client_id AS usuario_id,overall_rating AS nota,comment AS comentario,created_at AS criado_em,updated_at AS atualizado_em`,
-      [id, acesso.chamado.responsavel_id || null, acesso.chamado.team_id || null, req.user.id, notaFinal, comentario ? normalizarTexto(comentario) : null]
+      [id, acesso.chamado.responsavel_id || null, acesso.chamado.team_id || null, req.user.id, notaFinal, comentarioFinal]
     );
     if (!result.rows[0]) return res.status(409).json({ erro: "Este chamado já possui uma avaliação detalhada." });
     await registrarMovimentacao(id, req, "avaliacao", `Atendimento avaliado com ${notaFinal} estrela(s).`);

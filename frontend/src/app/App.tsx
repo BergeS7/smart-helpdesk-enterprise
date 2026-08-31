@@ -2458,7 +2458,7 @@ function UserPortal({
               <div><span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700"><Star size={14} fill="currentColor" />Sua opinião importa</span><h2 id="avaliacao-title" className="mt-3 text-xl font-black">Avalie este atendimento</h2><p className={`mt-1 text-sm ${temaEscuroUsuario ? "text-white/55" : "text-zinc-500"}`}>{avaliando.numero_chamado || `#${avaliando.id}`} · {avaliando.titulo}</p></div>
               <button type="button" onClick={() => setAvaliando(null)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl transition hover:bg-zinc-500/10" aria-label="Fechar avaliação"><X size={19} /></button>
             </header>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5"><PerformanceRatingCard chamado={avaliando} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(avaliando.id, dados); toast.success("Avaliação enviada. Obrigado!"); setAvaliando(null); await sincronizarChamadosUsuario(); }} /></div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5"><PerformanceRatingCard chamado={avaliando} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(avaliando.id, dados); setAvaliando(null); toast.success("Avaliação concluída com sucesso!"); await sincronizarChamadosUsuario(); }} /></div>
           </div>
         </div>
       )}
@@ -7598,7 +7598,7 @@ function ChamadoDetalhe({
                 <Star size={18} />
                 Avalie este atendimento
               </h3>
-              <PerformanceRatingCard chamado={chamado} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(chamado.id, dados); toast.success("Avaliação enviada."); await onRefresh(); }} />
+              <PerformanceRatingCard chamado={chamado} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(chamado.id, dados); toast.success("Avaliação concluída com sucesso!"); await onRefresh(); }} />
             </Card>
           )}
           {concluido && chamado.avaliacao && (

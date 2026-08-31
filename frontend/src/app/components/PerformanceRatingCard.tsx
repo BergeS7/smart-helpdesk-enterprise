@@ -93,10 +93,10 @@ function Stars({
 export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
   const [rating, setRating] = useState<RatingPayload>({
     overall_rating: 0,
-    courtesy_rating: 5,
-    communication_rating: 5,
-    resolution_rating: 5,
-    speed_rating: 5,
+    courtesy_rating: 0,
+    communication_rating: 0,
+    resolution_rating: 0,
+    speed_rating: 0,
     nps_score: -1,
     comment: "",
   });
@@ -109,7 +109,12 @@ export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
     [rating],
   );
   async function submit() {
-    if (!rating.overall_rating || rating.nps_score < 0 || !detailsComplete)
+    if (
+      !rating.overall_rating ||
+      rating.nps_score < 0 ||
+      !detailsComplete ||
+      !rating.comment.trim()
+    )
       return;
     setSaving(true);
     try {
@@ -250,12 +255,16 @@ export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
         </div>
         <div>
           <div className="flex justify-between">
-            <h3 className="font-black text-zinc-900">Comentário</h3>
+            <h3 className="font-black text-zinc-900">
+              Comentário <span className="text-red-500">*</span>
+            </h3>
             <span className="text-xs text-zinc-400">
               {rating.comment.length}/1000
             </span>
           </div>
           <textarea
+            required
+            aria-required="true"
             maxLength={1000}
             value={rating.comment}
             onChange={(event) =>
@@ -264,6 +273,9 @@ export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
             placeholder="Conte-nos o que podemos melhorar ou o que mais gostou."
             className="mt-3 min-h-24 w-full rounded-2xl border border-zinc-200 p-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
+          <p className="mt-1.5 text-xs font-semibold text-zinc-500">
+            Campo obrigatório para concluir a avaliação.
+          </p>
         </div>
         <div>
           <h3 className="font-black text-zinc-900">Tags rápidas</h3>
@@ -297,7 +309,13 @@ export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
         </button>}
         <button
           type="button"
-          disabled={saving || !rating.overall_rating || rating.nps_score < 0}
+          disabled={
+            saving ||
+            !rating.overall_rating ||
+            rating.nps_score < 0 ||
+            !detailsComplete ||
+            !rating.comment.trim()
+          }
           onClick={submit}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >

@@ -19,6 +19,7 @@ exports.rateTicket = async (req,res) => {
     if(!isFinal(ticket.status)) return res.status(400).json({erro:"A pesquisa fica disponível após o encerramento do chamado"});
     const fields=["overall_rating","courtesy_rating","communication_rating","resolution_rating","speed_rating"];
     const rating={nps_score:number(req.body.nps_score,0,10),comment:String(req.body.comment||"").trim().slice(0,4000)};
+    if(!rating.comment)return res.status(400).json({erro:"O comentário da avaliação é obrigatório"});
     for(const field of fields){rating[field]=number(req.body[field],1,5);if(!rating[field])return res.status(400).json({erro:`${field} deve ser uma nota de 1 a 5`});}
     if(rating.nps_score===null)return res.status(400).json({erro:"NPS deve estar entre 0 e 10"});
     const saved=await recordRating({ticket,clientId:req.user.id,rating}); return res.status(201).json(saved);
