@@ -385,7 +385,7 @@ async function registrarMovimentacao(chamadoId, req, tipo, descricao) {
 
 // Monta a visão agregada consumida pela tela de detalhes e pelo PDF histórico.
 async function carregarDetalhesChamado(req, chamado) {
-  const [comentarios, anexos, movimentacoes, avaliacao] = await Promise.all([
+  const [comentarios, anexos, movimentacoes, avaliacao, demandaDesenvolvimento] = await Promise.all([
     pool.query(
       `SELECT cc.id, cc.chamado_id, cc.usuario_id, cc.autor_nome, cc.autor_perfil,
               cc.mensagem, cc.criado_em, u.foto_perfil
@@ -411,6 +411,13 @@ async function carregarDetalhesChamado(req, chamado) {
        FROM performance_ratings WHERE ticket_id = $1 AND client_id = $2 LIMIT 1`,
       [chamado.id, req.user.id]
     ),
+    pool.query(
+      `SELECT id, code, nature, status, current_process, problem, expected_result, frequency,
+              executions_per_month, people_involved, current_time_minutes, systems,
+              no_delivery_impact, expected_benefits, created_at, updated_at
+       FROM development_requests WHERE ticket_id = $1 LIMIT 1`,
+      [chamado.id]
+    ).catch(() => ({ rows: [] })),
   ]);
 
   return {
@@ -429,6 +436,7 @@ async function carregarDetalhesChamado(req, chamado) {
     anexos: anexos.rows.map((anexo) => ({ ...anexo, url: montarUrlAnexo(req, anexo) })),
     movimentacoes: movimentacoes.rows,
     avaliacao: avaliacao.rows[0] || null,
+    demanda_desenvolvimento: demandaDesenvolvimento.rows[0] || null,
     pode_avaliar: !usuarioEhEquipe(req) && await usuarioPodeAvaliarChamado(chamado, req.user),
   };
 }

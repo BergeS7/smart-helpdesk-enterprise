@@ -276,6 +276,24 @@ export type ApiChamado = {
   movimentacoes?: ApiMovimentacao[];
   avaliacao?: ApiAvaliacao | null;
   pode_avaliar?: boolean;
+  demanda_desenvolvimento?: {
+    id: number;
+    code?: string;
+    nature?: string;
+    status?: string;
+    current_process?: string;
+    problem?: string;
+    expected_result?: string;
+    frequency?: string;
+    executions_per_month?: number;
+    people_involved?: number;
+    current_time_minutes?: number;
+    systems?: string[];
+    no_delivery_impact?: string;
+    expected_benefits?: string[];
+    created_at?: string;
+    updated_at?: string;
+  } | null;
   ia?: {
     prioridade: string;
     pontuacao: number;
