@@ -1894,8 +1894,19 @@ function UserPortal({
     }
 
     return (
-      <div className="min-h-full lg:h-full lg:overflow-hidden">
-        <section className="grid min-h-full gap-4 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="min-h-full lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
+        <section className="mb-4 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Central do solicitante</p>
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-zinc-900">Olá, {String(usuarioAtual.nome || "Usuário").split(" ")[0]}</h2>
+            <p className="mt-1 text-sm text-zinc-500">Acompanhe seus atendimentos e encontre soluções em um só lugar.</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-bold text-zinc-500">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 shadow-sm"><span className="h-2 w-2 rounded-full bg-emerald-500"/>Central online</span>
+            <span className="hidden rounded-xl border border-zinc-200 bg-white px-3 py-2 shadow-sm sm:inline-flex">{usuarioAtual.departamento || "Seu departamento"}</span>
+          </div>
+        </section>
+        <section className="grid min-h-full flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_310px]">
           <div className="flex min-w-0 flex-col gap-4 lg:min-h-0">
             <section className="grid shrink-0 gap-3 md:grid-cols-3">
               <UsuarioResumoCard
@@ -2077,21 +2088,20 @@ function UserPortal({
         <AvisosSistemaBanner avisos={avisosSistema} dark={temaEscuroUsuario} />
       </div>
       <div className="flex h-screen overflow-hidden">
-        <aside className="hidden w-[232px] shrink-0 flex-col bg-gradient-to-b from-[#111d29] via-[#0f1b27] to-[#0a1621] text-white shadow-2xl lg:flex">
-          <div className="px-5 pb-4 pt-5">
-            <div className="mx-auto grid h-16 w-16 place-items-center overflow-hidden rounded-2xl bg-white/95 p-1 shadow-xl shadow-black/20">
+        <aside className="hidden w-[256px] shrink-0 flex-col border-r border-white/5 bg-gradient-to-b from-[#101c29] via-[#0d1925] to-[#08131d] text-white shadow-2xl lg:flex">
+          <div className="flex items-center gap-3 border-b border-white/8 px-4 py-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/95 p-1 shadow-xl shadow-black/20">
               <img
                 src={sistemaLogo1}
                 alt={sistemaNome}
                 className="h-full w-full object-contain"
               />
             </div>
-            <h1 className="mt-3 text-center text-lg font-black tracking-tight">
-              {sistemaNome}
-            </h1>
+            <div className="min-w-0"><h1 className="truncate text-sm font-black tracking-tight">{sistemaNome}</h1><p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">Portal do usuário</p></div>
           </div>
 
-          <nav className="flex-1 space-y-1 px-3 py-2">
+          <nav className="flex-1 space-y-1 px-3 py-4">
+            <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Atendimento</p>
             <UsuarioSidebarButton
               ativo={tab === "home"}
               icon={<LayoutDashboard size={22} />}
@@ -2100,6 +2110,13 @@ function UserPortal({
                 setTab("home");
                 setNotificacoesAberta(false);
               }}
+            />
+            <UsuarioSidebarButton
+              ativo={tab === "avisos"}
+              icon={<Bell size={22} />}
+              label="Notificações"
+              badge={unread > 0 ? String(unread) : undefined}
+              onClick={() => { setTab("avisos"); setNotificacoesAberta(false); }}
             />
             <UsuarioSidebarButton
               ativo={tab === "chamados"}
@@ -2137,6 +2154,7 @@ function UserPortal({
             )}
 
             <div className="my-4 border-t border-white/10" />
+            <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Preferências</p>
 
             <UsuarioSidebarButton
               icon={temaEscuroUsuario ? <Sun size={22} /> : <Moon size={22} />}
@@ -2146,7 +2164,8 @@ function UserPortal({
             />
           </nav>
 
-          <div className="space-y-2 px-3 pb-4">
+          <div className="space-y-2 border-t border-white/8 px-3 pb-4 pt-3">
+            <button type="button" onClick={()=>setMostrarPerfil(true)} className="mb-2 flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-white/5"><span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-sm font-black">{fotoPerfil?<img src={fotoPerfil} alt={usuarioAtual.nome} className="h-full w-full object-cover"/>:inicialPerfil}</span><span className="min-w-0"><span className="block truncate text-xs font-black">{usuarioAtual.nome}</span><span className="block truncate text-[10px] text-white/45">{usuarioAtual.departamento||"Solicitante"}</span></span></button>
             <button
               type="button"
               onClick={onLogout}
@@ -2178,7 +2197,7 @@ function UserPortal({
 
         <div className="min-w-0 flex-1">
           <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 shadow-sm backdrop-blur">
-            <div className="flex h-16 items-center gap-3 px-4 lg:px-5">
+            <div className="relative flex h-14 items-center gap-3 px-4 lg:px-5">
               <div className="flex min-w-0 items-center gap-3 lg:hidden">
                 <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200">
                   <img
@@ -2195,9 +2214,10 @@ function UserPortal({
                 </div>
               </div>
 
+              <div className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 lg:block"><p className="text-sm font-black text-zinc-800">{activeTab.title}</p></div>
               <form
                 onSubmit={executarPesquisa}
-                className="hidden min-w-[240px] max-w-[560px] flex-1 md:flex"
+                className="hidden min-w-[240px] max-w-[430px] flex-1 md:flex lg:max-w-[360px] xl:max-w-[430px]"
               >
                 <div className="ds-search flex h-10 w-full items-center overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm shadow-slate-200/50 transition focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-500/10">
                   <button
@@ -2396,7 +2416,7 @@ function UserPortal({
             </form>
           </div>
 
-          <main className="h-[calc(100vh-64px)] overflow-auto px-0 pb-24 pt-0 lg:overflow-hidden lg:px-0 lg:py-0">
+          <main className="h-[calc(100vh-56px)] overflow-auto px-4 pb-24 pt-4 lg:overflow-hidden lg:px-5 lg:pb-5 lg:pt-4">
             {renderConteudo()}
           </main>
         </div>
