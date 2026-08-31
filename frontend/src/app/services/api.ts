@@ -143,8 +143,9 @@ async function request<T>(
     const extras = data?.detalhes?.length
       ? ` ${data.detalhes.join(" | ")}`
       : "";
+    const codigo = data?.requestId ? ` Código: ${data.requestId}` : "";
     throw new Error(
-      `${data?.erro ?? "Erro ao comunicar com a API"}${detalhe}${extras}`,
+      `${data?.erro ?? "Erro ao comunicar com a API"}${detalhe}${extras}${codigo}`,
     );
   }
   return data as T;
