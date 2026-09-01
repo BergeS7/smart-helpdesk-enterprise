@@ -12,7 +12,7 @@ function notify(client, userId, title, message, link, type = "info") { if (!user
 function audit(client, requestId, actorId, event, previous, next, comment, internal = false) { return client.query("INSERT INTO development_history(request_id,actor_id,event_type,previous_value,new_value,comment,internal) VALUES($1,$2,$3,$4,$5,$6,$7)", [requestId,actorId,event,previous ? JSON.stringify(previous) : null,next ? JSON.stringify(next) : null,comment || null,internal]); }
 
 async function requestAccess(id, user, client = pool) {
-  const result = await client.query(`SELECT d.*, c.titulo, c.descricao, c.usuario_id AS requester_id, c.solicitante_nome, c.solicitante_email, u.nome developer_name, t.name team_name
+  const result = await client.query(`SELECT d.*, c.titulo, c.descricao, c.usuario_id AS requester_id, c.solicitante AS solicitante_nome, c.email_solicitante AS solicitante_email, u.nome developer_name, t.name team_name
     FROM development_requests d JOIN chamados c ON c.id=d.ticket_id LEFT JOIN usuarios u ON u.id=d.developer_id LEFT JOIN teams t ON t.id=d.team_id WHERE d.id=$1 OR d.code=$2`, [Number(id) || 0, String(id)]);
   const item = result.rows[0];
   if (!item) throw httpError(404, "Demanda não encontrada.");
@@ -25,7 +25,7 @@ async function listRequests(req, res) { try {
   if (ehUsuarioComum(req.user.perfil)) add("c.usuario_id=?",req.user.id);
   for (const [key,column] of Object.entries({status:"d.status",nature:"d.nature",priority:"COALESCE(d.final_priority,d.calculated_priority)",developer_id:"d.developer_id",team_id:"d.team_id"})) if(req.query[key]) add(`${column}=?`,req.query[key]);
   if(req.query.q){values.push(`%${String(req.query.q).slice(0,120)}%`);where.push(`(d.code ILIKE $${values.length} OR c.titulo ILIKE $${values.length} OR c.descricao ILIKE $${values.length})`);}
-  const result=await pool.query(`SELECT d.*,c.titulo,c.descricao,c.usuario_id requester_id,c.solicitante_nome,u.nome developer_name,t.name team_name FROM development_requests d JOIN chamados c ON c.id=d.ticket_id LEFT JOIN usuarios u ON u.id=d.developer_id LEFT JOIN teams t ON t.id=d.team_id ${where.length?`WHERE ${where.join(" AND ")}`:""} ORDER BY COALESCE(d.score,0) DESC,d.created_at DESC LIMIT 500`,values);
+  const result=await pool.query(`SELECT d.*,c.titulo,c.descricao,c.usuario_id requester_id,c.solicitante AS solicitante_nome,c.email_solicitante AS solicitante_email,u.nome developer_name,t.name team_name FROM development_requests d JOIN chamados c ON c.id=d.ticket_id LEFT JOIN usuarios u ON u.id=d.developer_id LEFT JOIN teams t ON t.id=d.team_id ${where.length?`WHERE ${where.join(" AND ")}`:""} ORDER BY COALESCE(d.score,0) DESC,d.created_at DESC LIMIT 500`,values);
   res.json(result.rows.map(item=>({...item,savings:calculateSavings({tempo_antes_minutos:item.current_time_minutes,tempo_depois_minutos:item.automated_time_minutes,execucoes_mes:item.executions_per_month,pessoas:item.people_involved})})));
 } catch(error){handle(res,error,req);} }
 
