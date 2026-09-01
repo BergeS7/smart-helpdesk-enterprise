@@ -143,6 +143,7 @@ async function sincronizarSlaChamadosAtivosUmaVez() {
              CASE WHEN LOWER(c.prioridade) IN ('critica','crítica') THEN $9::text WHEN LOWER(c.prioridade)='alta' THEN $10::text WHEN LOWER(c.prioridade) IN ('media','média') THEN $11::text ELSE $12::text END label
            FROM chamados c
            WHERE c.status NOT IN ('RESOLVED','CLOSED','CANCELED')
+             AND LOWER(COALESCE(c.tipo_chamado, '')) NOT IN ('bug','melhoria','automação','automacao','integração','integracao','dashboard / relatório','dashboard / relatorio','novo sistema')
          )
          UPDATE chamados c SET
            sla_resposta_minutos=r.resposta, sla_resolucao_minutos=r.resolucao, sla=r.label,
@@ -494,6 +495,7 @@ const criarChamado = async (req, res) => {
   let chamadoCriado = null;
   try {
     const { titulo, descricao, tipo_chamado, ativo_id } = req.body;
+    const tipoDesenvolvimento = ["bug", "melhoria", "automação", "automacao", "integração", "integracao", "dashboard / relatório", "dashboard / relatorio", "novo sistema"].includes(normalizarTexto(tipo_chamado).toLowerCase());
     const usuario = await obterUsuarioAtual(req);
     if (!usuario) return res.status(404).json({ erro: "Usuário não encontrado" });
 
@@ -587,6 +589,17 @@ const criarChamado = async (req, res) => {
     );
     chamado = analisePersistida.rows[0];
     chamadoCriado = chamado;
+    if (tipoDesenvolvimento) {
+      const semSlaOperacional = await pool.query(
+        `UPDATE chamados SET sla=NULL,
+          sla_limite_resposta=NULL, sla_limite_resolucao=NULL, vencido=FALSE,
+          sla_alerta_enviado=FALSE, sla_escalado=FALSE,
+          atualizado_em=CURRENT_TIMESTAMP WHERE id=$1 RETURNING *`,
+        [chamado.id]
+      );
+      chamado = semSlaOperacional.rows[0];
+      chamadoCriado = chamado;
+    }
     // Backwards-compatible routing: a department-named team wins over the legacy technician picker.
     const teamResult = await pool.query(
       `SELECT id, distribution_mode FROM teams
@@ -595,7 +608,7 @@ const criarChamado = async (req, res) => {
       [usuario.departamento || ""]
     );
     const team = teamResult.rows[0];
-    if (team) {
+    if (team && !tipoDesenvolvimento) {
       responsavelAutomatico = await distributeTicket({ teamId: team.id, distributionMode: team.distribution_mode });
       const routed = await pool.query(
         `UPDATE chamados SET team_id=$1, responsavel_id=$2, responsavel=$3, atualizado_em=CURRENT_TIMESTAMP
@@ -651,6 +664,9 @@ function montarFiltrosChamados(query, req) {
   }
   if (normalizarPerfil(req.user?.perfil) !== "tecnico" && (query.fila === "true" || query.fila === true)) {
     where.push("c.responsavel_id IS NULL");
+  }
+  if (query.fila === "true" || query.fila === true) {
+    where.push(`LOWER(COALESCE(c.tipo_chamado, '')) NOT IN ('bug','melhoria','automação','automacao','integração','integracao','dashboard / relatório','dashboard / relatorio','novo sistema')`);
   }
   // Closed tickets are retained for audits and reports, but can leave the operational queue after a configured window.
   if (query.closed !== "true") {

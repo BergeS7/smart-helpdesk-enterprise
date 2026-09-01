@@ -551,6 +551,7 @@ export type DevelopmentRequest = {
   people_involved?:number; current_time_minutes?:number; automated_time_minutes?:number; sectors?:string[]; systems?:string[];
   impact?:number; reach?:number; gain?:number; urgency?:number; score?:number; calculated_priority?:string; final_priority?:string;
   effort?:string; story_points?:number; developer_id?:number; developer_name?:string; team_id?:number; team_name?:string;
+  no_delivery_impact?:string; expected_benefits?:string[]; priority_reason?:string; feasibility?:string;
   due_date?:string; requester_id?:number; solicitante_nome?:string; converted_project_id?:number; created_at:string; updated_at:string;
   savings?:{horas_mes:number;horas_ano:number}; history?:Array<Record<string,unknown>>;
 };

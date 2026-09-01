@@ -5102,7 +5102,7 @@ function AdminPanel({
             )}
 
             {tab === "chamados" && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando chamados…</strong></div>}><ChamadosListModule chamados={chamados} onOpen={abrirDetalhe} dark={dark}/></Suspense>}
-            {["desenvolvimento","projetos"].includes(tab) && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando desenvolvimento…</strong></div>}><DevelopmentWorkspace dark={dark}/></Suspense>}
+            {["desenvolvimento","projetos"].includes(tab) && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando desenvolvimento…</strong></div>}><DevelopmentWorkspace dark={dark} initialMode={tab==="projetos"?"projects":"kanban"}/></Suspense>}
             {tab === "historico" && (
               <HistoricoEquipeView
                 chamados={historicoEquipe}
