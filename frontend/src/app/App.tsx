@@ -2169,8 +2169,17 @@ function UserPortal({
                   </button>
 
                   {notificacoesAberta && (
-                    <div className="absolute right-0 top-14 z-50 w-[360px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-slate-200/70">
-                      <div className="flex items-start justify-between gap-3 border-b border-zinc-100 p-4">
+                    <button
+                      type="button"
+                      aria-label="Fechar notificações"
+                      className="fixed inset-0 z-[69] cursor-default bg-slate-950/10 sm:z-40"
+                      onClick={() => setNotificacoesAberta(false)}
+                    />
+                  )}
+
+                  {notificacoesAberta && (
+                    <div className="fixed inset-x-3 bottom-[calc(88px+env(safe-area-inset-bottom))] top-[72px] z-[70] flex w-auto flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-slate-900/20 sm:absolute sm:inset-auto sm:right-0 sm:top-14 sm:z-50 sm:block sm:w-[360px]">
+                      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-100 p-3 sm:p-4">
                         <div>
                           <p className="font-black text-zinc-900">
                             Notificações
@@ -2183,13 +2192,13 @@ function UserPortal({
                           type="button"
                           onClick={marcarTodasComoLidasUsuario}
                           disabled={unread === 0}
-                          className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-black text-zinc-600 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="shrink-0 whitespace-nowrap rounded-lg border border-zinc-200 px-3 py-2 text-xs font-black text-zinc-600 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Marcar lidas
                         </button>
                       </div>
 
-                      <div className="max-h-[430px] overflow-auto p-2">
+                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:max-h-[430px]">
                         {carregandoNotificacoes &&
                           notificacoes.length === 0 && (
                             <div className="p-6 text-center text-sm text-zinc-500">
@@ -2213,7 +2222,7 @@ function UserPortal({
                               onClick={() =>
                                 abrirNotificacaoUsuario(notificacao)
                               }
-                              className={`mb-2 flex w-full gap-3 rounded-xl border p-3 text-left transition ${notificacao.lida ? "border-zinc-100 bg-white hover:bg-zinc-50" : "border-blue-100 bg-blue-50 hover:bg-blue-100"}`}
+                              className={`mb-2 flex w-full gap-2.5 rounded-xl border p-3 text-left transition sm:gap-3 ${notificacao.lida ? "border-zinc-100 bg-white hover:bg-zinc-50" : "border-blue-100 bg-blue-50 hover:bg-blue-100"}`}
                             >
                               <span
                                 className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${notificacaoClass(notificacao.tipo)}`}
@@ -2232,7 +2241,7 @@ function UserPortal({
                                 <span className="mt-1 block line-clamp-2 text-xs leading-5 text-zinc-500">
                                   {notificacao.mensagem}
                                 </span>
-                                <span className="mt-2 flex items-center justify-between gap-2 text-[11px] font-bold text-zinc-400">
+                                <span className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] font-bold text-zinc-400">
                                   <span>
                                     {formatDate(notificacao.criado_em)}
                                   </span>
