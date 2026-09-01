@@ -2,10 +2,10 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "servidor.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "nodemon servidor.js",
-    "start": "node servidor.js",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
     "test": "node --test test/*.test.js",
     "check": "node scripts/check-syntax.js",
     "migrate": "node scripts/migrate.js up",
