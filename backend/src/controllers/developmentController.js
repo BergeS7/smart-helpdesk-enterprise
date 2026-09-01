@@ -1,12 +1,13 @@
 const pool = require("../config/database");
 const { scoreDevelopment, calculateSavings, DEVELOPMENT_TYPES, DEVELOPMENT_STATUSES, PROJECT_STATUSES, TASK_STATUSES, EFFORTS } = require("../domain/development");
 const { ehUsuarioComum } = require("../utils/permissoes");
+const { recordError } = require("../services/systemDiagnosticsService");
 
 const allowedRequestFields = ["nature","current_process","problem","expected_result","frequency","executions_per_month","people_involved","current_time_minutes","automated_time_minutes","sectors","systems","no_delivery_impact","expected_benefits","impact","reach","gain","urgency","final_priority","priority_reason","effort","story_points","feasibility","developer_id","team_id","due_date","rejection_reason","rejection_details"];
 const clean = (body, allowed) => Object.fromEntries(allowed.filter((key) => body[key] !== undefined).map((key) => [key, body[key] === "" ? null : body[key]]));
 const placeholders = (obj, start = 1) => Object.keys(obj).map((key, index) => `${key}=$${index + start}`).join(", ");
 const httpError = (status, message) => Object.assign(new Error(message), { status });
-function handle(res, error, req) { if(!error.status)console.error("Erro no fluxo de desenvolvimento:",error); res.status(error.status || 500).json({ erro: error.status ? error.message : "Erro interno no fluxo de desenvolvimento.", requestId: req.id }); }
+function handle(res, error, req) { if(!error.status)recordError({source:"development",message:error.message,requestId:req.id,path:req.originalUrl}); res.status(error.status || 500).json({ erro: error.status ? error.message : "Erro interno no fluxo de desenvolvimento.", requestId: req.id }); }
 function notify(client, userId, title, message, link, type = "info") { if (!userId) return Promise.resolve(); return client.query("INSERT INTO notificacoes(usuario_id,titulo,mensagem,tipo,link) VALUES($1,$2,$3,$4,$5)", [userId,title,message,type,link]); }
 function audit(client, requestId, actorId, event, previous, next, comment, internal = false) { return client.query("INSERT INTO development_history(request_id,actor_id,event_type,previous_value,new_value,comment,internal) VALUES($1,$2,$3,$4,$5,$6,$7)", [requestId,actorId,event,previous ? JSON.stringify(previous) : null,next ? JSON.stringify(next) : null,comment || null,internal]); }
 
