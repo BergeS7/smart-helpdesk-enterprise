@@ -527,6 +527,7 @@ export type ApiTeamMember = Pick<
 export type PermissionKey =
   | "visualizar_dashboard"
   | "visualizar_relatorios"
+  | "visualizar_ranking_satisfacao"
   | "exportar_dados"
   | "baixar_relatorios"
   | "visualizar_patrimonio"
@@ -933,6 +934,12 @@ export function obterMinhaPerformance(month?: number, year?: number) {
   return request<MyPerformanceDashboard>(
     `/performance/me${qs.toString() ? `?${qs}` : ""}`,
   );
+}
+export function obterRankingSatisfacao(month?: number, year?: number) {
+  const qs = new URLSearchParams({ scope: "technicians" });
+  if (month) qs.set("month", String(month));
+  if (year) qs.set("year", String(year));
+  return request<PerformanceScore[]>(`/performance/ranking?${qs}`);
 }
 export function urlRelatorio(
   formato: "csv" | "excel" | "pdf",

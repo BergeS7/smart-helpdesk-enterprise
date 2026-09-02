@@ -67,6 +67,7 @@ import {
   Sun,
   Ticket,
   Trash2,
+  Trophy,
   Upload,
   User,
   UserCheck,
@@ -100,6 +101,7 @@ const SatisfactionAnalyticsPage = lazy(() =>
 const MySatisfactionPage = lazy(
   () => import("./components/MySatisfactionPage"),
 );
+const SatisfactionRankingPage = lazy(() => import("./components/SatisfactionRankingPage"));
 const OperationalDashboard = lazy(() => import("./pages/Dashboard/OperationalDashboard").then(module => ({ default:module.OperationalDashboard })));
 const ReportsWorkspace = lazy(() => import("./components/ReportsWorkspace").then(module => ({ default:module.ReportsWorkspace })));
 const SettingsWorkspace = lazy(() => import("./pages/Settings/SettingsWorkspace").then(module => ({ default:module.SettingsWorkspace })));
@@ -197,7 +199,7 @@ type LoginMode = "usuario" | "admin";
 type TelaAuth = "login" | "cadastro" | "verificar" | "recuperar";
 type AdminTab = AdminRouteKey;
 type UsuarioTab =
-  "home" | "chamados" | "base" | "avisos" | "dashboard" | "relatorios";
+  "home" | "chamados" | "base" | "avisos" | "acessos" | "ranking" | "dashboard" | "relatorios";
 
 // Restaura filtros compartilháveis diretamente da URL do navegador.
 function ticketFiltersFromUrl():FiltrosChamados{
@@ -1443,6 +1445,15 @@ function UserPortal({
       label: "Notificações",
       title: "Notificações",
     },
+    {
+      key: "acessos" as UsuarioTab,
+      icon: ShieldCheck,
+      label: "Meus acessos",
+      title: "Meus acessos",
+    },
+    ...(permissoesUsuario.includes("visualizar_ranking_satisfacao")
+      ? [{ key: "ranking" as UsuarioTab, icon: Trophy, label: "Ranking de satisfação", title: "Ranking de satisfação" }]
+      : []),
     ...(permissoesUsuario.includes("visualizar_dashboard")
       ? [
           {
@@ -1467,6 +1478,13 @@ function UserPortal({
 
   const activeTab =
     usuarioTabs.find((item) => item.key === tab) ?? usuarioTabs[0];
+  const acessosVisiveis = [
+    { label: "Abrir e acompanhar chamados", description: "Consulte seus próprios atendimentos, mensagens e anexos.", allowed: true },
+    { label: "Base de conhecimento", description: "Consulte orientações e soluções publicadas.", allowed: true },
+    { label: "Dashboard operacional", description: "Visualize indicadores autorizados da operação.", allowed: permissoesUsuario.includes("visualizar_dashboard") },
+    { label: "Ranking de satisfação", description: "Consulte resultados consolidados da equipe técnica.", allowed: permissoesUsuario.includes("visualizar_ranking_satisfacao") },
+    { label: "Relatórios", description: "Consulte ou baixe relatórios dos seus chamados.", allowed: permissoesUsuario.includes("visualizar_relatorios") || permissoesUsuario.includes("baixar_relatorios") },
+  ];
 
   function abrirSuporteUsuario() {
     const email = suporteEmail.trim();
@@ -1775,6 +1793,16 @@ function UserPortal({
   }
 
   const renderConteudo = () => {
+    if (tab === "ranking" && permissoesUsuario.includes("visualizar_ranking_satisfacao")) {
+      return <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando ranking…</strong></div>}><SatisfactionRankingPage dark={temaEscuroUsuario}/></Suspense>;
+    }
+    if (tab === "acessos") {
+      return <section className="space-y-4">
+        <Card><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Transparência de acesso</p><h2 className="mt-1 text-xl font-black">O que seu perfil permite</h2><p className="mt-2 text-sm text-zinc-500">Seu perfil é <b className="capitalize text-zinc-700">{usuarioAtual.perfil || "usuário"}</b>. A equipe administradora pode conceder acessos adicionais quando necessário.</p></div><span className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700"><ShieldCheck size={16}/>{acessosVisiveis.filter((item) => item.allowed).length} de {acessosVisiveis.length} recursos</span></div></Card>
+        <div className="grid gap-3 md:grid-cols-2">{acessosVisiveis.map((item) => <article key={item.label} className={`rounded-2xl border p-4 ${item.allowed ? "border-emerald-200 bg-emerald-50/50" : "border-zinc-200 bg-zinc-50"}`}><div className="flex items-start gap-3"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${item.allowed ? "bg-emerald-100 text-emerald-700" : "bg-zinc-200 text-zinc-500"}`}>{item.allowed ? <CheckCircle2 size={18}/> : <LockKeyhole size={18}/>}</span><div><h3 className="text-sm font-black">{item.label}</h3><p className="mt-1 text-xs leading-5 text-zinc-500">{item.description}</p><span className={`mt-3 inline-block text-[10px] font-black uppercase tracking-wide ${item.allowed ? "text-emerald-700" : "text-zinc-500"}`}>{item.allowed ? "Acesso liberado" : "Acesso não concedido"}</span></div></div></article>)}</div>
+        <Card><div className="flex items-center gap-3"><KeyRound className="text-blue-600" size={20}/><div><h3 className="text-sm font-black">Precisa de outro acesso?</h3><p className="mt-1 text-xs text-zinc-500">Entre em contato com o suporte ou com o administrador. As permissões são liberadas de acordo com sua função.</p></div></div></Card>
+      </section>;
+    }
     if (
       tab === "dashboard" &&
       permissoesUsuario.includes("visualizar_dashboard")
@@ -2001,13 +2029,6 @@ function UserPortal({
               }}
             />
             <UsuarioSidebarButton
-              ativo={tab === "avisos"}
-              icon={<Bell size={22} />}
-              label="Notificações"
-              badge={unread > 0 ? String(unread) : undefined}
-              onClick={() => { setTab("avisos"); setNotificacoesAberta(false); }}
-            />
-            <UsuarioSidebarButton
               ativo={tab === "chamados"}
               icon={<Ticket size={22} />}
               label="Meus Chamados"
@@ -2025,6 +2046,14 @@ function UserPortal({
                 setNotificacoesAberta(false);
               }}
             />
+            {permissoesUsuario.includes("visualizar_ranking_satisfacao") && (
+              <UsuarioSidebarButton
+                ativo={tab === "ranking"}
+                icon={<Trophy size={22} />}
+                label="Ranking de satisfação"
+                onClick={() => setTab("ranking")}
+              />
+            )}
             {permissoesUsuario.includes("visualizar_dashboard") && (
               <UsuarioSidebarButton
                 ativo={tab === "dashboard"}
@@ -2033,7 +2062,7 @@ function UserPortal({
                 onClick={() => setTab("dashboard")}
               />
             )}
-            {permissoesUsuario.includes("baixar_relatorios") && (
+            {(permissoesUsuario.includes("visualizar_relatorios") || permissoesUsuario.includes("baixar_relatorios")) && (
               <UsuarioSidebarButton
                 ativo={tab === "relatorios"}
                 icon={<Download size={22} />}
@@ -2044,6 +2073,13 @@ function UserPortal({
 
             <div className="my-4 border-t border-white/10" />
             <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Preferências</p>
+
+            <UsuarioSidebarButton
+              ativo={tab === "acessos"}
+              icon={<ShieldCheck size={22} />}
+              label="Meus acessos"
+              onClick={() => setTab("acessos")}
+            />
 
             <UsuarioSidebarButton
               icon={temaEscuroUsuario ? <Sun size={22} /> : <Moon size={22} />}
@@ -2370,7 +2406,7 @@ function UserPortal({
           <MobileNavButton
             icon={<Menu size={21} />}
             label="Mais"
-            active={menuMaisUsuario || tab === "avisos"}
+            active={menuMaisUsuario || ["avisos", "acessos", "ranking", "dashboard", "relatorios"].includes(tab)}
             onClick={() => {
               setMenuMaisUsuario(true);
               setNotificacoesAberta(false);
@@ -2402,6 +2438,16 @@ function UserPortal({
               setMenuMaisUsuario(false);
             }}
           />
+          <MobileMoreAction
+            icon={<ShieldCheck size={18} />}
+            label="Meus acessos"
+            onClick={() => { setTab("acessos"); setMenuMaisUsuario(false); }}
+          />
+          {permissoesUsuario.includes("visualizar_ranking_satisfacao") && <MobileMoreAction
+            icon={<Trophy size={18} />}
+            label="Ranking de satisfação"
+            onClick={() => { setTab("ranking"); setMenuMaisUsuario(false); }}
+          />}
           <MobileMoreAction
             icon={temaEscuroUsuario ? <Sun size={18} /> : <Moon size={18} />}
             label={temaEscuroUsuario ? "Tema claro" : "Tema escuro"}
@@ -2476,7 +2522,12 @@ function UserPortal({
               <div><span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700"><Star size={14} fill="currentColor" />Sua opinião importa</span><h2 id="avaliacao-title" className="mt-3 text-xl font-black">Avalie este atendimento</h2><p className={`mt-1 text-sm ${temaEscuroUsuario ? "text-white/55" : "text-zinc-500"}`}>{avaliando.numero_chamado || `#${avaliando.id}`} · {avaliando.titulo}</p></div>
               <button type="button" onClick={() => setAvaliando(null)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl transition hover:bg-zinc-500/10" aria-label="Fechar avaliação"><X size={19} /></button>
             </header>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5"><PerformanceRatingCard chamado={avaliando} onSubmit={async (dados) => { await enviarAvaliacaoPerformance(avaliando.id, dados); setAvaliando(null); toast.success("Avaliação concluída com sucesso!"); await sincronizarChamadosUsuario(); }} /></div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5"><PerformanceRatingCard chamado={avaliando} onSubmit={async (dados) => {
+              await enviarAvaliacaoPerformance(avaliando.id, dados);
+              setAvaliando(null);
+              window.setTimeout(() => toast.success("Avaliação enviada com sucesso!"), 0);
+              void sincronizarChamadosUsuario();
+            }} /></div>
           </div>
         </div>
       )}

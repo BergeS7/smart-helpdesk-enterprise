@@ -7,6 +7,7 @@ const { normalizarPerfil } = require("../utils/permissoes");
 const PERMISSIONS = Object.freeze([
   { key: "visualizar_dashboard", label: "Visualizar dashboard", description: "Acessar indicadores e métricas operacionais." },
   { key: "visualizar_relatorios", label: "Visualizar relatórios", description: "Consultar indicadores e relatórios operacionais." },
+  { key: "visualizar_ranking_satisfacao", label: "Visualizar ranking de satisfação", description: "Consultar o ranking consolidado de satisfação da equipe técnica." },
   { key: "exportar_dados", label: "Exportar dados", description: "Exportar dados em CSV, Excel e PDF." },
   { key: "baixar_relatorios", label: "Baixar relatórios (legado)", description: "Compatibilidade com acessos existentes." },
   { key: "visualizar_patrimonio", label: "Visualizar patrimônio", description: "Consultar ativos e o mapa de equipamentos." },
