@@ -1194,15 +1194,32 @@ function LoginScreen({
             </p>
           </div>
         </section>
-        <section className="relative order-1 m-3 flex min-h-[310px] items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#0879ef] via-[#4c53c9] to-[#283568] px-7 py-12 text-white lg:my-5 lg:ml-0 lg:mr-5 lg:min-h-0 lg:px-12">
-          <div className="absolute right-7 top-7 h-20 w-20 opacity-55" style={{ backgroundImage: "radial-gradient(circle, white 0 3px, transparent 4px)", backgroundSize: "18px 18px" }} />
-          <div className="absolute left-[58%] top-[6%] h-20 w-20 rounded-full border-[5px] border-white/5" />
-          <div className="absolute -bottom-16 -right-14 h-44 w-44 rotate-45 rounded-[36px] border-[18px] border-white/5" />
-          <div className="relative z-10 flex max-w-xl flex-col items-center px-4 text-center">
-            <p className="text-xl font-light tracking-wide text-white/90 lg:text-3xl">A plataforma</p>
-            <h2 className="mt-2 text-4xl font-black uppercase tracking-tight lg:text-6xl">All in one</h2>
-            <p className="mt-2 text-xl font-light tracking-wide text-white/95 lg:text-3xl">de atendimento e suporte</p>
-            <p className="mt-10 text-sm font-medium tracking-wide text-white/85 lg:text-xl">Chamados&nbsp; • &nbsp;Equipes&nbsp; • &nbsp;Prazos&nbsp; • &nbsp;Relatórios</p>
+        <section className="relative order-1 flex min-h-[310px] items-center justify-center overflow-hidden bg-gradient-to-br from-[#073b66] via-[#087fa8] to-[#17a9d4] px-7 pb-20 pt-10 text-white lg:min-h-0 lg:px-12 lg:py-10">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 14% 18%, rgba(255,255,255,.9) 0 1px, transparent 2px), radial-gradient(circle at 72% 13%, rgba(255,255,255,.75) 0 1px, transparent 2px), radial-gradient(circle at 84% 31%, rgba(255,255,255,.7) 0 1.5px, transparent 2.5px), radial-gradient(circle at 44% 28%, rgba(255,255,255,.65) 0 1px, transparent 2px)",
+              backgroundSize:
+                "190px 170px, 230px 210px, 260px 230px, 310px 260px",
+            }}
+          />
+          <div className="absolute right-[11%] top-[12%] h-px w-28 rotate-[-28deg] bg-gradient-to-r from-transparent via-white to-white shadow-[0_0_12px_white]" />
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 600 430"
+            preserveAspectRatio="none"
+            className="absolute inset-x-0 bottom-0 h-[72%] w-full"
+          >
+            <path d="M0 190 L75 135 L150 190 L235 100 L330 192 L420 125 L510 180 L600 110 L600 430 L0 430 Z" fill="#315eac" />
+            <path d="M0 250 L90 170 L175 245 L275 145 L360 245 L460 175 L600 250 L600 430 L0 430 Z" fill="#214886" />
+            <path d="M0 305 L95 220 L205 310 L320 205 L415 302 L525 230 L600 285 L600 430 L0 430 Z" fill="#142f69" />
+            <path d="M0 330 C100 300 180 355 285 325 C390 295 475 340 600 310 L600 430 L0 430 Z" fill="#0c2257" />
+            <path d="M0 352 C120 320 200 382 315 346 C425 312 505 370 600 340" fill="none" stroke="rgba(106,153,226,.35)" strokeWidth="4" />
+          </svg>
+          <div className="relative z-10 -mt-8 flex max-w-lg flex-col items-center px-6 text-center lg:-mt-16">
+            <h2 className="text-3xl font-black uppercase leading-tight tracking-tight lg:text-4xl">Suporte mais simples. Gestão mais inteligente.</h2>
+            <p className="mt-5 max-w-sm text-base font-medium leading-6 text-blue-50 lg:text-lg">Organize chamados, prioridades e prazos em um só lugar.</p>
           </div>
         </section>
       </div>
