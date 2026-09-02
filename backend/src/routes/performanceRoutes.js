@@ -3,6 +3,7 @@
  */
 const router=require("express").Router();
 const auth=require("../middlewares/authMiddleware");
+const { exigirPermissao }=require("../middlewares/authMiddleware");
 const performance=require("../controllers/performanceController");
 router.use(auth);
 router.post("/tickets/:id/rating",performance.rateTicket);
@@ -11,5 +12,5 @@ router.get("/me",performance.myDashboard);
 router.get("/technicians/:id",performance.technicianDashboard);
 router.get("/teams/:id",performance.teamDashboard);
 router.get("/company",performance.companyDashboard);
-router.get("/ranking",performance.ranking);
+router.get("/ranking",exigirPermissao("visualizar_ranking_satisfacao"),performance.ranking);
 module.exports=router;

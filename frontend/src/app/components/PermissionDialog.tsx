@@ -2,10 +2,10 @@
  * Responsabilidade: Componente de interface de permission dialog; apresenta dados e interações do usuário.
  */
 import { useEffect, useState } from "react";
-import { BarChart3, Check, Code2, Download, FilePenLine, FolderKanban, MapPinned, Pencil, Rocket, Search, Settings, ShieldCheck, Ticket, UserCog, X } from "lucide-react";
+import { BarChart3, Check, Code2, Download, FilePenLine, FolderKanban, MapPinned, Pencil, Rocket, Search, Settings, ShieldCheck, Star, Ticket, UserCog, X } from "lucide-react";
 import { atualizarPermissoesUsuario, listarCatalogoPermissoes, obterPermissoesUsuario, type ApiUsuario, type PermissionDefinition, type PermissionKey } from "../services/api";
 
-const icons: Partial<Record<PermissionKey, typeof ShieldCheck>> = { visualizar_dashboard: BarChart3, visualizar_relatorios: BarChart3, exportar_dados: Download, baixar_relatorios: Download, visualizar_patrimonio: MapPinned, administrar_ativos: MapPinned, gerenciar_chamados: Ticket, assumir_chamados: Ticket, delegar_chamados: UserCog, alterar_prioridade: Ticket, encerrar_chamados: Ticket, gerenciar_usuarios: UserCog, alterar_configuracoes: Settings, gerenciar_base: FilePenLine, desenvolvimento_visualizar: Code2, desenvolvimento_analisar: Search, desenvolvimento_editar: Pencil, desenvolvimento_implantar: Rocket, desenvolvimento_converter_projeto: FolderKanban };
+const icons: Partial<Record<PermissionKey, typeof ShieldCheck>> = { visualizar_dashboard: BarChart3, visualizar_relatorios: BarChart3, visualizar_ranking_satisfacao: Star, exportar_dados: Download, baixar_relatorios: Download, visualizar_patrimonio: MapPinned, administrar_ativos: MapPinned, gerenciar_chamados: Ticket, assumir_chamados: Ticket, delegar_chamados: UserCog, alterar_prioridade: Ticket, encerrar_chamados: Ticket, gerenciar_usuarios: UserCog, alterar_configuracoes: Settings, gerenciar_base: FilePenLine, desenvolvimento_visualizar: Code2, desenvolvimento_analisar: Search, desenvolvimento_editar: Pencil, desenvolvimento_implantar: Rocket, desenvolvimento_converter_projeto: FolderKanban };
 
 export function PermissionDialog({ user, dark, onClose, onSaved }: { user: ApiUsuario; dark?: boolean; onClose: () => void; onSaved?: () => void }) {
   const [catalog, setCatalog] = useState<PermissionDefinition[]>([]);
