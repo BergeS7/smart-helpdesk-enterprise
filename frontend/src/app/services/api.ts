@@ -340,6 +340,7 @@ export type FiltrosChamados = {
   vencidos?: boolean;
   sem_responsavel?: boolean;
   meus?: boolean;
+  solicitante_me?: boolean;
   fila?: boolean;
   closed?: boolean;
   historico?: boolean;
@@ -971,7 +972,8 @@ export async function baixarRelatorio(
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `chamados.${formato === "excel" ? "xlsx" : formato}`;
+  const periodo = filtros.data_inicio?.slice(0, 7);
+  a.download = `chamados${periodo ? `-${periodo}` : ""}.${formato === "excel" ? "xlsx" : formato}`;
   a.click();
   URL.revokeObjectURL(url);
 }

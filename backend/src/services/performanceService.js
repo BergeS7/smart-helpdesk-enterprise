@@ -2,6 +2,7 @@
  * Responsabilidade: Serviço de domínio de performance; concentra regras reutilizáveis fora da camada HTTP.
  */
 const pool = require("../config/database");
+const { recordError } = require("./systemDiagnosticsService");
 const FINAL = ["RESOLVED", "CLOSED", "CANCELED"];
 const clamp = (value, min, max) =>
   Math.max(min, Math.min(max, Number(value) || 0));
@@ -162,13 +163,20 @@ async function recordRating({ ticket, clientId, rating }) {
       JSON.stringify(ai.keywords),
     ],
   );
-  await Promise.all([
+  const updates = await Promise.allSettled([
     updatePerformance({
       technicianId: ticket.responsavel_id || null,
     }),
     updatePerformance({ teamId: ticket.team_id || null }),
     updatePerformance({}),
   ]);
+  updates.forEach((result) => {
+    if (result.status === "rejected") recordError({
+      source: "performance_update",
+      message: result.reason?.message || "Falha ao recalcular indicadores após avaliação",
+      context: `ticket:${ticket.id}`,
+    });
+  });
   return created.rows[0];
 }
 async function ranking({ scope, month, year }) {

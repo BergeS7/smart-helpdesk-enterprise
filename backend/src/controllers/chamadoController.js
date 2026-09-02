@@ -698,6 +698,10 @@ function montarFiltrosChamados(query, req) {
   if (query.responsavel_id) add("c.responsavel_id = ?", query.responsavel_id);
   if (query.sem_responsavel === "true" || query.sem_responsavel === true) where.push("c.responsavel_id IS NULL");
   if (query.meus === "true" || query.meus === true) add("c.responsavel_id = ?", req.user.id);
+  if (query.solicitante_me === "true" || query.solicitante_me === true) {
+    params.push(req.user.id, req.user.email || "");
+    where.push(`(c.usuario_id = $${params.length - 1} OR LOWER(COALESCE(c.email_solicitante, '')) = LOWER($${params.length}))`);
+  }
   if (query.tipo_chamado) add("c.tipo_chamado = ?", query.tipo_chamado);
   if (query.categoria) add("c.categoria_ia = ?", query.categoria);
   if (query.data_inicio) add("c.criado_em >= ?", query.data_inicio);
@@ -1335,7 +1339,7 @@ const excluirFiltro = async (req, res) => {
 
 const exportarRelatorio = async (req, res) => {
   try {
-    if (!usuarioEhEquipe(req)) return res.status(403).json({ erro: "Acesso não autorizado" });
+    if (!usuarioEhEquipe(req)) req.query = { ...req.query, meus: undefined, solicitante_me: "true" };
     const formato = String(req.params.formato || "csv").toLowerCase();
     const chamados = await consultarChamados(req);
     const nomeBase = `chamados-${new Date().toISOString().slice(0, 10)}`;

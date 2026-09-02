@@ -47,11 +47,21 @@ function exigirPermissaoDeAtualizacao(req, res, next) {
   userHasPermission(req.user, permission).then((allowed) => allowed ? next() : res.status(403).json({ erro:"Você não possui permissão para esta alteração.", permissao:permission, requestId:req.id })).catch(next);
 }
 
+function exigirPermissaoDeExportacao(req, res, next) {
+  Promise.all([
+    userHasPermission(req.user, "exportar_dados"),
+    userHasPermission(req.user, "baixar_relatorios"),
+  ]).then(([exportar, legado]) => exportar || legado
+    ? next()
+    : res.status(403).json({ erro:"Você não possui permissão para exportar relatórios.", permissao:"exportar_dados", requestId:req.id }))
+    .catch(next);
+}
+
 router.post("/", authMiddleware, criarChamado);
 router.get("/", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "supervisor", "tecnico"]), listarChamados);
 router.get("/usuario/me", authMiddleware, listarChamadosDoUsuario);
 router.get("/relatorios/resumo/metricas", authMiddleware, exigirPermissao("visualizar_relatorios"), obterResumoRelatorio);
-router.get("/relatorios/:formato", authMiddleware, exigirPermissao("exportar_dados"), exportarRelatorio);
+router.get("/relatorios/:formato", authMiddleware, exigirPermissaoDeExportacao, exportarRelatorio);
 router.get("/respostas-rapidas/lista", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), listarRespostasRapidas);
 router.post("/respostas-rapidas", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), criarRespostaRapida);
 router.get("/filtros-salvos/lista", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), listarFiltrosSalvos);
