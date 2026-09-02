@@ -1218,8 +1218,8 @@ function LoginScreen({
             <path d="M0 352 C120 320 200 382 315 346 C425 312 505 370 600 340" fill="none" stroke="rgba(106,153,226,.35)" strokeWidth="4" />
           </svg>
           <div className="relative z-10 -mt-8 flex max-w-lg flex-col items-center px-6 text-center lg:-mt-16">
-            <h2 className="text-3xl font-black uppercase leading-tight tracking-tight lg:text-4xl">Suporte mais simples. Gestão mais inteligente.</h2>
-            <p className="mt-5 max-w-sm text-base font-medium leading-6 text-blue-50 lg:text-lg">Organize chamados, prioridades e prazos em um só lugar.</p>
+            <h2 className="text-3xl font-black uppercase leading-tight tracking-tight lg:text-4xl">Todo o suporte em um só lugar.</h2>
+            <p className="mt-5 max-w-sm text-base font-medium leading-6 text-blue-50 lg:text-lg">Organize chamados, prioridades e prazos com mais agilidade.</p>
           </div>
         </section>
       </div>
