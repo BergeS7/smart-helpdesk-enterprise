@@ -104,6 +104,7 @@ export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
   const [emotion, setEmotion] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
   const detailsComplete = useMemo(
     () => criteria.every((item) => rating[item.key] >= 1),
     [rating],
@@ -117,6 +118,7 @@ export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
     )
       return;
     setSaving(true);
+    setError("");
     try {
       const comment = [
         rating.comment.trim(),
@@ -127,6 +129,8 @@ export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
         .join("\n");
       await onSubmit({ ...rating, comment });
       setDone(true);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível enviar a avaliação. Tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -300,6 +304,7 @@ export function PerformanceRatingCard({ chamado, onSubmit, onLater }: Props) {
         </div>
       </div>
       <footer className="mt-8 flex flex-col-reverse gap-3 border-t border-zinc-100 pt-6 sm:flex-row sm:justify-end">
+        {error && <p role="alert" className="mr-auto self-center rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}
         {onLater && <button
           type="button"
           onClick={onLater}
