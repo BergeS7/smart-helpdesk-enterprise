@@ -21,5 +21,5 @@ export function useModuleRoute<T extends string>(routes:RouteMap<T>, fallback:T)
 
 export const PORTAL_ROUTES = {
   home:"/portal/inicio", chamados:"/portal/chamados", base:"/portal/conhecimento", avisos:"/portal/notificacoes",
-  acessos:"/portal/acessos", ranking:"/portal/ranking-satisfacao", dashboard:"/portal/dashboard", relatorios:"/portal/relatorios",
+  acessos:"/portal/acessos", ranking:"/portal/ranking-satisfacao", dashboard:"/portal/dashboard", patrimonio:"/portal/patrimonio", relatorios:"/portal/relatorios",
 } as const;

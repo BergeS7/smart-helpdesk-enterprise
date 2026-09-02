@@ -199,7 +199,7 @@ type LoginMode = "usuario" | "admin";
 type TelaAuth = "login" | "cadastro" | "verificar" | "recuperar";
 type AdminTab = AdminRouteKey;
 type UsuarioTab =
-  "home" | "chamados" | "base" | "avisos" | "acessos" | "ranking" | "dashboard" | "relatorios";
+  "home" | "chamados" | "base" | "avisos" | "acessos" | "ranking" | "dashboard" | "patrimonio" | "relatorios";
 
 // Restaura filtros compartilháveis diretamente da URL do navegador.
 function ticketFiltersFromUrl():FiltrosChamados{
@@ -1480,6 +1480,9 @@ function UserPortal({
           },
         ]
       : []),
+    ...(permissoesUsuario.includes("visualizar_patrimonio")
+      ? [{ key: "patrimonio" as UsuarioTab, icon: MapPinned, label: "Patrimônio", title: "Patrimônio" }]
+      : []),
     ...(podeAcessarRelatorios
       ? [
           {
@@ -1499,7 +1502,9 @@ function UserPortal({
     { label: "Base de conhecimento", description: "Consulte orientações e soluções publicadas.", allowed: true },
     { label: "Dashboard operacional", description: "Visualize indicadores autorizados da operação.", allowed: permissoesUsuario.includes("visualizar_dashboard") },
     { label: "Ranking de satisfação", description: "Consulte resultados consolidados da equipe técnica.", allowed: permissoesUsuario.includes("visualizar_ranking_satisfacao") },
-    { label: "Relatórios", description: "Consulte ou baixe relatórios dos seus chamados.", allowed: podeAcessarRelatorios },
+    { label: "Visualizar relatórios", description: "Consulte os relatórios dos seus chamados.", allowed: permissoesUsuario.includes("visualizar_relatorios") },
+    { label: "Exportar dados", description: "Baixe relatórios em CSV, Excel ou PDF.", allowed: podeBaixarRelatorios },
+    { label: "Visualizar patrimônio", description: "Consulte ativos, equipamentos e sua situação operacional.", allowed: permissoesUsuario.includes("visualizar_patrimonio") },
   ];
 
   function abrirSuporteUsuario() {
@@ -1821,6 +1826,9 @@ function UserPortal({
   }
 
   const renderConteudo = () => {
+    if (tab === "patrimonio" && permissoesUsuario.includes("visualizar_patrimonio")) {
+      return <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando patrimônio…</strong></div>}><PatrimonioMapPage dark={temaEscuroUsuario}/></Suspense>;
+    }
     if (tab === "ranking" && permissoesUsuario.includes("visualizar_ranking_satisfacao")) {
       return <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando ranking…</strong></div>}><SatisfactionRankingPage dark={temaEscuroUsuario}/></Suspense>;
     }
@@ -2091,6 +2099,14 @@ function UserPortal({
                 icon={<BarChart3 size={22} />}
                 label="Dashboard"
                 onClick={() => setTab("dashboard")}
+              />
+            )}
+            {permissoesUsuario.includes("visualizar_patrimonio") && (
+              <UsuarioSidebarButton
+                ativo={tab === "patrimonio"}
+                icon={<MapPinned size={22} />}
+                label="Patrimônio"
+                onClick={() => setTab("patrimonio")}
               />
             )}
             {podeAcessarRelatorios && (
@@ -2381,7 +2397,7 @@ function UserPortal({
             </form>
           </div>
 
-          <main className={`h-[calc(100vh-56px)] overflow-auto px-4 pb-24 pt-4 lg:px-5 lg:pb-5 lg:pt-4 ${["dashboard", "ranking", "acessos", "relatorios"].includes(tab) ? "lg:overflow-auto" : "lg:overflow-hidden"}`}>
+          <main className={`h-[calc(100vh-56px)] overflow-auto px-4 pb-24 pt-4 lg:px-5 lg:pb-5 lg:pt-4 ${["dashboard", "ranking", "acessos", "patrimonio", "relatorios"].includes(tab) ? "lg:overflow-auto" : "lg:overflow-hidden"}`}>
             {renderConteudo()}
           </main>
         </div>
@@ -2437,7 +2453,7 @@ function UserPortal({
           <MobileNavButton
             icon={<Menu size={21} />}
             label="Mais"
-            active={menuMaisUsuario || ["avisos", "acessos", "ranking", "dashboard", "relatorios"].includes(tab)}
+            active={menuMaisUsuario || ["avisos", "acessos", "ranking", "dashboard", "patrimonio", "relatorios"].includes(tab)}
             onClick={() => {
               setMenuMaisUsuario(true);
               setNotificacoesAberta(false);
@@ -2478,6 +2494,11 @@ function UserPortal({
             icon={<Trophy size={18} />}
             label="Ranking de satisfação"
             onClick={() => { setTab("ranking"); setMenuMaisUsuario(false); }}
+          />}
+          {permissoesUsuario.includes("visualizar_patrimonio") && <MobileMoreAction
+            icon={<MapPinned size={18} />}
+            label="Patrimônio"
+            onClick={() => { setTab("patrimonio"); setMenuMaisUsuario(false); }}
           />}
           <MobileMoreAction
             icon={temaEscuroUsuario ? <Sun size={18} /> : <Moon size={18} />}
