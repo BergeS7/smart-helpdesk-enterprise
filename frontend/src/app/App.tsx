@@ -1234,11 +1234,11 @@ function LoginScreen({
               strokeWidth="4"
             />
           </svg>
-          <div className="relative z-10 -mt-8 flex max-w-md flex-col items-center text-center lg:-mt-16">
-            <p className="text-xl font-medium tracking-tight text-white/95 lg:text-3xl">A plataforma</p>
-            <h2 className="mt-1 text-4xl font-black tracking-tight lg:text-6xl">ALL IN ONE</h2>
-            <p className="mt-1 text-xl font-medium tracking-tight text-white/95 lg:text-3xl">de atendimento e suporte</p>
-            <div className="mt-7 hidden max-w-sm rounded-2xl border border-white/20 bg-white/10 p-5 text-sm leading-6 text-blue-50 backdrop-blur-sm lg:block">Abra chamados, acompanhe cada etapa e converse com a equipe em um único ambiente.</div>
+          <div className="relative z-10 -mt-8 flex max-w-lg flex-col items-center px-6 text-center lg:-mt-16">
+            <p className="text-lg font-semibold tracking-tight text-white/95 lg:text-2xl">Suporte mais simples. Gestão mais inteligente.</p>
+            <h2 className="mt-4 text-3xl font-black uppercase leading-tight tracking-tight lg:text-4xl">Tudo o que sua equipe precisa em um só lugar</h2>
+            <p className="mt-4 max-w-md text-base font-medium leading-6 text-blue-50 lg:text-lg">Transforme solicitações em atendimentos organizados, rápidos e rastreáveis.</p>
+            <div className="mt-6 hidden max-w-md rounded-2xl border border-white/20 bg-white/10 p-5 text-sm leading-6 text-blue-50 backdrop-blur-sm lg:block">Centralize chamados, distribua demandas, acompanhe prazos, organize prioridades e mantenha usuários e equipe técnica sempre conectados.</div>
           </div>
         </section>
       </div>
