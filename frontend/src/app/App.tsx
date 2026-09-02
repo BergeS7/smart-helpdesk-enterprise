@@ -1302,6 +1302,9 @@ function UserPortal({
   const [dashboardPermitido, setDashboardPermitido] =
     useState<DashboardResumo | null>(null);
   const [mesRelatorio, setMesRelatorio] = useState(() => new Date().toISOString().slice(0, 7));
+  const [statusRelatorio, setStatusRelatorio] = useState("");
+  const [tipoRelatorio, setTipoRelatorio] = useState("");
+  const [buscaRelatorio, setBuscaRelatorio] = useState("");
   const [formatoBaixando, setFormatoBaixando] = useState<"csv" | "excel" | "pdf" | null>(null);
 
   const usuarioAtual = perfil || usuario;
@@ -1321,10 +1324,19 @@ function UserPortal({
       data_fim: `${mesRelatorio}-${String(ultimoDia).padStart(2, "0")}`,
     };
   }, [mesRelatorio]);
-  const chamadosNoMesRelatorio = useMemo(() => chamados.filter((chamado) => {
-    const data = String(chamado.criado_em || "").slice(0, 7);
-    return data === mesRelatorio;
-  }).length, [chamados, mesRelatorio]);
+  const statusDisponiveisRelatorio = useMemo(() => [...new Set(chamados.map((item) => String(item.status || "")).filter(Boolean))].sort(), [chamados]);
+  const tiposDisponiveisRelatorio = useMemo(() => [...new Set(chamados.map((item) => String(item.tipo_chamado || "")).filter(Boolean))].sort(), [chamados]);
+  const chamadosRelatorioFiltrados = useMemo(() => {
+    const query = buscaRelatorio.trim().toLowerCase();
+    return chamados.filter((chamado) => {
+      if (String(chamado.criado_em || "").slice(0, 7) !== mesRelatorio) return false;
+      if (statusRelatorio && String(chamado.status || "") !== statusRelatorio) return false;
+      if (tipoRelatorio && String(chamado.tipo_chamado || "") !== tipoRelatorio) return false;
+      if (!query) return true;
+      return [chamado.numero_chamado, chamado.titulo, chamado.descricao, chamado.responsavel_nome, chamado.responsavel]
+        .some((value) => String(value || "").toLowerCase().includes(query));
+    });
+  }, [buscaRelatorio, chamados, mesRelatorio, statusRelatorio, tipoRelatorio]);
 
   const resumoUsuario = useMemo(() => {
     const normalizar = (status?: string) => String(status || "").toLowerCase();
@@ -1816,7 +1828,13 @@ function UserPortal({
   async function baixarRelatorioDoMes(formato: "csv" | "excel" | "pdf") {
     setFormatoBaixando(formato);
     try {
-      await baixarRelatorio(formato, { ...intervaloRelatorio, solicitante_me: true });
+      await baixarRelatorio(formato, {
+        ...intervaloRelatorio,
+        solicitante_me: true,
+        status: statusRelatorio || undefined,
+        tipo_chamado: tipoRelatorio || undefined,
+        q: buscaRelatorio.trim() || undefined,
+      });
       toast.success(`Relatório de ${mesRelatorio.split("-").reverse().join("/")} baixado com sucesso.`);
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : "Não foi possível baixar o relatório.");
@@ -1863,28 +1881,25 @@ function UserPortal({
       podeAcessarRelatorios
     ) {
       return (
-        <section className="mx-auto w-full max-w-5xl">
-          <Card>
-            <header className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-100 pb-5">
-              <div><span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><FileText size={19}/></span><h2 className="mt-3 text-xl font-black">Relatórios</h2><p className="mt-1 text-sm text-zinc-500">Baixe os chamados abertos por você em um mês específico.</p></div>
-              <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wide text-zinc-500">Filtrar por mês</span><span className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-500/10"><Calendar size={16} className="text-zinc-400"/><input type="month" required value={mesRelatorio} max={new Date().toISOString().slice(0, 7)} onChange={(event) => { if (event.target.value) setMesRelatorio(event.target.value); }} className="bg-transparent text-sm font-bold outline-none"/></span></label>
-            </header>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 py-4" aria-live="polite">
-              <div><span className="text-xs text-zinc-500">Período aplicado</span><b className="mt-0.5 block text-sm">{new Date(`${intervaloRelatorio.data_inicio}T12:00:00`).toLocaleDateString("pt-BR")} — {new Date(`${intervaloRelatorio.data_fim}T12:00:00`).toLocaleDateString("pt-BR")}</b></div>
-              <span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-black text-zinc-700">{chamadosNoMesRelatorio} {chamadosNoMesRelatorio === 1 ? "chamado encontrado" : "chamados encontrados"}</span>
+        <section className="space-y-3">
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+            <header className="flex items-center gap-3 border-b border-zinc-100 px-5 py-4"><span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-50 text-blue-700"><Filter size={17}/></span><div><h2 className="text-base font-black">Filtros do relatório</h2><p className="text-xs text-zinc-500">Os filtros abaixo também serão aplicados ao arquivo baixado.</p></div></header>
+            <div className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-4">
+              <label><span className="mb-1.5 block text-[10px] font-black uppercase text-zinc-500">Mês</span><input type="month" required value={mesRelatorio} max={new Date().toISOString().slice(0, 7)} onChange={(event) => { if (event.target.value) setMesRelatorio(event.target.value); }} className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm font-bold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"/></label>
+              <label><span className="mb-1.5 block text-[10px] font-black uppercase text-zinc-500">Status</span><select value={statusRelatorio} onChange={(event) => setStatusRelatorio(event.target.value)} className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-blue-400"><option value="">Todos</option>{statusDisponiveisRelatorio.map((status) => <option key={status} value={status}>{ticketStatusLabel(status)}</option>)}</select></label>
+              <label><span className="mb-1.5 block text-[10px] font-black uppercase text-zinc-500">Tipo</span><select value={tipoRelatorio} onChange={(event) => setTipoRelatorio(event.target.value)} className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-blue-400"><option value="">Todos</option>{tiposDisponiveisRelatorio.map((tipo) => <option key={tipo}>{tipo}</option>)}</select></label>
+              <label><span className="mb-1.5 block text-[10px] font-black uppercase text-zinc-500">Pesquisar</span><span className="flex h-10 items-center gap-2 rounded-lg border border-zinc-200 px-3 focus-within:border-blue-400"><Search size={15} className="text-zinc-400"/><input value={buscaRelatorio} onChange={(event) => setBuscaRelatorio(event.target.value)} placeholder="Número, título..." className="min-w-0 flex-1 bg-transparent text-sm outline-none"/></span></label>
             </div>
+            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 bg-zinc-50/70 px-5 py-3"><span className="text-xs text-zinc-500">{new Date(`${intervaloRelatorio.data_inicio}T12:00:00`).toLocaleDateString("pt-BR")} — {new Date(`${intervaloRelatorio.data_fim}T12:00:00`).toLocaleDateString("pt-BR")}</span><button type="button" onClick={() => { setStatusRelatorio(""); setTipoRelatorio(""); setBuscaRelatorio(""); }} className="h-9 rounded-lg border border-zinc-200 bg-white px-4 text-xs font-black text-zinc-600 hover:bg-zinc-100">Limpar filtros</button></footer>
+          </div>
 
-            <div className="pt-5">
-              <h3 className="text-sm font-black">Formato do arquivo</h3>
-              {podeBaixarRelatorios ? <div className="mt-3 flex flex-wrap gap-2">{([
-                { formato: "csv" as const, titulo: "CSV" },
-                { formato: "excel" as const, titulo: "Excel" },
-                { formato: "pdf" as const, titulo: "PDF" },
-              ]).map((item) => <button key={item.formato} type="button" disabled={Boolean(formatoBaixando)} onClick={() => void baixarRelatorioDoMes(item.formato)} className="inline-flex h-11 min-w-32 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-black text-zinc-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-wait disabled:opacity-50">{formatoBaixando === item.formato ? <RefreshCw size={16} className="animate-spin"/> : <Download size={16}/>} {formatoBaixando === item.formato ? "Preparando…" : item.titulo}</button>)}</div> : <div className="mt-3 flex items-center gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800"><LockKeyhole size={17}/><span>Seu perfil não possui permissão para baixar arquivos.</span></div>}
-              <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><ShieldCheck size={14} className="text-emerald-600"/>O arquivo contém somente seus chamados dentro do mês selecionado.</p>
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-5 py-4"><div><h3 className="text-base font-black">Resultado da pesquisa</h3><p className="mt-0.5 text-xs text-zinc-500">{chamadosRelatorioFiltrados.length} registro(s) encontrado(s)</p></div>{podeBaixarRelatorios ? <div className="flex flex-wrap gap-1.5">{(["csv", "excel", "pdf"] as const).map((formato) => <button key={formato} type="button" disabled={Boolean(formatoBaixando)} onClick={() => void baixarRelatorioDoMes(formato)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-black uppercase text-white hover:bg-blue-700 disabled:opacity-50">{formatoBaixando === formato ? <RefreshCw size={14} className="animate-spin"/> : <Download size={14}/>} {formato === "excel" ? "Excel" : formato.toUpperCase()}</button>)}</div> : <span className="text-xs font-bold text-amber-700">Sem permissão para exportar</span>}</header>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[850px] text-left text-xs"><thead className="bg-zinc-50 text-[10px] uppercase tracking-wide text-zinc-500"><tr><th className="px-4 py-3">Chamado</th><th className="px-4 py-3">Título</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Prioridade</th><th className="px-4 py-3">Responsável</th><th className="px-4 py-3">Abertura</th></tr></thead><tbody className="divide-y divide-zinc-100">{chamadosRelatorioFiltrados.slice(0, 10).map((chamado) => <tr key={chamado.id} className="hover:bg-blue-50/40"><td className="whitespace-nowrap px-4 py-3 font-black text-blue-700">{chamado.numero_chamado || `#${chamado.id}`}</td><td className="max-w-72 truncate px-4 py-3 font-bold">{chamado.titulo}</td><td className="px-4 py-3">{ticketStatusLabel(chamado.status)}</td><td className="px-4 py-3">{chamado.prioridade || "—"}</td><td className="px-4 py-3">{chamado.responsavel_nome || chamado.responsavel || "Não atribuído"}</td><td className="whitespace-nowrap px-4 py-3">{chamado.criado_em ? new Date(chamado.criado_em).toLocaleDateString("pt-BR") : "—"}</td></tr>)}{!chamadosRelatorioFiltrados.length && <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-zinc-500">Nenhum chamado corresponde aos filtros selecionados.</td></tr>}</tbody></table>
             </div>
-          </Card>
+            <footer className="flex items-center justify-between border-t border-zinc-100 px-5 py-3 text-xs text-zinc-500"><span>Exibindo {Math.min(10, chamadosRelatorioFiltrados.length)} de {chamadosRelatorioFiltrados.length}</span><span className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-600"/>Somente seus chamados</span></footer>
+          </div>
         </section>
       );
     }
@@ -2044,21 +2059,19 @@ function UserPortal({
         <AvisosSistemaBanner avisos={avisosSistema} dark={temaEscuroUsuario} />
       </div>
       <div className="flex h-screen overflow-hidden">
-        <aside className="hidden w-[216px] shrink-0 flex-col border-r border-white/5 bg-gradient-to-b from-[#101c29] via-[#0d1925] to-[#08131d] text-white shadow-2xl lg:flex xl:w-[224px]">
-          <div className="flex items-center gap-3 border-b border-white/8 px-4 py-4">
-            <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/95 p-1 shadow-xl shadow-black/20">
-              <img
-                src={sistemaLogo1}
-                alt={sistemaNome}
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <div className="min-w-0"><h1 className="truncate text-sm font-black tracking-tight">{sistemaNome}</h1><p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">Portal do usuário</p></div>
+        <aside className="hidden w-14 shrink-0 flex-col border-r border-white/5 bg-gradient-to-b from-[#101c29] via-[#0d1925] to-[#08131d] text-white shadow-2xl lg:flex">
+          <div className="grid h-14 shrink-0 place-items-center border-b border-white/8">
+            <img
+              src={sistemaLogo1}
+              alt={sistemaNome}
+              className="h-11 w-12 object-contain"
+              title={sistemaNome}
+            />
           </div>
 
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Atendimento</p>
+          <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-1.5 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <UsuarioSidebarButton
+              compact
               ativo={tab === "home"}
               icon={<LayoutDashboard size={22} />}
               label="Início"
@@ -2068,6 +2081,7 @@ function UserPortal({
               }}
             />
             <UsuarioSidebarButton
+              compact
               ativo={tab === "chamados"}
               icon={<Ticket size={22} />}
               label="Meus Chamados"
@@ -2077,6 +2091,7 @@ function UserPortal({
               }}
             />
             <UsuarioSidebarButton
+              compact
               ativo={tab === "base"}
               icon={<BookOpen size={22} />}
               label="Base de Conhecimento"
@@ -2087,6 +2102,7 @@ function UserPortal({
             />
             {permissoesUsuario.includes("visualizar_ranking_satisfacao") && (
               <UsuarioSidebarButton
+                compact
                 ativo={tab === "ranking"}
                 icon={<Trophy size={22} />}
                 label="Ranking de satisfação"
@@ -2095,6 +2111,7 @@ function UserPortal({
             )}
             {permissoesUsuario.includes("visualizar_dashboard") && (
               <UsuarioSidebarButton
+                compact
                 ativo={tab === "dashboard"}
                 icon={<BarChart3 size={22} />}
                 label="Dashboard"
@@ -2103,6 +2120,7 @@ function UserPortal({
             )}
             {permissoesUsuario.includes("visualizar_patrimonio") && (
               <UsuarioSidebarButton
+                compact
                 ativo={tab === "patrimonio"}
                 icon={<MapPinned size={22} />}
                 label="Patrimônio"
@@ -2111,6 +2129,7 @@ function UserPortal({
             )}
             {podeAcessarRelatorios && (
               <UsuarioSidebarButton
+                compact
                 ativo={tab === "relatorios"}
                 icon={<Download size={22} />}
                 label="Relatórios"
@@ -2118,10 +2137,10 @@ function UserPortal({
               />
             )}
 
-            <div className="my-4 border-t border-white/10" />
-            <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Preferências</p>
+            <div className="mx-1 my-2 border-t border-white/10" />
 
             <UsuarioSidebarButton
+              compact
               ativo={tab === "acessos"}
               icon={<ShieldCheck size={22} />}
               label="Meus acessos"
@@ -2129,6 +2148,7 @@ function UserPortal({
             />
 
             <UsuarioSidebarButton
+              compact
               icon={temaEscuroUsuario ? <Sun size={22} /> : <Moon size={22} />}
               label={temaEscuroUsuario ? "Tema claro" : "Tema escuro"}
               title="Alternar tema"
@@ -2136,16 +2156,16 @@ function UserPortal({
             />
           </nav>
 
-          <div className="space-y-2 border-t border-white/8 px-3 pb-4 pt-3">
-            <button type="button" onClick={()=>setMostrarPerfil(true)} className="mb-2 flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-white/5"><span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-sm font-black">{fotoPerfil?<img src={fotoPerfil} alt={usuarioAtual.nome} className="h-full w-full object-cover"/>:inicialPerfil}</span><span className="min-w-0"><span className="block truncate text-xs font-black">{usuarioAtual.nome}</span><span className="block truncate text-[10px] text-white/45">{usuarioAtual.departamento||"Solicitante"}</span></span></button>
+          <div className="space-y-1 border-t border-white/8 px-1.5 py-2">
+            <button type="button" onClick={()=>setMostrarPerfil(true)} className="grid h-10 w-full place-items-center rounded-xl transition hover:bg-white/10" title={`${usuarioAtual.nome} — ${usuarioAtual.departamento||"Solicitante"}`} aria-label="Abrir meu perfil"><span className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-xs font-black">{fotoPerfil?<img src={fotoPerfil} alt={usuarioAtual.nome} className="h-full w-full object-cover"/>:inicialPerfil}</span></button>
             <button
               type="button"
               onClick={onLogout}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-xs font-black text-white/80 transition hover:border-red-300/30 hover:bg-red-500/15 hover:text-red-100"
+              className="grid h-10 w-full place-items-center rounded-xl text-white/65 transition hover:bg-red-500/15 hover:text-red-100"
               title="Sair do site"
+              aria-label="Sair do site"
             >
-              <LogOut size={17} />
-              Sair do site
+              <LogOut size={19} />
             </button>
             <button
               type="button"
@@ -2153,16 +2173,11 @@ function UserPortal({
                 abrirSuporteUsuario();
                 setNotificacoesAberta(false);
               }}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-xs font-black text-white shadow-lg shadow-blue-900/30 transition hover:bg-blue-500"
+              className="grid h-10 w-full place-items-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-900/30 transition hover:bg-blue-500"
               title={`Falar com o suporte: ${suporteEmail}`}
+              aria-label={`Falar com o suporte: ${suporteEmail}`}
             >
-              <Phone size={17} />
-              <span className="flex flex-col leading-tight">
-                <span>Suporte</span>
-                <span className="max-w-[150px] truncate text-[10px] font-semibold opacity-80">
-                  {suporteEmail}
-                </span>
-              </span>
+              <Phone size={19} />
             </button>
           </div>
         </aside>
@@ -2720,6 +2735,7 @@ function UsuarioSidebarButton({
   badge,
   onClick,
   title,
+  compact = false,
 }: {
   icon: ReactNode;
   label: string;
@@ -2727,21 +2743,22 @@ function UsuarioSidebarButton({
   badge?: string;
   onClick?: () => void;
   title?: string;
+  compact?: boolean;
 }) {
   return (
     <button
       type="button"
       title={title || label}
       onClick={onClick}
-      className={`relative flex h-12 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold transition ${ativo ? "bg-white/10 text-white shadow-lg shadow-black/10" : "text-white/72 hover:bg-white/7 hover:text-white"}`}
+      className={`relative flex h-12 w-full items-center justify-center text-sm font-bold transition ${compact ? "rounded-none px-0" : "gap-3 rounded-xl px-3"} ${ativo ? "bg-white/10 text-white shadow-lg shadow-black/10" : "text-white/72 hover:bg-white/7 hover:text-white"}`}
     >
       {ativo && (
         <span className="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-blue-500" />
       )}
-      <span className="grid h-8 w-8 place-items-center shrink-0">{icon}</span>
-      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+      <span className="grid h-8 w-8 shrink-0 place-items-center">{icon}</span>
+      <span className={compact ? "sr-only" : "min-w-0 flex-1 truncate text-left"}>{label}</span>
       {badge && (
-        <span className="grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-black leading-none text-white">
+        <span className={`grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-black leading-none text-white ${compact ? "absolute right-1 top-1" : ""}`}>
           {badge}
         </span>
       )}
