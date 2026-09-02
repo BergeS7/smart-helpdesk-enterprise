@@ -1855,27 +1855,27 @@ function UserPortal({
       podeAcessarRelatorios
     ) {
       return (
-        <section className="space-y-4">
-          <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 p-6 text-white shadow-xl shadow-blue-200/50 sm:p-7">
-            <div className="flex flex-wrap items-start justify-between gap-5"><div><span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]"><FileText size={13}/>Central de relatórios</span><h2 className="mt-4 text-2xl font-black">Relatório mensal dos seus chamados</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">Escolha o mês e baixe somente os atendimentos abertos por você naquele período. Nenhuma informação de outros usuários será incluída.</p></div><span className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15"><Download size={25}/></span></div>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <Card>
-              <div className="flex flex-wrap items-center justify-between gap-4"><div><h3 className="flex items-center gap-2 text-lg font-black"><Calendar size={19} className="text-blue-600"/>Selecione o período</h3><p className="mt-1 text-sm text-zinc-500">O intervalo começa no primeiro dia e termina no último dia do mês.</p></div><label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wide text-zinc-500">Mês do relatório</span><input type="month" required value={mesRelatorio} max={new Date().toISOString().slice(0, 7)} onChange={(event) => { if (event.target.value) setMesRelatorio(event.target.value); }} className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm font-bold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"/></label></div>
-              <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><span className="text-[10px] font-black uppercase tracking-wide text-blue-600">Período selecionado</span><b className="mt-1 block text-sm text-blue-950">{new Date(`${intervaloRelatorio.data_inicio}T12:00:00`).toLocaleDateString("pt-BR")} até {new Date(`${intervaloRelatorio.data_fim}T12:00:00`).toLocaleDateString("pt-BR")}</b></div><div className="text-right"><b className="block text-2xl text-blue-700">{chamadosNoMesRelatorio}</b><span className="text-xs font-bold text-blue-700/70">chamado(s)</span></div></div></div>
-            </Card>
-
-            <Card><h3 className="text-sm font-black">O relatório inclui</h3><div className="mt-4 space-y-3 text-xs text-zinc-600">{["Número, título e status", "Prioridade e categoria", "Responsável pelo atendimento", "Datas de abertura e atualização"].map((item) => <div key={item} className="flex items-center gap-2"><CheckCircle2 size={15} className="shrink-0 text-emerald-600"/>{item}</div>)}</div></Card>
-          </div>
-
+        <section className="mx-auto w-full max-w-5xl">
           <Card>
-            <div><h3 className="text-lg font-black">Escolha o formato</h3><p className="mt-1 text-sm text-zinc-500">Todos os arquivos usarão o mesmo filtro mensal selecionado acima.</p></div>
-            {podeBaixarRelatorios ? <div className="mt-5 grid gap-3 sm:grid-cols-3">{([
-              { formato: "csv" as const, titulo: "CSV", detalhe: "Dados simples para importação" },
-              { formato: "excel" as const, titulo: "Excel", detalhe: "Planilha completa e organizada" },
-              { formato: "pdf" as const, titulo: "PDF", detalhe: "Documento pronto para compartilhar" },
-            ]).map((item) => <button key={item.formato} type="button" disabled={Boolean(formatoBaixando)} onClick={() => void baixarRelatorioDoMes(item.formato)} className="group flex items-center gap-3 rounded-2xl border border-zinc-200 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700 transition group-hover:bg-blue-600 group-hover:text-white">{formatoBaixando === item.formato ? <RefreshCw size={18} className="animate-spin"/> : <Download size={18}/>}</span><span><b className="block text-sm">Baixar {item.titulo}</b><span className="mt-1 block text-[11px] text-zinc-500">{formatoBaixando === item.formato ? "Preparando arquivo…" : item.detalhe}</span></span></button>)}</div> : <div className="mt-5 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"><LockKeyhole size={18} className="shrink-0"/><span>Seu perfil pode visualizar esta área, mas não possui permissão para baixar arquivos.</span></div>}
+            <header className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-100 pb-5">
+              <div><span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><FileText size={19}/></span><h2 className="mt-3 text-xl font-black">Relatórios</h2><p className="mt-1 text-sm text-zinc-500">Baixe os chamados abertos por você em um mês específico.</p></div>
+              <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wide text-zinc-500">Filtrar por mês</span><span className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-500/10"><Calendar size={16} className="text-zinc-400"/><input type="month" required value={mesRelatorio} max={new Date().toISOString().slice(0, 7)} onChange={(event) => { if (event.target.value) setMesRelatorio(event.target.value); }} className="bg-transparent text-sm font-bold outline-none"/></span></label>
+            </header>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 py-4" aria-live="polite">
+              <div><span className="text-xs text-zinc-500">Período aplicado</span><b className="mt-0.5 block text-sm">{new Date(`${intervaloRelatorio.data_inicio}T12:00:00`).toLocaleDateString("pt-BR")} — {new Date(`${intervaloRelatorio.data_fim}T12:00:00`).toLocaleDateString("pt-BR")}</b></div>
+              <span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-black text-zinc-700">{chamadosNoMesRelatorio} {chamadosNoMesRelatorio === 1 ? "chamado encontrado" : "chamados encontrados"}</span>
+            </div>
+
+            <div className="pt-5">
+              <h3 className="text-sm font-black">Formato do arquivo</h3>
+              {podeBaixarRelatorios ? <div className="mt-3 flex flex-wrap gap-2">{([
+                { formato: "csv" as const, titulo: "CSV" },
+                { formato: "excel" as const, titulo: "Excel" },
+                { formato: "pdf" as const, titulo: "PDF" },
+              ]).map((item) => <button key={item.formato} type="button" disabled={Boolean(formatoBaixando)} onClick={() => void baixarRelatorioDoMes(item.formato)} className="inline-flex h-11 min-w-32 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-black text-zinc-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-wait disabled:opacity-50">{formatoBaixando === item.formato ? <RefreshCw size={16} className="animate-spin"/> : <Download size={16}/>} {formatoBaixando === item.formato ? "Preparando…" : item.titulo}</button>)}</div> : <div className="mt-3 flex items-center gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800"><LockKeyhole size={17}/><span>Seu perfil não possui permissão para baixar arquivos.</span></div>}
+              <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><ShieldCheck size={14} className="text-emerald-600"/>O arquivo contém somente seus chamados dentro do mês selecionado.</p>
+            </div>
           </Card>
         </section>
       );
