@@ -4626,7 +4626,7 @@ function AdminPanel({
           <header
             className={`nectar-topbar sticky top-0 z-[60] h-14 overflow-visible border-b ${headerClass}`}
           >
-            <div className="relative flex h-full items-center gap-4 px-4">
+            <div className="grid h-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <h1 className="truncate text-sm font-bold tracking-tight">
@@ -4638,7 +4638,7 @@ function AdminPanel({
                 </div>
               </div>
 
-              <div className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 text-sm font-semibold text-sky-500 lg:block">
+              <div className="pointer-events-none hidden max-w-56 truncate px-3 text-center text-sm font-semibold text-sky-500 lg:block">
                 {activeArea?.title || "Dashboard"}
               </div>
 
@@ -4648,7 +4648,7 @@ function AdminPanel({
                     event.preventDefault();
                     setBuscaGlobalAberta(true);
                   }}
-                  className={`${["service","assets"].includes(activeArea?.id||"") ? "hidden" : "hidden md:flex"} w-[430px] max-w-[42vw] items-center`}
+                  className={`${["service","assets"].includes(activeArea?.id||"") ? "hidden" : "hidden md:flex"} min-w-0 w-[430px] max-w-full items-center`}
                 >
                   <div
                     className={`ds-search flex h-10 w-full items-center overflow-hidden rounded-full border shadow-sm transition focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
