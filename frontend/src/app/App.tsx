@@ -14,6 +14,7 @@ import type {
 } from "react";
 import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
 import { ProfileCenter } from "./components/ProfileCenter";
+import { PushNotificationOnboarding } from "./components/PushNotificationSettings";
 import { PermissionDialog } from "./components/PermissionDialog";
 import {
   LegalComplianceLayer,
@@ -2550,6 +2551,8 @@ function UserPortal({
           onLogout={onLogout}
         />
       )}
+
+      <PushNotificationOnboarding userId={usuario.id} />
 
       {modalChamadoAberto && (
         <UsuarioNovoChamadoModal
@@ -6346,6 +6349,8 @@ function AdminPanel({
           onLogout={onLogout}
         />
       )}
+
+      <PushNotificationOnboarding userId={usuario.id} />
 
       {false && mostrarPerfil && (
         <div className="fixed inset-0 z-50 flex justify-end">

@@ -172,7 +172,7 @@ async function registrarAuditoria(req, entidade, entidadeId, acao, descricao, da
   ).catch((err) => console.error("Erro auditoria:", err.message));
 }
 
-const { criarNotificacao, notificarStatus, notificarAvaliacao } = require("../services/ticketNotificationService");
+const { criarNotificacao, notificarStatus, notificarAvaliacao, notificarInteracao } = require("../services/ticketNotificationService");
 
 
 function minutosRestantes(dataLimite, referencia = new Date()) {
@@ -1022,6 +1022,7 @@ const adicionarComentario = async (req, res) => {
     }
 
     await registrarMovimentacao(id, req, "comentario", `${usuarioEhEquipe(req) ? "Atendente" : "Usuário"} ${req.user.nome} adicionou um comentário.`);
+    await notificarInteracao(acesso.chamado, req.user, "mensagem");
 
     await removeCache(`cache:ticket:${id}:comments`);
     return res.status(201).json(result.rows[0]);
@@ -1075,6 +1076,7 @@ const adicionarAnexos = async (req, res) => {
       anexosCriados.push({ ...result.rows[0], url: montarUrlAnexo(req, result.rows[0]) });
     }
     await registrarMovimentacao(id, req, "anexo", `${req.user.nome} adicionou ${anexosCriados.length} anexo(s).`);
+    await notificarInteracao(acesso.chamado, req.user, "anexo", anexosCriados.length);
     return res.status(201).json(anexosCriados);
   } catch (error) {
     console.error(error);

@@ -2,7 +2,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { PushNotificationSettings } from "./PushNotificationSettings";
+import { PushNotificationOnboarding, PushNotificationSettings } from "./PushNotificationSettings";
 import { usePushNavigation } from "../hooks/usePushNavigation";
 import { obterPushConfig, registrarPush } from "../services/api";
 
@@ -37,6 +37,18 @@ it("pede permissão somente após toque e registra o aparelho", async () => {
   expect(registrarPush).toHaveBeenCalledOnce();
   expect(localStorage.getItem("smart_helpdesk_push_owner")).toBe("7");
   expect(container.textContent).toContain("Desativar neste aparelho");
+});
+
+it("oferece ativação no primeiro acesso e mantém o push registrado", async () => {
+  await act(async () => root.render(<PushNotificationOnboarding userId={7}/>));
+  await act(async () => Promise.resolve());
+  expect(container.textContent).toContain("Permitir notificações");
+  expect(permission).not.toHaveBeenCalled();
+  await act(async () => (container.querySelectorAll("button")[1] as HTMLButtonElement).click());
+  expect(permission).toHaveBeenCalledOnce();
+  expect(registrarPush).toHaveBeenCalledOnce();
+  expect(localStorage.getItem("smart_helpdesk_push_owner")).toBe("7");
+  expect(container.textContent).not.toContain("Permitir notificações");
 });
 
 it("permissão negada não cria inscrição", async () => {
