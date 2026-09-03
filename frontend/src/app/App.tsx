@@ -1,3 +1,4 @@
+import { usePushNavigation } from "./hooks/usePushNavigation";
 /**
  * Responsabilidade: composição principal da aplicação Smart HelpDesk.
  * Mantém o shell e as jornadas históricas de login, portal do solicitante,
@@ -1770,12 +1771,13 @@ function UserPortal({
     }
   }
 
+  usePushNavigation(usuarioAtual.id, abrirDetalhe);
   async function abrirDetalhe(id: number) {
     const resumo = chamados.find((item) => Number(item.id) === Number(id));
     if (resumo) setSelecionado(resumo);
     try {
       const detalhe = await buscarChamado(id);
-      setSelecionado((atual) => Number(atual?.id) === Number(id) ? detalhe : atual);
+      setSelecionado((atual) => (Number(atual?.id) === Number(id) || (!resumo && atual === null)) ? detalhe : atual);
     } catch (e) {
       setSelecionado((atual) => Number(atual?.id) === Number(id) ? null : atual);
       toast.error(e instanceof Error ? e.message : "Erro ao buscar chamado.");
@@ -4141,6 +4143,7 @@ function AdminPanel({
     }
   }
 
+  usePushNavigation(usuario.id, abrirDetalhe);
   async function abrirDetalhe(id: number, somenteLeitura = false) {
     const resumo = [chamados, filaChamados, carteiraEquipe, historicoEquipe]
       .flat()
@@ -4151,7 +4154,7 @@ function AdminPanel({
     if (!respostasRapidas.length) listarRespostasRapidas().then(setRespostasRapidas).catch(() => {});
     try {
       const detalhe = await buscarChamado(id);
-      setSelecionado((atual) => Number(atual?.id) === Number(id) ? detalhe : atual);
+      setSelecionado((atual) => (Number(atual?.id) === Number(id) || (!resumo && atual === null)) ? detalhe : atual);
     } catch (e) {
       setSelecionado((atual) => Number(atual?.id) === Number(id) ? null : atual);
       toast.error(e instanceof Error ? e.message : "Erro ao abrir chamado.");
