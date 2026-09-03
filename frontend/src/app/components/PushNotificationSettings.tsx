@@ -100,7 +100,7 @@ export function PushNotificationSettings({ userId }: { userId: number }) {
 
   return <div className="space-y-3 rounded-xl border border-blue-200 p-4">
     <p className="text-sm font-bold">Notificações no celular ou computador</p>
-    <p className="text-xs opacity-70">Receba novos chamados, respostas, mudanças de status e alertas de SLA na barra de notificações, mesmo com o app fechado. Os alertas seguem seu acesso aos chamados.</p>
+    <p className="text-xs opacity-70">A equipe recebe alertas de novos chamados na fila, atribuições e avaliações. O solicitante recebe avisos de chamado assumido, em andamento, aguardando sua resposta e concluído com convite para avaliar. Os alertas podem chegar mesmo com o app fechado.</p>
     {ios && !installed ? <p className="text-sm">No iPhone, abra este site no Safari, toque em Compartilhar → Adicionar à Tela de Início e abra o aplicativo instalado para ativar. Requer iOS 16.4 ou superior.</p> : !supported ? <p className="text-sm">Este navegador não oferece notificações push. Abra o aplicativo em um navegador compatível e com conexão HTTPS.</p> : <div className="flex flex-wrap gap-2">
       <button type="button" disabled={busy || (!enabled && !publicKey)} onClick={() => void toggle()} className="ds-button ds-button--primary disabled:opacity-50">{busy ? "Aguarde…" : enabled ? "Desativar neste aparelho" : "Ativar notificações"}</button>
       {enabled && <button type="button" disabled={busy} onClick={() => void test()} className="ds-button ds-button--secondary">Enviar teste</button>}
