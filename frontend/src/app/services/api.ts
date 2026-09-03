@@ -80,6 +80,7 @@ export function limparSessao() {
 }
 
 export const obterPushConfig = () => request<{ publicKey: string }>("/notificacoes/push/config");
+export const obterPushStatus = (endpoint: string) => request<{ enabled: boolean }>("/notificacoes/push/status", { method: "POST", body: JSON.stringify({ endpoint }) });
 export const registrarPush = (subscription: PushSubscriptionJSON) => request("/notificacoes/push/subscribe", { method: "POST", body: JSON.stringify(subscription) });
 export const removerPush = (endpoint: string) => request("/notificacoes/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) });
 export const testarPush = (endpoint: string) => request<{ mensagem: string }>("/notificacoes/push/test", { method: "POST", body: JSON.stringify({ endpoint }) });

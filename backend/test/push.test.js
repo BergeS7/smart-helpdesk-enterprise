@@ -68,3 +68,13 @@ test("inscrição inválida não grava no banco", async () => {
   assert.equal(res.code, 400);
   assert.equal(calls.length, count);
 });
+
+test("diagnóstico distingue inscrição ausente de falha no provedor", async () => {
+  subscriptions = [];
+  assert.deepEqual(await push.sendToUserDetailed(7, {}), { sent: 0, total: 0, failures: ["subscription_missing_or_revoked"] });
+  subscriptions = [{ subscription }];
+  sendError = { statusCode: 403 };
+  const result = await push.sendToUserDetailed(7, {});
+  assert.deepEqual(result, { sent: 0, total: 1, failures: ["provider_http_403"] });
+  sendError = undefined;
+});

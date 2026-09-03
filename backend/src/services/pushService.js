@@ -76,18 +76,18 @@ function notificationPayload(userId, notification) {
   });
 }
 
-async function sendToUser(userId, notification, endpoint = null) {
+async function sendToUserDetailed(userId, notification, endpoint = null) {
   await ensurePushSchema();
   const result = await pool.query(`SELECT s.subscription FROM web_push_subscriptions s
     JOIN usuarios u ON u.id=s.usuario_id
     WHERE s.usuario_id=$1 AND u.status='ativo' AND s.token_version=COALESCE(u.token_version,1)
       AND ($2::text IS NULL OR s.endpoint=$2)`, [userId, endpoint]);
-  if (!result.rows.length) return 0;
+  if (!result.rows.length) return { sent: 0, total: 0, failures: ["subscription_missing_or_revoked"] };
   const keys = await getKeys();
   const subject = process.env.VAPID_SUBJECT || "https://github.com/BergeS7/smart-helpdesk-enterprise";
   const payload = notificationPayload(userId, notification);
   const results = await Promise.all(result.rows.map(async ({ subscription }) => {
-    if (!validSubscription(subscription)) return false;
+    if (!validSubscription(subscription)) return "invalid_subscription";
     try {
       await webpush.sendNotification(subscription, payload, { vapidDetails: { subject, ...keys }, TTL: 3600, timeout: 5000 });
       return true;
@@ -95,10 +95,14 @@ async function sendToUser(userId, notification, endpoint = null) {
       if ([404, 410].includes(error.statusCode)) {
         await pool.query("DELETE FROM web_push_subscriptions WHERE endpoint=$1 AND usuario_id=$2", [subscription.endpoint, userId]);
       } else console.error("Falha no envio push:", error.statusCode || "indisponível");
-      return false;
+      return error.statusCode ? `provider_http_${error.statusCode}` : "provider_unreachable";
     }
   }));
-  return results.filter(Boolean).length;
+  return { sent: results.filter((item) => item === true).length, total: results.length, failures: results.filter((item) => item !== true) };
+}
+
+async function sendToUser(userId, notification, endpoint = null) {
+  return (await sendToUserDetailed(userId, notification, endpoint)).sent;
 }
 
 async function sendSafely(userId, notification) {
@@ -106,4 +110,4 @@ async function sendSafely(userId, notification) {
   catch { console.error("Push indisponível; notificação preservada no sistema."); }
 }
 
-module.exports = { schema, ensurePushSchema, getKeys, validSubscription, notificationPayload, sendToUser, sendSafely };
+module.exports = { schema, ensurePushSchema, getKeys, validSubscription, notificationPayload, sendToUser, sendToUserDetailed, sendSafely };
