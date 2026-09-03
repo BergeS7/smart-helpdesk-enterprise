@@ -295,7 +295,7 @@ async function notificarUsuarioVinculadoAoAtivo(chamado) {
     [chamado.ativo_id, chamado.usuario_id]
   );
   if (vinculado.rows[0]) {
-    await criarNotificacao(vinculado.rows[0].id, "Chamado do seu ativo concluído", `${chamado.numero_chamado} foi concluído. Avalie o atendimento.`, "success", `/chamados/${chamado.id}`);
+    await criarNotificacao(vinculado.rows[0].id, "Chamado do seu ativo concluído", `${chamado.numero_chamado} foi concluído. Avalie o atendimento.`, "success", `/chamados/${chamado.id}?action=avaliar`);
   }
 }
 

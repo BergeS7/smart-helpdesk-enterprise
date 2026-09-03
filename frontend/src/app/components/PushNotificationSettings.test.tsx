@@ -60,3 +60,13 @@ it("abre o chamado do push após login e não abre para outra conta", async () =
   await act(async () => root.render(<Harness userId={8}/>));
   expect(open).not.toHaveBeenCalled();
 });
+
+it("convite push abre a avaliação em vez dos detalhes", async () => {
+  const open = vi.fn(), rate = vi.fn();
+  function Harness() { usePushNavigation(7, open, rate); return null; }
+  window.history.replaceState(null, "", "/?pushUser=7&pushTicket=42&pushAction=avaliar");
+  await act(async () => root.render(<Harness/>));
+  expect(rate).toHaveBeenCalledWith(42);
+  expect(open).not.toHaveBeenCalled();
+  expect(window.location.search).toBe("");
+});

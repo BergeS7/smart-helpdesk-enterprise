@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: Módulo de sw; implementa esta responsabilidade dentro do Smart HelpDesk.
  */
-const CACHE = "smart-helpdesk-shell-v6";
+const CACHE = "smart-helpdesk-shell-v7";
 const SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/pwa-192-v2.png", "/pwa-512-v2.png"];
 
 self.addEventListener("push", (event) => {
@@ -24,6 +24,9 @@ self.addEventListener("notificationclick", (event) => {
       const candidate = new URL(event.notification.data?.url || "/", self.location.origin);
       if (candidate.origin === self.location.origin && candidate.pathname === "/") target = candidate;
     } catch { /* Abrir a página inicial. */ }
+    if (target.searchParams.has("pushTicket") && /chamado.*concluído|faça a avaliação/i.test(event.notification.title || "")) {
+      target.searchParams.set("pushAction", "avaliar");
+    }
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     const existing = windows.find((client) => new URL(client.url).origin === target.origin);
     if (existing) {
