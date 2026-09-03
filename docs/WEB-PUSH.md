@@ -4,15 +4,17 @@ Em Meu perfil → Notificações, use **Ativar notificações** e autorize no ap
 **Enviar teste** envia somente para a conta autenticada e o aparelho atual.
 No iPhone/iPad, é necessário iOS/iPadOS 16.4+ e abrir o webapp adicionado à Tela de Início.
 
-Os eventos de chamados que já geram notificações internas agora também enviam push:
-criação/atribuição, respostas, mudanças de status, conclusão e alertas de SLA.
+Os eventos de chamados geram os mesmos avisos internos e push:
+- Equipe: novo chamado na fila e chamado atribuído a você, com título do chamado;
+  avaliação recebida, somente para o atendente avaliado, com nota e comentário breve.
+- Solicitante: chamado assumido, em andamento, aguardando sua resposta e concluído
+  com convite para avaliar. Resolvido → Concluído não repete o convite.
 Novos chamados de atendimento sem responsável enviam **Novo chamado na fila** a
 todos os técnicos, supervisores, administradores e desenvolvedores ativos, conforme
 o acesso compartilhado da fila atual. O mesmo evento gera o aviso interno e o push
 nos aparelhos autorizados desses destinatários. Chamados já atribuídos não geram
 esse alerta coletivo de fila.
-A geração dos alertas de SLA continua no fluxo existente de consulta de chamados;
-esta alteração não adiciona um agendador de SLA independente.
+SLA continua registrado no histórico operacional, sem notificação no sino ou push.
 As notificações do módulo Desenvolvimento continuam internas.
 
 O service worker recebe push mesmo sem uma janela aberta. O sistema operacional,

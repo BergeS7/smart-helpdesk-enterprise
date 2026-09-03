@@ -172,15 +172,7 @@ async function registrarAuditoria(req, entidade, entidadeId, acao, descricao, da
   ).catch((err) => console.error("Erro auditoria:", err.message));
 }
 
-async function criarNotificacao(usuarioId, titulo, mensagem, tipo = "info", link = null) {
-  if (!usuarioId) return;
-  const result = await pool.query(
-    `INSERT INTO notificacoes (usuario_id, titulo, mensagem, tipo, link)
-     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [usuarioId, titulo, mensagem, tipo, link]
-  ).catch((err) => console.error("Erro notificação:", err.message));
-  if (result?.rows[0]) await require("../services/pushService").sendSafely(usuarioId, { id: result.rows[0].id, titulo, mensagem, link });
-}
+const { criarNotificacao, notificarStatus, notificarAvaliacao } = require("../services/ticketNotificationService");
 
 
 function minutosRestantes(dataLimite, referencia = new Date()) {
@@ -246,14 +238,10 @@ async function verificarAlertasSla(req = null) {
 
   for (const chamado of result.rows) {
     if (!chamado.sla_alerta_enviado && new Date(chamado.sla_limite_resolucao) <= new Date(Date.now() + 30 * 60000)) {
-      await criarNotificacao(chamado.responsavel_id, "SLA perto de vencer", `${chamado.numero_chamado || `#${chamado.id}`} vence em breve.`, "warning", `/chamados/${chamado.id}`);
-      await criarNotificacao(chamado.usuario_id, "Chamado em acompanhamento", `${chamado.numero_chamado || `#${chamado.id}`} está próximo do prazo de resolução.`, "warning", `/chamados/${chamado.id}`);
-      await notificarAdmins("SLA perto de vencer", `${chamado.numero_chamado || `#${chamado.id}`} vence em breve.`, "warning", `/chamados/${chamado.id}`);
       await pool.query("UPDATE chamados SET sla_alerta_enviado = TRUE WHERE id = $1", [chamado.id]).catch(() => {});
       await registrarMovimentacao(chamado.id, sistemaReq, "sla_alerta", "Alerta automático de SLA próximo do vencimento.").catch(() => {});
     }
     if (!chamado.sla_escalado && new Date(chamado.sla_limite_resolucao) < new Date()) {
-      await notificarAdmins("SLA vencido", `${chamado.numero_chamado || `#${chamado.id}`} está vencido e precisa de atenção.`, "error", `/chamados/${chamado.id}`);
       await pool.query("UPDATE chamados SET sla_escalado = TRUE, vencido = TRUE WHERE id = $1", [chamado.id]).catch(() => {});
       await registrarMovimentacao(chamado.id, sistemaReq, "sla_escalonado", "Chamado escalonado automaticamente por vencimento de SLA.").catch(() => {});
     }
@@ -289,12 +277,6 @@ async function adicionarFotosParticipantes(req, chamado) {
   };
 }
 
-async function notificarAdmins(titulo, mensagem, tipo = "info", link = null) {
-  const admins = await pool.query(
-    `SELECT id FROM usuarios WHERE perfil IN ('admin', 'desenvolvedor', 'super_admin') AND COALESCE(status, 'ativo') = 'ativo'`
-  );
-  await Promise.all(admins.rows.map((admin) => criarNotificacao(admin.id, titulo, mensagem, tipo, link)));
-}
 
 async function notificarUsuarioVinculadoAoAtivo(chamado) {
   if (!chamado?.ativo_id) return;
@@ -627,13 +609,11 @@ const criarChamado = async (req, res) => {
     }
     if (responsavelAutomatico) {
       await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "atribuicao_automatica", `Responsável atribuído automaticamente para ${responsavelAutomatico.nome}.`);
-      await criarNotificacao(responsavelAutomatico.id, "Novo chamado atribuído", `${chamado.numero_chamado} foi atribuído automaticamente a você.`, "info", `/chamados/${chamado.id}`);
+      await criarNotificacao(responsavelAutomatico.id, "Chamado atribuído a você", `${chamado.titulo} — ${chamado.numero_chamado}`, "info", `/chamados/${chamado.id}`);
+      await criarNotificacao(chamado.usuario_id, "Chamado assumido", `${chamado.titulo} — Seu atendimento ficará com ${responsavelAutomatico.nome}.`, "info", `/chamados/${chamado.id}`);
     }
-    await criarNotificacao(usuario.id, "Chamado criado", `${chamado.numero_chamado} foi aberto com prioridade ${chamado.prioridade}.`, "success", `/chamados/${chamado.id}`);
     if (!tipoDesenvolvimento && chamado.responsavel_id == null) {
       await require("../services/queueNotificationService").notificarNovoChamadoNaFila(chamado, criarNotificacao);
-    } else {
-      await notificarAdmins("Novo chamado", `${chamado.numero_chamado} - ${chamado.titulo}`, "info", `/chamados/${chamado.id}`);
     }
     enviarEmail({ para: usuario.email, assunto: `Chamado criado ${chamado.numero_chamado}`, texto: `Seu chamado foi criado. Prioridade: ${chamado.prioridade}` }).catch(() => {});
 
@@ -937,9 +917,9 @@ const atualizarChamado = async (req, res) => {
 
     if (statusEfetivo && statusEfetivo !== canonicalizeStatus(anterior.status)) {
       await registrarMovimentacao(id, req, "alteracao_status", `Status alterado de ${canonicalizeStatus(anterior.status)} para ${statusEfetivo}.`);
-      await criarNotificacao(atualizado.usuario_id, "Status do chamado alterado", `${atualizado.numero_chamado} agora está como ${statusLabel(statusEfetivo)}.`, "info", `/chamados/${id}`);
+      await notificarStatus(atualizado, statusEfetivo, anterior.status);
       enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusEfetivo)}.` }).catch(() => {});
-      if (statusFinalizado(statusEfetivo)) await notificarUsuarioVinculadoAoAtivo(atualizado);
+      if (["RESOLVED", "CLOSED"].includes(statusEfetivo) && !["RESOLVED", "CLOSED"].includes(canonicalizeStatus(anterior.status))) await notificarUsuarioVinculadoAoAtivo(atualizado);
     }
     if (prioridadeAlterada) {
       await registrarMovimentacao(id, req, "alteracao_prioridade", `Prioridade final alterada de ${anterior.prioridade} para ${prioridade}. Motivo: ${prioridade_manual_motivo || "não informado"}`);
@@ -949,7 +929,8 @@ const atualizarChamado = async (req, res) => {
     }
     if (alteraResponsavel && Number(responsavelIdFinal || 0) !== Number(anterior.responsavel_id || 0)) {
       await registrarMovimentacao(id, req, "responsavel", responsavelIdFinal ? `Responsável definido como ${responsavelNome}.` : "Chamado devolvido à fila sem responsável.");
-      if (responsavelIdFinal) await criarNotificacao(responsavelIdFinal, "Chamado atribuído", `${atualizado.numero_chamado} foi atribuído a você.`, "info", `/chamados/${id}`);
+      if (responsavelIdFinal) await criarNotificacao(responsavelIdFinal, "Chamado atribuído a você", `${atualizado.titulo} — ${atualizado.numero_chamado}`, "info", `/chamados/${id}`);
+      if (responsavelIdFinal) await criarNotificacao(atualizado.usuario_id, "Chamado assumido", `${atualizado.titulo} — Seu atendimento ficará com ${responsavelNome}.`, "info", `/chamados/${id}`);
     }
 
     return res.json(await carregarDetalhesChamado(req, atualizado));
@@ -971,8 +952,8 @@ const encerrarChamado = async (req, res) => {
       [id]
     );
     await registrarMovimentacao(id, req, "conclusao", "Chamado finalizado.");
-    await criarNotificacao(result.rows[0].usuario_id, "Chamado concluído", `${result.rows[0].numero_chamado} foi concluído. Avalie o atendimento.`, "success", `/chamados/${id}`);
-    await notificarUsuarioVinculadoAoAtivo(result.rows[0]);
+    await notificarStatus(result.rows[0], "CLOSED", acesso.chamado.status);
+    if (!["RESOLVED", "CLOSED"].includes(canonicalizeStatus(acesso.chamado.status))) await notificarUsuarioVinculadoAoAtivo(result.rows[0]);
     enviarEmail({ para: result.rows[0].email_solicitante, assunto: `Chamado concluído ${result.rows[0].numero_chamado}`, texto: "Seu chamado foi concluído. Acesse o portal para avaliar." }).catch(() => {});
     return res.json(await carregarDetalhesChamado(req, result.rows[0]));
   } catch (error) {
@@ -995,7 +976,6 @@ const reabrirChamado = async (req, res) => {
       [id]
     );
     await registrarMovimentacao(id, req, "reabertura", motivo ? `Chamado reaberto. Motivo: ${normalizarTexto(motivo)}` : "Chamado reaberto pelo usuário.");
-    await notificarAdmins("Chamado reaberto", `${result.rows[0].numero_chamado} foi reaberto.`, "warning", `/chamados/${id}`);
     enviarEmail({ para: result.rows[0].email_solicitante, assunto: `Chamado reaberto ${result.rows[0].numero_chamado}`, texto: `Seu chamado foi reaberto e voltou para atendimento. Motivo: ${normalizarTexto(motivo)}` }).catch(() => {});
     return res.json(await carregarDetalhesChamado(req, result.rows[0]));
   } catch (error) {
@@ -1033,6 +1013,7 @@ const adicionarComentario = async (req, res) => {
          WHERE id = $1`,
         [id]
       );
+      await notificarStatus(acesso.chamado, "IN_PROGRESS", acesso.chamado.status);
       await registrarMovimentacao(id, req, "sla_retomado", "SLA retomado automaticamente após resposta do usuário. Status alterado para Em andamento.");
     } else if (usuarioEhEquipe(req) && !acesso.chamado.primeira_resposta_em) {
       await pool.query("UPDATE chamados SET primeira_resposta_em = CURRENT_TIMESTAMP, atualizado_em = CURRENT_TIMESTAMP WHERE id = $1", [id]);
@@ -1041,11 +1022,7 @@ const adicionarComentario = async (req, res) => {
     }
 
     await registrarMovimentacao(id, req, "comentario", `${usuarioEhEquipe(req) ? "Atendente" : "Usuário"} ${req.user.nome} adicionou um comentário.`);
-    if (usuarioEhEquipe(req)) {
-      await criarNotificacao(acesso.chamado.usuario_id, "Nova resposta no chamado", `${acesso.chamado.numero_chamado || `#${id}`} recebeu uma resposta.`, "info", `/chamados/${id}`);
-    } else {
-      await notificarAdmins("Novo comentário", `${acesso.chamado.numero_chamado || `#${id}`} recebeu comentário do usuário.`, "info", `/chamados/${id}`);
-    }
+
     await removeCache(`cache:ticket:${id}:comments`);
     return res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -1196,6 +1173,7 @@ const avaliarChamado = async (req, res) => {
       [id, acesso.chamado.responsavel_id || null, acesso.chamado.team_id || null, req.user.id, notaFinal, comentarioFinal]
     );
     if (!result.rows[0]) return res.status(409).json({ erro: "Este chamado já possui uma avaliação detalhada." });
+    await notificarAvaliacao(acesso.chamado, notaFinal, comentarioFinal);
     await registrarMovimentacao(id, req, "avaliacao", `Atendimento avaliado com ${notaFinal} estrela(s).`);
     return res.json(result.rows[0]);
   } catch (error) {
@@ -1255,7 +1233,8 @@ const assumirChamado = async (req, res) => {
     }
 
     await registrarMovimentacao(id, req, "assumir_chamado", `${req.user.nome} assumiu o chamado.`);
-    await criarNotificacao(result.rows[0].usuario_id, "Chamado assumido", `${result.rows[0].numero_chamado || `#${id}`} será atendido por ${req.user.nome}.`, "info", `/chamados/${id}`);
+    await criarNotificacao(req.user.id, "Chamado atribuído a você", `${result.rows[0].titulo} — ${result.rows[0].numero_chamado}`, "info", `/chamados/${id}`);
+    await criarNotificacao(result.rows[0].usuario_id, "Chamado assumido", `${result.rows[0].titulo} — Seu chamado foi assumido por ${req.user.nome}.`, "info", `/chamados/${id}`);
     return res.json(await carregarDetalhesChamado(req, result.rows[0]));
   } catch (error) {
     console.error(error);

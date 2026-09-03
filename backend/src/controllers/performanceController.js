@@ -22,7 +22,7 @@ exports.rateTicket = async (req,res) => {
     if(!rating.comment)return res.status(400).json({erro:"O comentário da avaliação é obrigatório"});
     for(const field of fields){rating[field]=number(req.body[field],1,5);if(!rating[field])return res.status(400).json({erro:`${field} deve ser uma nota de 1 a 5`});}
     if(rating.nps_score===null)return res.status(400).json({erro:"NPS deve estar entre 0 e 10"});
-    const saved=await recordRating({ticket,clientId:req.user.id,rating}); return res.status(201).json(saved);
+    const saved=await recordRating({ticket,clientId:req.user.id,rating}); await require("../services/ticketNotificationService").notificarAvaliacao(ticket,rating.overall_rating,rating.comment); return res.status(201).json(saved);
   } catch(error) { if(error.code==="23505")return res.status(409).json({erro:"Este chamado já foi avaliado"}); console.error("Erro performance rating:",error.message);return res.status(500).json({erro:"Erro ao registrar avaliação"}); }
 };
 
