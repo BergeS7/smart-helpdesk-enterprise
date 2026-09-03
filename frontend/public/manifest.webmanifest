@@ -13,13 +13,13 @@
   "theme_color": "#0f172a",
   "categories": ["business", "productivity", "utilities"],
   "icons": [
-    { "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/pwa-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/pwa-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/pwa-192-v2.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-512-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-maskable-192-v2.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/pwa-maskable-512-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Abrir chamado", "short_name": "Abrir", "url": "/?source=pwa&action=new-ticket", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] },
-    { "name": "Meus chamados", "short_name": "Chamados", "url": "/?source=pwa&action=tickets", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] }
+    { "name": "Abrir chamado", "short_name": "Abrir", "url": "/?source=pwa&action=new-ticket", "icons": [{ "src": "/pwa-192-v2.png", "sizes": "192x192" }] },
+    { "name": "Meus chamados", "short_name": "Chamados", "url": "/?source=pwa&action=tickets", "icons": [{ "src": "/pwa-192-v2.png", "sizes": "192x192" }] }
   ]
 }
