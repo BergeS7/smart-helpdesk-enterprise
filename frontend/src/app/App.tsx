@@ -2045,14 +2045,14 @@ function UserPortal({
       </div>
       <div className="flex h-screen overflow-hidden">
         <aside className="hidden w-14 shrink-0 flex-col border-r border-white/5 bg-gradient-to-b from-[#101c29] via-[#0d1925] to-[#08131d] text-white shadow-2xl lg:flex">
-          <div className="grid h-14 shrink-0 place-items-center border-b border-white/8">
+          <button type="button" onClick={() => setTab("home")} aria-label={`${sistemaNome} — Início`} title="Ir para Início" className="grid h-14 shrink-0 cursor-pointer place-items-center border-b border-white/8 focus-visible:outline-2 focus-visible:outline-blue-500">
             <img
               src={sistemaLogo1}
               alt={sistemaNome}
               className="h-11 w-12 object-contain"
               title={sistemaNome}
             />
-          </div>
+          </button>
 
           <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-1.5 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <UsuarioSidebarButton
@@ -2171,16 +2171,16 @@ function UserPortal({
           <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 shadow-sm backdrop-blur">
             <div className="relative flex h-14 items-center gap-3 px-4 lg:px-5">
               <div className="flex min-w-0 items-center gap-3 lg:hidden">
-                <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200">
+                <button type="button" onClick={() => setTab("home")} aria-label={`${sistemaNome} — Início`} title="Ir para Início" className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 focus-visible:outline-2 focus-visible:outline-blue-500">
                   <img
                     src={sistemaLogo1}
                     alt={sistemaNome}
                     className="h-full w-full object-contain"
                   />
-                </div>
+                </button>
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <h1 className="truncate text-base font-black tracking-tight">
-                    {sistemaNome}
+                    <button type="button" onClick={() => setTab("home")} title="Ir para Início" className="max-w-full cursor-pointer truncate text-left focus-visible:outline-2 focus-visible:outline-blue-500">{sistemaNome}</button>
                   </h1>
                   <p className="text-xs text-zinc-500">{activeTab.title}</p>
                 </div>
@@ -4590,13 +4590,13 @@ function AdminPanel({
       </div>
       <div className="flex h-screen overflow-hidden">
         <aside className="nectar-sidebar hidden w-14 shrink-0 flex-col border-r lg:flex">
-          <div className="grid h-14 shrink-0 place-items-center border-b">
+          <button type="button" onClick={() => setTab("dashboard")} aria-label={`${sistemaNome} — Início`} title="Ir para Início" className="grid h-14 shrink-0 cursor-pointer place-items-center border-b focus-visible:outline-2 focus-visible:outline-blue-500">
             <img
               src={sistemaLogo1}
               alt={sistemaNome}
               className="h-11 w-12 object-contain"
             />
-          </div>
+          </button>
 
           <nav className="min-h-0 flex-1 overflow-y-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {navigationAreas.map((item) => {
@@ -4648,7 +4648,7 @@ function AdminPanel({
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <h1 title={sistemaNome} className="line-clamp-2 break-words text-sm font-bold leading-tight tracking-tight lg:block lg:truncate">
-                    {sistemaNome}
+                    <button type="button" onClick={() => setTab("dashboard")} title="Ir para Início" className="max-w-full cursor-pointer text-left lg:truncate focus-visible:outline-2 focus-visible:outline-blue-500">{sistemaNome}</button>
                   </h1>
                   <p className={`hidden text-xs ${mutedText}`}>
                     Painel administrativo
