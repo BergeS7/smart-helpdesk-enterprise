@@ -1,8 +1,8 @@
 /**
  * Responsabilidade: Módulo de sw; implementa esta responsabilidade dentro do Smart HelpDesk.
  */
-const CACHE = "smart-helpdesk-shell-v4";
-const SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/pwa-192.png", "/pwa-512.png"];
+const CACHE = "smart-helpdesk-shell-v5";
+const SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/pwa-192-v2.png", "/pwa-512-v2.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
