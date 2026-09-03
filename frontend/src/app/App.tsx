@@ -1732,7 +1732,12 @@ function UserPortal({
 
       setNotificacoesAberta(false);
       const chamadoId = chamadoIdFromNotification(notificacao.link);
-      if (chamadoId) await abrirDetalhe(chamadoId);
+      if (chamadoId) {
+        const avaliar = new URL(notificacao.link || "/", window.location.origin).searchParams.get("action") === "avaliar"
+          || /chamado.*concluído|faça a avaliação/i.test(notificacao.titulo);
+        if (avaliar) await abrirAvaliacao(chamadoId);
+        else await abrirDetalhe(chamadoId);
+      }
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "Erro ao abrir notificação.",
@@ -1771,7 +1776,7 @@ function UserPortal({
     }
   }
 
-  usePushNavigation(usuarioAtual.id, abrirDetalhe);
+  usePushNavigation(usuarioAtual.id, abrirDetalhe, abrirAvaliacao);
   async function abrirDetalhe(id: number) {
     const resumo = chamados.find((item) => Number(item.id) === Number(id));
     if (resumo) setSelecionado(resumo);
@@ -1796,6 +1801,7 @@ function UserPortal({
         toast.error("Este atendimento ainda não está disponível para avaliação.");
         return;
       }
+      setSelecionado(null);
       setAvaliando(detalhe);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao abrir avaliação.");

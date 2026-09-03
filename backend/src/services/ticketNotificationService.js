@@ -23,7 +23,8 @@ function mensagemStatus(chamado, status) {
 async function notificarStatus(chamado, status, anterior = null) {
   if (["RESOLVED", "CLOSED"].includes(canonicalize(anterior)) && ["RESOLVED", "CLOSED"].includes(canonicalize(status))) return;
   const message = mensagemStatus(chamado, status);
-  if (message) await criarNotificacao(chamado.usuario_id, ...message, ["RESOLVED", "CLOSED"].includes(canonicalize(status)) ? "success" : "info", `/chamados/${chamado.id}`);
+  const concluido = ["RESOLVED", "CLOSED"].includes(canonicalize(status));
+  if (message) await criarNotificacao(chamado.usuario_id, ...message, concluido ? "success" : "info", `/chamados/${chamado.id}${concluido ? "?action=avaliar" : ""}`);
 }
 
 async function notificarAvaliacao(chamado, nota, comentario) {

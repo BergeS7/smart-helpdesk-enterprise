@@ -16,6 +16,7 @@ test("notifica solicitante apenas nos estados solicitados", async () => {
     assert.ok(saved.at(-1)[2].includes(ticket.titulo));
   }
   assert.match(saved.at(-1)[1], /faça a avaliação/);
+  assert.equal(saved.at(-1)[4], "/chamados/8?action=avaliar");
   const count = saved.length;
   await notificarStatus(ticket, "CLOSED", "RESOLVED");
   assert.equal(saved.length, count);

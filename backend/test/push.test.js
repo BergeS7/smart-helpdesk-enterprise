@@ -33,6 +33,7 @@ test("clique contém somente URL local e identifica o destinatário", () => {
   const payload = JSON.parse(push.notificationPayload(7, { id: 4, titulo: "Status", mensagem: "Atualizado", link: "/chamados/42" }));
   assert.equal(payload.url, "/?pushUser=7&pushTicket=42");
   assert.equal(payload.tag, "helpdesk-7-4");
+  assert.equal(JSON.parse(push.notificationPayload(7, { link: "/chamados/42?action=avaliar" })).url, "/?pushUser=7&pushTicket=42&pushAction=avaliar");
   assert.equal(JSON.parse(push.notificationPayload(7, { link: "https://evil.test" })).url, "/?pushUser=7");
 });
 

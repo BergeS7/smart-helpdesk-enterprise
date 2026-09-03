@@ -68,6 +68,7 @@ function notificationPayload(userId, notification) {
   const ticket = /^\/chamados\/(\d+)(?:$|[/?#])/.exec(notification.link || "");
   const query = new URLSearchParams({ pushUser: String(userId) });
   if (ticket) query.set("pushTicket", ticket[1]);
+  if (ticket && new URL(notification.link, "https://helpdesk.invalid").searchParams.get("action") === "avaliar") query.set("pushAction", "avaliar");
   return JSON.stringify({
     title: String(notification.titulo || "Smart HelpDesk").slice(0, 100),
     body: String(notification.mensagem || "Você tem uma nova notificação.").slice(0, 300),
