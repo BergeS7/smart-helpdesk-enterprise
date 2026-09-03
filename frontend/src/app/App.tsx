@@ -182,6 +182,7 @@ import {
   solicitarRecuperacaoSenha,
   type ApiAvisoSistema,
   type ApiChamado,
+  type ApiComentario,
   type ApiUsuario,
   type ArtigoBase,
   type CatalogoItem,
@@ -7259,6 +7260,8 @@ function ChamadoDetalhe({
   somenteLeitura?: boolean;
 }) {
   const [mensagem, setMensagem] = useState("");
+  const [enviandoMensagem, setEnviandoMensagem] = useState(false);
+  const [comentarios, setComentarios] = useState<ApiComentario[]>(chamado.comentarios || []);
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [previewsAnexos, setPreviewsAnexos] = useState<Record<number, string>>({});
   const arquivoInputRef = useRef<HTMLInputElement>(null);
@@ -7273,6 +7276,7 @@ function ChamadoDetalhe({
     () => () => arquivosComPrevia.forEach(({ url }) => url && URL.revokeObjectURL(url)),
     [arquivosComPrevia],
   );
+  useEffect(() => setComentarios(chamado.comentarios || []), [chamado.comentarios]);
   useEffect(() => {
     let ativo = true;
     const urls: string[] = [];
@@ -7329,10 +7333,32 @@ function ChamadoDetalhe({
 
   async function enviarComentario(event: FormEvent) {
     event.preventDefault();
-    if (!mensagem.trim()) return;
-    await adicionarComentario(chamado.id, mensagem);
+    const texto = mensagem.trim();
+    if (!texto || enviandoMensagem) return;
+    const idTemporario = -Date.now();
+    const otimista: ApiComentario = {
+      id: idTemporario,
+      chamado_id: chamado.id,
+      usuario_id: usuario.id,
+      autor_nome: usuario.nome,
+      autor_perfil: usuario.perfil,
+      mensagem: texto,
+      criado_em: new Date().toISOString(),
+    };
+    setEnviandoMensagem(true);
     setMensagem("");
-    await onRefresh();
+    setComentarios((atuais) => [...atuais, otimista]);
+    try {
+      const comentario = await adicionarComentario(chamado.id, texto);
+      setComentarios((atuais) => atuais.map((item) => item.id === idTemporario ? comentario : item));
+      void onRefresh().catch(() => undefined);
+    } catch (error) {
+      setComentarios((atuais) => atuais.filter((item) => item.id !== idTemporario));
+      setMensagem(texto);
+      toast.error(error instanceof Error ? error.message : "Não foi possível enviar a mensagem.");
+    } finally {
+      setEnviandoMensagem(false);
+    }
   }
   async function upload(event: FormEvent) {
     event.preventDefault();
@@ -7556,8 +7582,8 @@ function ChamadoDetalhe({
               Chat do chamado
             </h3>
             <div className="mb-4 space-y-3">
-              {chamado.comentarios?.length ? (
-                chamado.comentarios.map((c) => {
+              {comentarios.length ? (
+                comentarios.map((c) => {
                   const atendimento = c.autor_perfil !== "usuario";
                   return (
                     <div
@@ -7632,8 +7658,9 @@ function ChamadoDetalhe({
                 value={mensagem}
                 onChange={(e) => setMensagem(e.target.value)}
                 placeholder="Escreva uma resposta..."
+                disabled={enviandoMensagem}
               />
-              <Button>Enviar</Button>
+              <Button disabled={enviandoMensagem}>{enviandoMensagem ? "Enviando…" : "Enviar"}</Button>
             </form>
           </Card>
           <Card>
