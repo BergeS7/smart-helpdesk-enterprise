@@ -630,7 +630,11 @@ const criarChamado = async (req, res) => {
       await criarNotificacao(responsavelAutomatico.id, "Novo chamado atribuído", `${chamado.numero_chamado} foi atribuído automaticamente a você.`, "info", `/chamados/${chamado.id}`);
     }
     await criarNotificacao(usuario.id, "Chamado criado", `${chamado.numero_chamado} foi aberto com prioridade ${chamado.prioridade}.`, "success", `/chamados/${chamado.id}`);
-    await notificarAdmins("Novo chamado", `${chamado.numero_chamado} - ${chamado.titulo}`, "info", `/chamados/${chamado.id}`);
+    if (!tipoDesenvolvimento && chamado.responsavel_id == null) {
+      await require("../services/queueNotificationService").notificarNovoChamadoNaFila(chamado, criarNotificacao);
+    } else {
+      await notificarAdmins("Novo chamado", `${chamado.numero_chamado} - ${chamado.titulo}`, "info", `/chamados/${chamado.id}`);
+    }
     enviarEmail({ para: usuario.email, assunto: `Chamado criado ${chamado.numero_chamado}`, texto: `Seu chamado foi criado. Prioridade: ${chamado.prioridade}` }).catch(() => {});
 
     return res.status(201).json({ ...(await carregarDetalhesChamado(req, chamado)), ia: analiseIA });
