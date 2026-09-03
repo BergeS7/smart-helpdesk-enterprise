@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const { enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
 const { normalizarPerfil } = require("../utils/permissoes");
+const { senhaValida } = require("../utils/passwordPolicy");
 
 function gerarToken(usuario) {
   const perfilNormalizado = normalizarPerfil(usuario.perfil);
@@ -25,11 +26,6 @@ function gerarToken(usuario) {
       expiresIn: process.env.JWT_EXPIRES_IN || "8h",
     }
   );
-}
-
-function senhaForte(senha) {
-  const valor = String(senha || "");
-  return valor.length >= 12 && /[a-z]/.test(valor) && /[A-Z]/.test(valor) && /\d/.test(valor) && /[^A-Za-z0-9]/.test(valor);
 }
 
 async function montarUsuarioPublico(usuario, req = null) {
@@ -340,7 +336,7 @@ const redefinirSenha = async (req, res) => {
         erro: "Informe e-mail, código e nova senha",
       });
     }
-    if (!senhaForte(novaSenha)) return res.status(400).json({ erro: "A nova senha deve ter ao menos 12 caracteres, com maiúscula, minúscula, número e símbolo." });
+    if (!senhaValida(novaSenha)) return res.status(400).json({ erro: "A nova senha deve ter ao menos 8 caracteres." });
 
     const result = await pool.query(
       `SELECT

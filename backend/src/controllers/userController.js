@@ -10,6 +10,7 @@ const { emailConfigurado, enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil, limparFotosPerfil, enviarAvatar, removerAvatar, arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
 const { validLocation } = require("../domain/serviceArea");
+const { senhaValida } = require("../utils/passwordPolicy");
 
 function normalizarTexto(valor) {
   return String(valor || "").trim();
@@ -35,11 +36,6 @@ async function enviarCodigoVerificacao({ nome, email, codigo }) {
     texto: `Olá, ${nome}. Seu código de confirmação é ${codigo}. Ele expira em 20 minutos. Se você não solicitou este cadastro, ignore esta mensagem.`,
     html: `<p>Olá, <strong>${String(nome).replace(/[<>&]/g, "")}</strong>.</p><p>Seu código de confirmação é:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${codigo}</p><p>O código expira em 20 minutos.</p>`,
   });
-}
-
-function senhaForte(senha) {
-  const valor = String(senha || "");
-  return valor.length >= 12 && /[a-z]/.test(valor) && /[A-Z]/.test(valor) && /\d/.test(valor) && /[^A-Za-z0-9]/.test(valor);
 }
 
 function normalizarPerfilUsuario(perfil) {
@@ -178,7 +174,7 @@ async function criarPrimeiroAdmin(req, res) {
         erro: "Informe nome, e-mail e senha.",
       });
     }
-    if (!senhaForte(senha)) return res.status(400).json({ erro: "A senha deve ter ao menos 12 caracteres, com maiúscula, minúscula, número e símbolo." });
+    if (!senhaValida(senha)) return res.status(400).json({ erro: "A senha deve ter ao menos 8 caracteres." });
 
     const senhaHash = await bcrypt.hash(String(senha), 10);
 
@@ -236,7 +232,7 @@ async function cadastrarUsuarioPublico(req, res) {
         erro: "Informe nome, e-mail e senha.",
       });
     }
-    if (!senhaForte(senha)) return res.status(400).json({ erro: "A senha deve ter ao menos 12 caracteres, com maiúscula, minúscula, número e símbolo." });
+    if (!senhaValida(senha)) return res.status(400).json({ erro: "A senha deve ter ao menos 8 caracteres." });
 
     if (aceitaTermos !== true) {
       return res.status(400).json({ erro: "Leia e aceite os Termos de Uso e a Política de Privacidade." });
@@ -367,7 +363,7 @@ async function createUser(req, res) {
         erro: "Informe nome, e-mail e senha.",
       });
     }
-    if (!senhaForte(senha)) return res.status(400).json({ erro: "A senha deve ter ao menos 12 caracteres, com maiúscula, minúscula, número e símbolo." });
+    if (!senhaValida(senha)) return res.status(400).json({ erro: "A senha deve ter ao menos 8 caracteres." });
 
     if (await emailJaExiste(email)) {
       return res.status(409).json({
@@ -640,7 +636,7 @@ async function atualizarUsuarioAdmin(req, res) {
     if (dados.cargo !== undefined) adicionarCampo("cargo", normalizarTexto(dados.cargo));
 
     if (dados.senha !== undefined && normalizarTexto(dados.senha)) {
-      if (!senhaForte(dados.senha)) return res.status(400).json({ erro: "A senha deve ter ao menos 12 caracteres, com maiúscula, minúscula, número e símbolo." });
+      if (!senhaValida(dados.senha)) return res.status(400).json({ erro: "A senha deve ter ao menos 8 caracteres." });
       const senhaHash = await bcrypt.hash(String(dados.senha), 10);
       adicionarCampo("senha", senhaHash);
       adicionarCampo("tentativas_login", 0);

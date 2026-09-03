@@ -1044,6 +1044,8 @@ function LoginScreen({
                   <Input
                     required
                     type="password"
+                    minLength={8}
+                    title="Use no mínimo 8 caracteres."
                     value={cadastro.senha}
                     onChange={(e) =>
                       setCadastro({ ...cadastro, senha: e.target.value })
@@ -1158,6 +1160,8 @@ function LoginScreen({
                 <Field label="Nova senha">
                   <Input
                     type="password"
+                    minLength={8}
+                    title="Use no mínimo 8 caracteres."
                     value={recuperar.novaSenha}
                     onChange={(e) =>
                       setRecuperar({ ...recuperar, novaSenha: e.target.value })
@@ -6642,6 +6646,8 @@ function AdminPanel({
             <Field label="Nova senha opcional">
               <Input
                 type="password"
+                minLength={8}
+                title="Use no mínimo 8 caracteres."
                 value={usuarioForm.senha}
                 onChange={(e) =>
                   setUsuarioForm({ ...usuarioForm, senha: e.target.value })
