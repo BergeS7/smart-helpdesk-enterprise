@@ -4640,10 +4640,10 @@ function AdminPanel({
           <header
             className={`nectar-topbar sticky top-0 z-[60] h-14 overflow-visible border-b ${headerClass}`}
           >
-            <div className="grid h-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-4">
+            <div className="grid h-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 sm:gap-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                  <h1 className="truncate text-sm font-bold tracking-tight">
+                  <h1 title={sistemaNome} className="line-clamp-2 break-words text-sm font-bold leading-tight tracking-tight lg:block lg:truncate">
                     {sistemaNome}
                   </h1>
                   <p className={`hidden text-xs ${mutedText}`}>
