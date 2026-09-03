@@ -33,4 +33,29 @@ async function notificarAvaliacao(chamado, nota, comentario) {
   await criarNotificacao(chamado.responsavel_id, "Você foi avaliado", `Nota ${nota}/5 — ${trecho}`, "info", `/chamados/${chamado.id}`);
 }
 
-module.exports = { criarNotificacao, mensagemStatus, notificarStatus, notificarAvaliacao };
+async function notificarInteracao(chamado, autor, evento, quantidade = 1) {
+  const autorId = Number(autor?.id);
+  const destinatarios = [...new Set([chamado.usuario_id, chamado.responsavel_id]
+    .filter((id) => id != null && Number(id) !== autorId))];
+  if (!destinatarios.length) return;
+
+  const referencia = chamado.numero_chamado || `#${chamado.id}`;
+  const nomeAutor = String(autor?.nome || "Alguém").replace(/\s+/g, " ").trim().slice(0, 80);
+  const anexos = Math.max(1, Number(quantidade) || 1);
+  const titulo = evento === "anexo"
+    ? (anexos > 1 ? "Novos anexos no chamado" : "Novo anexo no chamado")
+    : "Nova mensagem no chamado";
+  const acao = evento === "anexo"
+    ? `adicionou ${anexos > 1 ? `${anexos} anexos` : "um novo anexo"}`
+    : "enviou uma nova mensagem";
+
+  await Promise.all(destinatarios.map((usuarioId) => criarNotificacao(
+    usuarioId,
+    titulo,
+    `${nomeAutor} ${acao} em ${referencia}.`,
+    "info",
+    `/chamados/${chamado.id}`,
+  )));
+}
+
+module.exports = { criarNotificacao, mensagemStatus, notificarStatus, notificarAvaliacao, notificarInteracao };

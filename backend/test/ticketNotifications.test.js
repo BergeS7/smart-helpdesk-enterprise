@@ -5,7 +5,7 @@ const databasePath = require.resolve("../src/config/database");
 require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded: true, exports: { query: async (_sql, values) => { saved.push(values); return { rows: [{ id: saved.length }] }; } } };
 const pushPath = require.resolve("../src/services/pushService");
 require.cache[pushPath] = { id: pushPath, filename: pushPath, loaded: true, exports: { sendSafely: async () => {} } };
-const { mensagemStatus, notificarStatus, notificarAvaliacao } = require("../src/services/ticketNotificationService");
+const { mensagemStatus, notificarStatus, notificarAvaliacao, notificarInteracao } = require("../src/services/ticketNotificationService");
 const ticket = { id: 8, titulo: "Computador não liga", usuario_id: 3, responsavel_id: 7 };
 
 test("notifica solicitante apenas nos estados solicitados", async () => {
@@ -30,4 +30,19 @@ test("avaliação avisa somente o atendente avaliado com nota e comentário curt
   assert.match(message[2], /^Nota 4\/5 — Bom atendimento\./);
   assert.ok(message[2].length < 180);
   assert.equal(message[4], "/chamados/8");
+});
+
+test("mensagem e anexo notificam a outra parte sem avisar o autor", async () => {
+  let before = saved.length;
+  await notificarInteracao(ticket, { id: 3, nome: "Cliente Teste" }, "mensagem");
+  assert.deepEqual(saved.slice(before).map((item) => item[0]), [7]);
+  assert.equal(saved.at(-1)[1], "Nova mensagem no chamado");
+  assert.match(saved.at(-1)[2], /Cliente Teste enviou uma nova mensagem/);
+
+  before = saved.length;
+  await notificarInteracao(ticket, { id: 7, nome: "Técnico Teste" }, "anexo", 2);
+  assert.deepEqual(saved.slice(before).map((item) => item[0]), [3]);
+  assert.equal(saved.at(-1)[1], "Novos anexos no chamado");
+  assert.match(saved.at(-1)[2], /adicionou 2 anexos/);
+  assert.equal(saved.at(-1)[4], "/chamados/8");
 });
