@@ -124,7 +124,7 @@ export function UsersModule({
                 {label}
                 <input
                   required={["nome", "email", "senha"].includes(key)}
-                  minLength={key === "senha" ? 12 : undefined}
+                  minLength={key === "senha" ? 8 : undefined}
                   type={type}
                   value={form[key as keyof typeof form]}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
