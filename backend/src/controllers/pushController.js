@@ -35,8 +35,17 @@ exports.unsubscribe = async (req, res) => {
 exports.test = async (req, res) => {
   if (typeof req.body.endpoint !== "string") return res.status(400).json({ erro: "Informe o aparelho." });
   try {
-    const sent = await push.sendToUser(req.user.id, { titulo: "Notificações ativadas", mensagem: "Os alertas do Smart HelpDesk chegarão neste aparelho." }, req.body.endpoint);
-    if (!sent) return res.status(503).json({ erro: "O aparelho não recebeu o envio. Desative e ative as notificações novamente." });
-    res.json({ mensagem: "Teste enviado. Confira a barra de notificações." });
+    const result = await push.sendToUserDetailed(req.user.id, { id: `test-${Date.now()}`, titulo: "Teste de envio do Smart HelpDesk", mensagem: "Esta notificação veio do servidor pelo serviço push." }, req.body.endpoint);
+    if (!result.sent) return res.status(503).json({ erro: `Não foi possível enviar o push. Diagnóstico: ${result.failures.join(", ")}. Desative e ative novamente neste aparelho.` });
+    res.json({ mensagem: "O provedor aceitou o envio. Isso ainda não confirma a exibição no Android. Confira a barra de notificações; se não aparecer, use o teste de exibição neste aparelho." });
   } catch { res.status(503).json({ erro: "Não foi possível enviar o teste." }); }
+};
+
+exports.status = async (req, res) => {
+  if (typeof req.body.endpoint !== "string") return res.status(400).json({ erro: "Informe o aparelho." });
+  try {
+    await push.ensurePushSchema();
+    const result = await pool.query("SELECT 1 FROM web_push_subscriptions WHERE endpoint=$1 AND usuario_id=$2 AND token_version=$3", [req.body.endpoint, req.user.id, req.user.tokenVersion]);
+    res.set("Cache-Control", "no-store").json({ enabled: result.rows.length > 0 });
+  } catch { res.status(503).json({ erro: "Não foi possível verificar a inscrição no servidor." }); }
 };

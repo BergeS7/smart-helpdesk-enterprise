@@ -10,6 +10,7 @@ const { rateLimit } = require("express-rate-limit");
 const pushLimiter = rateLimit({ windowMs: 60000, limit: 10, standardHeaders: true, legacyHeaders: false });
 
 router.get("/push/config", authMiddleware, push.config);
+router.post("/push/status", authMiddleware, push.status);
 router.post("/push/subscribe", authMiddleware, pushLimiter, push.subscribe);
 router.post("/push/unsubscribe", authMiddleware, push.unsubscribe);
 router.post("/push/test", authMiddleware, pushLimiter, push.test);

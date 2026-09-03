@@ -6,7 +6,7 @@ import { PushNotificationSettings } from "./PushNotificationSettings";
 import { usePushNavigation } from "../hooks/usePushNavigation";
 import { obterPushConfig, registrarPush } from "../services/api";
 
-vi.mock("../services/api", () => ({ obterPushConfig: vi.fn(), registrarPush: vi.fn(), removerPush: vi.fn(), testarPush: vi.fn() }));
+vi.mock("../services/api", () => ({ obterPushConfig: vi.fn(), obterPushStatus: vi.fn(), registrarPush: vi.fn(), removerPush: vi.fn(), testarPush: vi.fn() }));
 let root: Root;
 let container: HTMLDivElement;
 let permission: ReturnType<typeof vi.fn>;

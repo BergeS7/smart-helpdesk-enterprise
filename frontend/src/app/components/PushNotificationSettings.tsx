@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { obterPushConfig, registrarPush, removerPush, testarPush } from "../services/api";
+import { obterPushConfig, obterPushStatus, registrarPush, removerPush, testarPush } from "../services/api";
 
 const ownerKey = "smart_helpdesk_push_owner";
 function browserSupport() {
@@ -22,8 +22,14 @@ export function PushNotificationSettings({ userId }: { userId: number }) {
       .catch((error) => { if (active) setMessage(error.message); });
     navigator.serviceWorker.getRegistration("/").then(async (registration) => {
       const subscription = await registration?.pushManager.getSubscription();
-      if (active) setEnabled(Boolean(subscription && window.Notification.permission === "granted" && localStorage.getItem(ownerKey) === String(userId)));
-    }).catch(() => undefined);
+      if (subscription && window.Notification.permission === "granted" && localStorage.getItem(ownerKey) === String(userId)) {
+        const status = await obterPushStatus(subscription.endpoint);
+        if (active) {
+          setEnabled(status.enabled);
+          if (!status.enabled) setMessage("A inscrição deste aparelho não está ativa no servidor. Toque em Ativar notificações para sincronizar novamente.");
+        }
+      } else if (active) setEnabled(false);
+    }).catch((error) => { if (active) setMessage(error instanceof Error ? error.message : "Não foi possível verificar a inscrição."); });
     return () => { active = false; };
   }, [userId, supported, ios, installed]);
 
@@ -77,12 +83,28 @@ export function PushNotificationSettings({ userId }: { userId: number }) {
     finally { setBusy(false); }
   }
 
+  async function testDisplay() {
+    setBusy(true); setMessage("");
+    try {
+      if (window.Notification.permission !== "granted") throw new Error("Permita as notificações deste aplicativo nas configurações do aparelho.");
+      const registration = await navigator.serviceWorker.getRegistration("/");
+      if (!registration?.active) throw new Error("Reabra o aplicativo para concluir a atualização.");
+      await registration.showNotification("Teste de exibição do Smart HelpDesk", {
+        body: "Este teste foi criado no aparelho, sem envio pelo servidor.",
+        icon: "/pwa-192-v2.png", tag: `local-test-${Date.now()}`, data: { url: "/" },
+      });
+      setMessage("Exibição solicitada ao aparelho. Abra a barra de notificações. Se este teste também não aparecer, confira a permissão e a categoria de notificações do Chrome/Smart HelpDesk no Android.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha na exibição local."); }
+    finally { setBusy(false); }
+  }
+
   return <div className="space-y-3 rounded-xl border border-blue-200 p-4">
     <p className="text-sm font-bold">Notificações no celular ou computador</p>
     <p className="text-xs opacity-70">Receba novos chamados, respostas, mudanças de status e alertas de SLA na barra de notificações, mesmo com o app fechado. Os alertas seguem seu acesso aos chamados.</p>
     {ios && !installed ? <p className="text-sm">No iPhone, abra este site no Safari, toque em Compartilhar → Adicionar à Tela de Início e abra o aplicativo instalado para ativar. Requer iOS 16.4 ou superior.</p> : !supported ? <p className="text-sm">Este navegador não oferece notificações push. Abra o aplicativo em um navegador compatível e com conexão HTTPS.</p> : <div className="flex flex-wrap gap-2">
       <button type="button" disabled={busy || (!enabled && !publicKey)} onClick={() => void toggle()} className="ds-button ds-button--primary disabled:opacity-50">{busy ? "Aguarde…" : enabled ? "Desativar neste aparelho" : "Ativar notificações"}</button>
       {enabled && <button type="button" disabled={busy} onClick={() => void test()} className="ds-button ds-button--secondary">Enviar teste</button>}
+      {enabled && <button type="button" disabled={busy} onClick={() => void testDisplay()} className="ds-button ds-button--secondary">Testar exibição neste aparelho</button>}
     </div>}
     {message && <p role="status" className="text-xs">{message}</p>}
   </div>;
