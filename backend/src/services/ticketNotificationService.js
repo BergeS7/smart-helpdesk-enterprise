@@ -5,7 +5,9 @@ async function criarNotificacao(usuarioId, titulo, mensagem, tipo = "info", link
   if (!usuarioId) return;
   try {
     const result = await pool.query("INSERT INTO notificacoes(usuario_id,titulo,mensagem,tipo,link) VALUES($1,$2,$3,$4,$5) RETURNING id", [usuarioId,titulo,mensagem,tipo,link]);
-    if (result.rows[0]) await require("./pushService").sendSafely(usuarioId, { id: result.rows[0].id, titulo, mensagem, link });
+    // O provedor push pode levar segundos para responder. A notificação já está
+    // persistida; o envio ao aparelho não deve bloquear mensagens e anexos.
+    if (result.rows[0]) void require("./pushService").sendSafely(usuarioId, { id: result.rows[0].id, titulo, mensagem, link });
   } catch (error) { console.error("Erro notificação:", error.message); }
 }
 
