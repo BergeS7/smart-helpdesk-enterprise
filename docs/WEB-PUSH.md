@@ -6,6 +6,11 @@ No iPhone/iPad, é necessário iOS/iPadOS 16.4+ e abrir o webapp adicionado à T
 
 Os eventos de chamados que já geram notificações internas agora também enviam push:
 criação/atribuição, respostas, mudanças de status, conclusão e alertas de SLA.
+Novos chamados de atendimento sem responsável enviam **Novo chamado na fila** a
+todos os técnicos, supervisores, administradores e desenvolvedores ativos, conforme
+o acesso compartilhado da fila atual. O mesmo evento gera o aviso interno e o push
+nos aparelhos autorizados desses destinatários. Chamados já atribuídos não geram
+esse alerta coletivo de fila.
 A geração dos alertas de SLA continua no fluxo existente de consulta de chamados;
 esta alteração não adiciona um agendador de SLA independente.
 As notificações do módulo Desenvolvimento continuam internas.
