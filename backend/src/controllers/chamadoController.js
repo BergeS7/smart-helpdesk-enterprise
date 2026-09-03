@@ -174,11 +174,12 @@ async function registrarAuditoria(req, entidade, entidadeId, acao, descricao, da
 
 async function criarNotificacao(usuarioId, titulo, mensagem, tipo = "info", link = null) {
   if (!usuarioId) return;
-  await pool.query(
+  const result = await pool.query(
     `INSERT INTO notificacoes (usuario_id, titulo, mensagem, tipo, link)
-     VALUES ($1, $2, $3, $4, $5)`,
+     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
     [usuarioId, titulo, mensagem, tipo, link]
   ).catch((err) => console.error("Erro notificação:", err.message));
+  if (result?.rows[0]) await require("../services/pushService").sendSafely(usuarioId, { id: result.rows[0].id, titulo, mensagem, link });
 }
 
 

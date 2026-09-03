@@ -54,6 +54,7 @@ export function getUsuarioLogado(): UsuarioLogado | null {
 }
 
 export function salvarSessao(dados: LoginResposta) {
+  if (getUsuarioLogado() && getUsuarioLogado()?.id !== dados.usuario.id) limparSessao();
   localStorage.setItem("smart_helpdesk_token", dados.token);
   localStorage.setItem("smart_helpdesk_usuario", JSON.stringify(dados.usuario));
 }
@@ -63,9 +64,25 @@ export function atualizarUsuarioLocal(usuario: UsuarioLogado) {
 }
 
 export function limparSessao() {
+  // Cancelar o endpoint também protege saídas offline e sessões expiradas.
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    void navigator.serviceWorker.getRegistration("/").then(async (registration) => {
+      if (!registration) return;
+      const subscription = await registration.pushManager?.getSubscription();
+      if (subscription) await subscription.unsubscribe();
+      const notifications = await registration.getNotifications();
+      notifications.forEach((notification) => notification.close());
+    }).catch(() => undefined);
+  }
+  localStorage.removeItem("smart_helpdesk_push_owner");
   localStorage.removeItem("smart_helpdesk_token");
   localStorage.removeItem("smart_helpdesk_usuario");
 }
+
+export const obterPushConfig = () => request<{ publicKey: string }>("/notificacoes/push/config");
+export const registrarPush = (subscription: PushSubscriptionJSON) => request("/notificacoes/push/subscribe", { method: "POST", body: JSON.stringify(subscription) });
+export const removerPush = (endpoint: string) => request("/notificacoes/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) });
+export const testarPush = (endpoint: string) => request<{ mensagem: string }>("/notificacoes/push/test", { method: "POST", body: JSON.stringify({ endpoint }) });
 
 export function getSessaoPersistida(): LoginResposta | null {
   const token = getToken();
