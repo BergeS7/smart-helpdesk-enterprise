@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { obterPushConfig, obterPushStatus, registrarPush, removerPush, testarPush } from "../services/api";
+import { obterPushConfig, obterPushStatus, registrarPush, removerPush } from "../services/api";
 
 const ownerKey = "smart_helpdesk_push_owner";
 function browserSupport() {
@@ -26,7 +26,7 @@ export function PushNotificationSettings({ userId }: { userId: number }) {
         const status = await obterPushStatus(subscription.endpoint);
         if (active) {
           setEnabled(status.enabled);
-          if (!status.enabled) setMessage("A inscrição deste aparelho não está ativa no servidor. Toque em Ativar notificações para sincronizar novamente.");
+          if (!status.enabled) setMessage("Ative as notificações novamente para continuar recebendo alertas neste aparelho.");
         }
       } else if (active) setEnabled(false);
     }).catch((error) => { if (active) setMessage(error instanceof Error ? error.message : "Não foi possível verificar a inscrição."); });
@@ -65,46 +65,17 @@ export function PushNotificationSettings({ userId }: { userId: number }) {
         try { await registrarPush(subscription.toJSON()); }
         catch (error) { await subscription.unsubscribe(); throw error; }
         localStorage.setItem(ownerKey, String(userId));
-        setEnabled(true); setMessage("Notificações ativadas neste aparelho. Você pode enviar um teste abaixo.");
+        setEnabled(true); setMessage("Notificações ativadas neste aparelho.");
       }
     } catch (error) { setMessage(error instanceof Error ? error.message : "Não foi possível alterar as notificações."); }
     finally { setBusy(false); }
   }
 
-  async function test() {
-    setBusy(true); setMessage("");
-    try {
-      const registration = await navigator.serviceWorker.getRegistration("/");
-      const subscription = await registration?.pushManager.getSubscription();
-      if (!subscription) { setEnabled(false); throw new Error("Ative novamente as notificações neste aparelho."); }
-      const result = await testarPush(subscription.endpoint);
-      setMessage(result.mensagem);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao enviar o teste."); }
-    finally { setBusy(false); }
-  }
-
-  async function testDisplay() {
-    setBusy(true); setMessage("");
-    try {
-      if (window.Notification.permission !== "granted") throw new Error("Permita as notificações deste aplicativo nas configurações do aparelho.");
-      const registration = await navigator.serviceWorker.getRegistration("/");
-      if (!registration?.active) throw new Error("Reabra o aplicativo para concluir a atualização.");
-      await registration.showNotification("Teste de exibição do Smart HelpDesk", {
-        body: "Este teste foi criado no aparelho, sem envio pelo servidor.",
-        icon: "/pwa-192-v2.png", tag: `local-test-${Date.now()}`, data: { url: "/" },
-      });
-      setMessage("Exibição solicitada ao aparelho. Abra a barra de notificações. Se este teste também não aparecer, confira a permissão e a categoria de notificações do Chrome/Smart HelpDesk no Android.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha na exibição local."); }
-    finally { setBusy(false); }
-  }
-
-  return <div className="space-y-3 rounded-xl border border-blue-200 p-4">
-    <p className="text-sm font-bold">Notificações no celular ou computador</p>
-    <p className="text-xs opacity-70">A equipe recebe alertas de novos chamados na fila, atribuições e avaliações. O solicitante recebe avisos de chamado assumido, em andamento, aguardando sua resposta e concluído com convite para avaliar. Os alertas podem chegar mesmo com o app fechado.</p>
-    {ios && !installed ? <p className="text-sm">No iPhone, abra este site no Safari, toque em Compartilhar → Adicionar à Tela de Início e abra o aplicativo instalado para ativar. Requer iOS 16.4 ou superior.</p> : !supported ? <p className="text-sm">Este navegador não oferece notificações push. Abra o aplicativo em um navegador compatível e com conexão HTTPS.</p> : <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={busy || (!enabled && !publicKey)} onClick={() => void toggle()} className="ds-button ds-button--primary disabled:opacity-50">{busy ? "Aguarde…" : enabled ? "Desativar neste aparelho" : "Ativar notificações"}</button>
-      {enabled && <button type="button" disabled={busy} onClick={() => void test()} className="ds-button ds-button--secondary">Enviar teste</button>}
-      {enabled && <button type="button" disabled={busy} onClick={() => void testDisplay()} className="ds-button ds-button--secondary">Testar exibição neste aparelho</button>}
+  return <div className="space-y-4 rounded-xl border border-current/10 p-4 sm:p-5">
+    <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-bold">Notificações neste aparelho</p>{supported && !(ios && !installed) && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${enabled ? "bg-emerald-500/10 text-emerald-600" : "bg-slate-500/10 opacity-70"}`}>{enabled ? "Ativadas" : "Desativadas"}</span>}</div>
+    <p className="text-xs opacity-70">Receba os alertas dos seus atendimentos na barra de notificações, mesmo com o aplicativo fechado.</p>
+    {ios && !installed ? <p className="text-sm">No iPhone, abra este site no Safari, toque em Compartilhar → Adicionar à Tela de Início e abra o aplicativo instalado para ativar. Requer iOS 16.4 ou superior.</p> : !supported ? <p className="text-sm">As notificações não estão disponíveis neste navegador. Abra o aplicativo em um navegador compatível.</p> : <div className="flex flex-wrap gap-2">
+      <button type="button" disabled={busy || (!enabled && !publicKey)} onClick={() => void toggle()} className={`ds-button ${enabled ? "ds-button--secondary" : "ds-button--primary"} disabled:opacity-50`}>{busy ? "Aguarde…" : enabled ? "Desativar neste aparelho" : "Ativar notificações"}</button>
     </div>}
     {message && <p role="status" className="text-xs">{message}</p>}
   </div>;
