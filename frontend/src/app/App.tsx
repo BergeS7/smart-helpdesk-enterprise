@@ -4776,7 +4776,7 @@ function AdminPanel({
 
                     {notificacoesAberta && (
                       <div
-                        className={`notification-popover absolute right-0 top-[calc(100%+8px)] z-[63] w-[min(400px,calc(100vw-24px))] overflow-hidden rounded-2xl border shadow-2xl ${dark ? "border-white/10 bg-[#101827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`}
+                        className={`notification-popover fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] top-[72px] z-[70] flex w-auto flex-col overflow-hidden rounded-2xl border shadow-2xl sm:absolute sm:inset-auto sm:right-0 sm:top-[calc(100%+8px)] sm:z-[63] sm:block sm:w-[400px] ${dark ? "border-white/10 bg-[#101827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`}
                       >
                         <div
                           className={`flex items-center justify-between gap-3 border-b p-4 ${dark ? "border-white/10" : "border-zinc-100"}`}
@@ -4801,7 +4801,7 @@ function AdminPanel({
                           </div>
                         </div>
 
-                        <div className="max-h-[min(520px,calc(100vh-88px))] overflow-auto overscroll-contain p-2">
+                        <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-2 sm:max-h-[min(520px,calc(100vh-88px))]">
                           {carregandoNotificacoes &&
                             notificacoes.length === 0 && (
                               <div
