@@ -7,7 +7,7 @@ const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const { RedisStore } = require("rate-limit-redis");
 const { correlationId } = require("../config/security");
 const { getRedisClient } = require("../config/redis");
-
+  
 const production = process.env.NODE_ENV === "production";
 const origins = String(process.env.ALLOWED_ORIGINS || "http://localhost:8090")
   .split(",").map((item) => item.trim()).filter(Boolean);
