@@ -4,7 +4,7 @@
 const multer = require("multer");
 const tiposPermitidos = new Set(["image/png", "image/jpeg", "image/webp"]);
 const limiteFotoPerfilBytes = 5 * 1024 * 1024;
-
+  
 const uploadFotoPerfil = multer({
   storage: multer.memoryStorage(),
   limits: {
