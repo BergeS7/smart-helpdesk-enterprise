@@ -1,6 +1,6 @@
 # Política de Privacidade do Smart HelpDesk
 
-Vigência: 08/08/2026 — Versão 1.0
+Minuta técnica revisada em 17/09/2026 — ainda não apta à publicação sem os dados institucionais e a aprovação da controladora.
 
 ## 1. Identificação
 
@@ -21,7 +21,7 @@ Os dados não devem ser reutilizados para finalidade incompatível, vigilância 
 - Atendimento: solicitante, contato, setor, descrição, categoria, prioridade, SLA, responsável, comentários, movimentações, anexos e avaliações.
 - Desempenho: notas, NPS, comentários, palavras-chave, tempos e indicadores vinculados ao atendimento.
 - Ativos: hostname, serial ou identificador técnico, patrimônio, IP, MAC, usuário conectado, sistema, processador, memória, armazenamento, unidade, município, uso de recursos e estado do antivírus.
-- Preferências locais: tema, filtros, densidade, alertas, estado da barra lateral e sessão.
+- Preferências locais: tema, filtros, densidade, alertas, estado da barra lateral, sessão e identificação da inscrição em notificações push quando ativadas.
 
 O agente não foi projetado para coletar arquivos, senhas, teclas digitadas, áudio, câmera, conteúdo de navegação ou GPS.
 
@@ -31,7 +31,7 @@ A controladora deve registrar a base de cada finalidade. Conforme o caso, podem 
 
 ## 5. Compartilhamento
 
-O acesso interno é limitado por perfil e permissão. Dados podem ser tratados por provedores contratados de infraestrutura, backup, correio eletrônico e suporte, sujeitos a contrato, confidencialidade, segurança e instruções da controladora. O mapa solicita imagens ao OpenStreetMap e malha territorial ao IBGE; esses serviços podem receber dados técnicos da conexão, como IP, conforme suas próprias políticas.
+O acesso interno é limitado por perfil e permissão. Dados podem ser tratados por provedores contratados de infraestrutura, backup, correio eletrônico e suporte, sujeitos a contrato, confidencialidade, segurança e instruções da controladora. O mapa solicita imagens ao OpenStreetMap e malha territorial ao IBGE; esses serviços podem receber dados técnicos da conexão, como IP, conforme suas próprias políticas. Quando o usuário ativa notificações push, a inscrição pode envolver o serviço de push do navegador. A controladora deve identificar os destinatários efetivos e avaliar eventual transferência internacional.
 
 Não há venda de dados pessoais nem uso para publicidade comportamental.
 
@@ -41,7 +41,7 @@ Métricas técnicas detalhadas são eliminadas automaticamente após 90 dias. To
 
 ## 7. Direitos dos titulares
 
-O titular pode solicitar confirmação de tratamento, acesso, correção, informação sobre compartilhamentos, revisão de decisões automatizadas quando aplicável, anonimização, bloqueio ou eliminação nas hipóteses legais, além de oposição fundamentada. Solicitações devem ser enviadas ao canal do encarregado e podem exigir confirmação segura de identidade.
+O titular pode solicitar confirmação de tratamento, acesso, correção, informação sobre compartilhamentos, revisão de decisões tomadas unicamente com base em tratamento automatizado quando aplicável, anonimização, bloqueio ou eliminação nas hipóteses legais, além de oposição fundamentada. Quando uma operação se basear em consentimento, o titular pode ser informado sobre as consequências de não consentir e revogá-lo. Solicitações devem ser enviadas ao canal de privacidade indicado pela controladora, gratuitamente, e podem exigir confirmação segura de identidade. O arquivo "Baixar dados do perfil" contém apenas cadastro e preferências, não substituindo o atendimento de pedidos de acesso aos demais dados.
 
 ## 8. Segurança e incidentes
 

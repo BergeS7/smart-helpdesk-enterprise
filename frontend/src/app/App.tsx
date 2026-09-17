@@ -1111,7 +1111,7 @@ function LoginScreen({
                     >
                       Termos de Uso
                     </button>{" "}
-                    e a{" "}
+                    e tomei ciência da{" "}
                     <button
                       type="button"
                       onClick={() => openLegalDocument("privacy")}
