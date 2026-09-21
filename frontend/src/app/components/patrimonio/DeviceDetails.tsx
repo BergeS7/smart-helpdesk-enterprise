@@ -5,7 +5,7 @@ import { Activity, Clock3, History, MapPin, ShieldCheck, Ticket, X } from "lucid
 import type { Device } from "../../types/device";
 
 const statusMeta={online:["Online","bg-emerald-50 text-emerald-700 border-emerald-200"],warning:["Atenção","bg-amber-50 text-amber-700 border-amber-200"],offline:["Offline","bg-red-50 text-red-700 border-red-200"]} as const;
-function Metric({label,value}:{label:string;value:number}){const color=value>=85?"bg-red-500":value>=70?"bg-amber-500":"bg-blue-600";return <div><div className="mb-1 flex justify-between text-xs font-black"><span>{label}</span><span>{Math.round(value)}%</span></div><div className="h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${color}`} style={{width:`${value}%`}}/></div></div>}
+function Metric({label,value}:{label:string;value:number|null}){const color=(value??0)>=85?"bg-red-500":(value??0)>=70?"bg-amber-500":"bg-blue-600";return <div><div className="mb-1 flex justify-between text-xs font-black"><span>{label}</span><span>{value==null?"Não informado":`${Math.round(value)}%`}</span></div><div className="h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${color}`} style={{width:`${value??0}%`}}/></div></div>}
 
 export function DeviceDetails({device,onAction,onClose}:{device?:Device|null;onAction:(action:string,device:Device)=>void;onClose?:()=>void}){
   if(!device)return null;

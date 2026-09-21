@@ -1,12 +1,36 @@
 # Responsabilidade: Automação de smart help desk agent; executa uma tarefa operacional ou de geração do projeto.
-param([Parameter(Mandatory=$true)][string]$ServerUrl,[string]$EnrollmentKey="",[string]$Municipio="",[string]$Unidade="",[double]$Latitude=0,[double]$Longitude=0,[switch]$Install,[switch]$AllowInsecureHttp)
-$ErrorActionPreference="Stop";$AgentVersion="2.0.0";$SchemaVersion=1
-$DataDir=Join-Path $env:ProgramData "SmartHelpDeskAgent";$ConfigFile=Join-Path $DataDir "agent.json";$LogFile=Join-Path $DataDir "agent.log"
+param([string]$ServerUrl="",[string]$EnrollmentKey="",[string]$Municipio="",[string]$Unidade="",[double]$Latitude=0,[double]$Longitude=0,[switch]$Install,[switch]$AllowInsecureHttp)
+$ErrorActionPreference="Stop";$AgentVersion="2.1.0";$SchemaVersion=1
+$DataDir=Join-Path $env:ProgramData "SmartHelpDeskAgent";$ConfigFile=Join-Path $DataDir "agent.json";$LogFile=Join-Path $DataDir "agent.log";$StatusFile=Join-Path $DataDir "status.json"
 if(!(Test-Path $DataDir)){New-Item -ItemType Directory -Path $DataDir -Force|Out-Null}
 function Write-Log($Stage,$Status,$Message){$safe=($Message-replace '(?i)(token|authorization|bearer)\s*[=:]\s*\S+','$1=[PROTEGIDO]');"$(Get-Date -Format o) stage=$Stage status=$Status message=$safe"|Add-Content -LiteralPath $LogFile -Encoding UTF8}
+function Write-Status([string]$State){
+ try{
+  $previous=if(Test-Path $StatusFile){Get-Content $StatusFile -Raw|ConvertFrom-Json}else{$null}
+  $now=(Get-Date).ToUniversalTime().ToString("o")
+  $last=if($previous){$previous.lastSuccessAt}else{$null};if($last -is [datetime]){$last=$last.ToUniversalTime().ToString("o")}
+  if($State -eq "ok"){$last=$now}
+  $temp="$StatusFile.tmp"
+  [ordered]@{state=$State;updatedAt=$now;lastSuccessAt=$last;agentVersion=$AgentVersion}|ConvertTo-Json|Set-Content -LiteralPath $temp -Encoding UTF8
+  Move-Item -LiteralPath $temp -Destination $StatusFile -Force
+ }catch{Write-Log "status" "PARTIAL" $_.Exception.Message}
+}
+trap{Write-Log "run" "ERROR" $_.Exception.Message;Write-Status "error";break}
 function Safe($Name,[scriptblock]$Action,$Fallback=$null){try{$v=&$Action;Write-Log $Name "OK" "coleta concluida";return $v}catch{Write-Log $Name "PARTIAL" $_.Exception.Message;return $Fallback}}
 function Post($Uri,$Body,$Headers=@{}){$delays=@(2,5,10);for($i=0;$i-lt 3;$i++){try{return Invoke-RestMethod -Uri $Uri -Method Post -TimeoutSec 60 -Headers $Headers -ContentType "application/json; charset=utf-8" -Body ($Body|ConvertTo-Json -Depth 12 -Compress)}catch{$last=$_;Write-Log "http" "RETRY" "tentativa=$($i+1) erro=$($_.Exception.Message)";if($i-lt 2){Start-Sleep $delays[$i]}}};throw $last}
 function State($Value){if($null-eq $Value){"UNKNOWN"}elseif([bool]$Value){"ENABLED"}else{"DISABLED"}}
+function Normalize-ServerUrl([string]$Value) {
+ $uri=$null
+ if(![Uri]::TryCreate($Value.Trim(),[UriKind]::Absolute,[ref]$uri)-or $uri.Scheme -notin @('http','https') -or $uri.UserInfo -or $uri.Query -or $uri.Fragment){throw "Informe uma URL HTTP/HTTPS sem credenciais, parametros ou fragmentos."}
+ $url=$uri.AbsoluteUri.TrimEnd('/')
+ if($uri.AbsolutePath.TrimEnd('/') -notmatch '/api/assets$'){throw "A URL do agente deve terminar em /api/assets (ex.: https://servidor/suporte/api/assets). Copie o comando em Ativos > Gerar convite do agente."}
+ return $url
+}
+function Get-CpuUsage {
+ $sample=Safe "cpu-usage" {Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -Filter "Name='_Total'" | Select-Object -First 1} $null
+ if($null -eq $sample -or $null -eq $sample.PercentProcessorTime){return $null}
+ return [math]::Round([math]::Max([double]0,[math]::Min([double]100,[double]$sample.PercentProcessorTime)),2)
+}
 function Get-Inventory{
  $cs=Safe "computer" {Get-CimInstance Win32_ComputerSystem} @{};$os=Safe "os" {Get-CimInstance Win32_OperatingSystem} @{};$bios=Safe "bios" {Get-CimInstance Win32_BIOS} @{};$board=Safe "board" {Get-CimInstance Win32_BaseBoard|Select-Object -First 1} @{}
  $cpus=@(Safe "cpu" {Get-CimInstance Win32_Processor} @());$mem=@(Safe "memory" {Get-CimInstance Win32_PhysicalMemory} @());$disks=@(Safe "disks" {Get-CimInstance Win32_DiskDrive} @());$vols=@(Safe "volumes" {Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3"} @())
@@ -31,11 +55,21 @@ function Get-Inventory{
   monitors=@($monitors|ForEach-Object{[ordered]@{name=$_.Name;manufacturer=$_.MonitorManufacturer;type=$_.MonitorType;status=$_.Status}})
   printers=@($printers|ForEach-Object{[ordered]@{name=$_.Name;driverName=$_.DriverName;portName=$_.PortName;network=$_.Network;default=$_.Default}})
   updates=@($updates|ForEach-Object{[ordered]@{hotFixId=$_.HotFixID;description=$_.Description;installedOn=if($_.InstalledOn){([datetime]$_.InstalledOn).ToString("yyyy-MM-dd")}else{$null}}})
-  metrics=[ordered]@{cpuUsagePercent=0;ramUsagePercent=if($os.TotalVisibleMemorySize){[math]::Round(100*(1-$os.FreePhysicalMemory/$os.TotalVisibleMemorySize),2)}else{0};systemDiskUsagePercent=if($main.Size){[math]::Round(100*(1-$main.FreeSpace/$main.Size),2)}else{0};uptimeHours=if($lastBoot){[math]::Round(((Get-Date)-$lastBoot).TotalHours,2)}else{0}}}
+  metrics=[ordered]@{cpuUsagePercent=Get-CpuUsage;ramUsagePercent=if($os.TotalVisibleMemorySize){[math]::Round(100*(1-$os.FreePhysicalMemory/$os.TotalVisibleMemorySize),2)}else{$null};systemDiskUsagePercent=if($main.Size){[math]::Round(100*(1-$main.FreeSpace/$main.Size),2)}else{$null};uptimeHours=if($lastBoot){[math]::Round(((Get-Date)-$lastBoot).TotalHours,2)}else{$null}}}
  $r.ip=$r.network.primaryIpv4;$r.mac=$r.network.primaryMac;$r.usuario=$cs.UserName;$r.sistemaOperacional="$($os.Caption) $($os.Version)";$r.processador=if($cpus.Count){$cpus[0].Name}else{$null};$r.ramTotal=[math]::Round($ramTotal/1GB,2);$r.armazenamento=($vols|ForEach-Object{"$($_.DeviceID) $([math]::Round($_.Size/1GB)) GB"})-join " | ";$r.cpuUsage=$r.metrics.cpuUsagePercent;$r.ramUsage=$r.metrics.ramUsagePercent;$r.diskUsage=$r.metrics.systemDiskUsagePercent;$r.antivirusAtualizado=$r.security.defender.signaturesUpdated;$r.firewallEnabled=if($r.security.firewall.status-eq "UNKNOWN"){$null}else{$r.security.firewall.status-eq "ENABLED"};$r.uptimeHours=$r.metrics.uptimeHours;$r.lastBoot=$r.operatingSystem.lastBoot;return $r
 }
-if(([Uri]$ServerUrl).Scheme-ne "https"-and !$AllowInsecureHttp){throw "O agente exige HTTPS. Use -AllowInsecureHttp somente em laboratorio."};if($Install-and(!$EnrollmentKey-or!$Municipio-or!$Unidade-or!$Latitude-or!$Longitude)){throw "Convite e unidade completa sao obrigatorios."}
-$config=if(Test-Path $ConfigFile){Get-Content $ConfigFile -Raw|ConvertFrom-Json}else{$null};if($config){$ServerUrl=$config.serverUrl;if(!$Municipio){$Municipio=$config.municipio};if(!$Unidade){$Unidade=$config.unidade};if(!$Latitude){$Latitude=$config.latitude};if(!$Longitude){$Longitude=$config.longitude}};$inventory=Get-Inventory
-if($Install-or!$config.token){if(!$EnrollmentKey){throw "Agente ainda nao registrado."};$enroll=@{}+$inventory;$enroll.enrollmentKey=$EnrollmentKey;$response=Post "$ServerUrl/agent/enroll" $enroll;[ordered]@{deviceId=$response.deviceId;token=$response.token;serverUrl=$ServerUrl;municipio=$Municipio;unidade=$Unidade;latitude=$Latitude;longitude=$Longitude}|ConvertTo-Json|Set-Content -LiteralPath $ConfigFile -Encoding UTF8;&icacls.exe $ConfigFile /inheritance:r /grant:r "SYSTEM:F" "Administrators:F"|Out-Null;$config=Get-Content $ConfigFile -Raw|ConvertFrom-Json}
-$result=Post "$ServerUrl/agent/report" $inventory @{Authorization="Bearer $($config.token)"};Write-Log "report" "OK" "ativo=$($result.id) report=$($inventory.reportId)"
-if($Install){$target=Join-Path $DataDir "SmartHelpDeskAgent.ps1";Copy-Item $PSCommandPath $target -Force;$http=if($AllowInsecureHttp){" -AllowInsecureHttp"}else{""};$args="-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$target`" -ServerUrl `"$ServerUrl`"$http";$action=New-ScheduledTaskAction powershell.exe -Argument $args;$settings=New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 5);$principal=New-ScheduledTaskPrincipal -UserId SYSTEM -LogonType ServiceAccount -RunLevel Highest;Register-ScheduledTask -TaskName "SmartHelpDesk Agent" -Action $action -Trigger @((New-ScheduledTaskTrigger -Daily -At "15:00"),(New-ScheduledTaskTrigger -AtStartup)) -Settings $settings -Principal $principal -Description "Inventario tecnico diario autorizado" -Force|Out-Null;Write-Host "Cadastro confirmado, inventario enviado e tarefa diaria criada."}
+$config=if(Test-Path $ConfigFile){Get-Content $ConfigFile -Raw|ConvertFrom-Json}else{$null}
+if(!$ServerUrl -and $config -and !$Install){$ServerUrl=$config.serverUrl}
+$ServerUrl=Normalize-ServerUrl $ServerUrl
+if(!$Install -and $config.token -and $ServerUrl -ne (Normalize-ServerUrl $config.serverUrl)){throw "Servidor diferente do cadastro salvo. Use -Install com um novo convite para mudar o servidor."}
+if(([Uri]$ServerUrl).Scheme-ne "https"-and !$AllowInsecureHttp){throw "O agente exige HTTPS. Use -AllowInsecureHttp somente em laboratorio."}
+if($config -and !$Install){if(!$Municipio){$Municipio=$config.municipio};if(!$Unidade){$Unidade=$config.unidade};if(!$Latitude){$Latitude=$config.latitude};if(!$Longitude){$Longitude=$config.longitude}}
+if($Install-and(!$EnrollmentKey-or!$Municipio-or!$Unidade-or!$Latitude-or!$Longitude)){throw "Convite e unidade completa sao obrigatorios."}
+Write-Status "collecting"
+$inventory=Get-Inventory
+if($Install-or!$config.token){if(!$EnrollmentKey){throw "Agente ainda nao registrado."};$enroll=@{}+$inventory;$enroll.enrollmentKey=$EnrollmentKey; $response=Post "$ServerUrl/agent/enroll" $enroll;if(!$response.token -or !$response.deviceId){throw "O servidor nao retornou um cadastro valido. Verifique a URL da API."};[ordered]@{deviceId=$response.deviceId;token=$response.token;serverUrl=$ServerUrl;municipio=$Municipio;unidade=$Unidade;latitude=$Latitude;longitude=$Longitude;allowInsecureHttp=[bool]$AllowInsecureHttp}|ConvertTo-Json|Set-Content -LiteralPath $ConfigFile -Encoding UTF8;&icacls.exe $ConfigFile /inheritance:r /grant:r "*S-1-5-18:F" "*S-1-5-32-544:F"|Out-Null;if($LASTEXITCODE -ne 0){throw "Nao foi possivel proteger a credencial do agente."};$config=Get-Content $ConfigFile -Raw|ConvertFrom-Json}
+$result=Post "$ServerUrl/agent/report" $inventory @{Authorization="Bearer $($config.token)"}
+if($result.ok -ne $true){throw "O servidor nao confirmou o inventario. Verifique a URL da API."}
+Write-Log "report" "OK" "servidor=$ServerUrl report=$($inventory.reportId) snapshot=$($result.snapshotId)"
+Write-Status "ok"
+if($Install){. (Join-Path $PSScriptRoot "Install-Tray.ps1");Install-AgentTray $PSScriptRoot $DataDir;Remove-Item -LiteralPath (Join-Path $DataDir "SmartHelpDeskAgent.ps1") -Force -ErrorAction SilentlyContinue;Write-Host "Cadastro confirmado, inventario enviado e tarefa criada."}

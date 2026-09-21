@@ -4,9 +4,9 @@
 export type DeviceStatus = "online" | "warning" | "offline";
 
 export type DeviceMetrics = {
-  cpuUsage: number;
-  ramUsage: number;
-  diskUsage: number;
+  cpuUsage: number | null;
+  ramUsage: number | null;
+  diskUsage: number | null;
 };
 
 export type Device = DeviceMetrics & {
@@ -26,14 +26,14 @@ export type Device = DeviceMetrics & {
   processador: string;
   ramTotal: number;
   armazenamento: string;
-  uptimeHours?: number;
+  uptimeHours?: number | null;
   lastBoot?: string | null;
   firewallEnabled?: boolean | null;
   networkType?: string;
   linkSpeed?: string;
   ultimoHeartbeat: string;
   agenteInstalado?: boolean;
-  antivirusAtualizado?: boolean;
+  antivirusAtualizado?: boolean | null;
   responsavel?: string;
   fabricante?: string | null;
   modelo?: string | null;

@@ -12,17 +12,17 @@ Copie `agent/SmartHelpDeskAgent.ps1` para o computador e execute:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\SmartHelpDeskAgent.ps1" `
-  -ServerUrl "http://192.168.10.54:8090/api/assets" `
+  -ServerUrl "https://smart-helpdesk-backend-dp5r.onrender.com/api/assets" `
   -EnrollmentKey "COLE_O_CONVITE_AQUI" `
   -Municipio "MUNICIPIO_CONFIRMADO" `
   -Unidade "UNIDADE_CONFIRMADA" `
   -Latitude LATITUDE_CONFIRMADA `
   -Longitude LONGITUDE_CONFIRMADA `
-  -Install `
-  -AllowInsecureHttp
+  -Install
 ```
 
-`-AllowInsecureHttp` deve ser usado apenas enquanto o servidor estiver acessível por HTTP na rede interna. Remova essa opção quando HTTPS estiver configurado.
+A interface publicada fica na Vercel; o agente se comunica com a API no Render
+usando a URL acima. Não é necessário `-AllowInsecureHttp` nesse ambiente.
 
 ## Verificação
 

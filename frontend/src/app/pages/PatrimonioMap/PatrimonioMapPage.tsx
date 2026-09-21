@@ -30,7 +30,8 @@ import {
   updateDeviceStatus,
   type AssetLocation,
 } from "../../services/deviceService";
-import { criarChamado } from "../../services/api";
+import { API_URL, criarChamado } from "../../services/api";
+import { agentServerUrl } from "../../domain/agentServerUrl";
 import type {
   Device,
   DeviceAlert,
@@ -199,7 +200,7 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
         const ticket = await criarChamado({
           ativo_id: device.id,
           titulo: `[Ativo ${device.patrimonio}] ${device.hostname} requer atendimento`,
-          descricao: `Chamado aberto pelo Monitoramento de Ativos.\n\nUsuário do equipamento: ${device.usuario || "Não identificado"}\nIP: ${device.ip}\nStatus: ${device.status}\nCPU: ${Math.round(device.cpuUsage)}% | RAM: ${Math.round(device.ramUsage)}% | Disco: ${Math.round(device.diskUsage)}%`,
+          descricao: `Chamado aberto pelo Monitoramento de Ativos.\n\nUsuário do equipamento: ${device.usuario || "Não identificado"}\nIP: ${device.ip}\nStatus: ${device.status}\nCPU: ${device.cpuUsage == null ? "Não informado" : Math.round(device.cpuUsage) + "%"} | RAM: ${device.ramUsage == null ? "Não informado" : Math.round(device.ramUsage) + "%"} | Disco: ${device.diskUsage == null ? "Não informado" : Math.round(device.diskUsage) + "%"}`,
           tipo_chamado: "Incidente",
         });
         toast.success(
@@ -258,8 +259,9 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
     setAgentInviteLoading(true);
     try {
       const result = await createAgentInvite(2);
-      const insecure = window.location.protocol === "http:" ? " -AllowInsecureHttp" : "";
-      const command = `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\\SmartHelpDeskAgent.ps1" -ServerUrl "${window.location.origin}/api/assets" -EnrollmentKey "${result.convite}" -Municipio "${location.municipio}" -Unidade "${location.nome}" -Latitude ${location.latitude} -Longitude ${location.longitude} -Install${insecure}`;
+      const serverUrl = agentServerUrl(API_URL, window.location.origin);
+      const insecure = serverUrl.protocol === "http:" ? " -AllowInsecureHttp" : "";
+      const command = `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\\SmartHelpDeskAgent.ps1" -ServerUrl "${serverUrl.href}" -EnrollmentKey "${result.convite}" -Municipio "${location.municipio}" -Unidade "${location.nome}" -Latitude ${location.latitude} -Longitude ${location.longitude} -Install${insecure}`;
       setAgentCommand(command);
       await navigator.clipboard?.writeText(command);
       toast.success("Comando de instalação criado e copiado.");

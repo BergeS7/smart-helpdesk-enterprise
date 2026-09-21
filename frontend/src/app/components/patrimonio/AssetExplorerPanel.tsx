@@ -701,23 +701,23 @@ function Kpi({
     </div>
   );
 }
-function MiniMetric({ label, value }: { label: string; value: number }) {
+function MiniMetric({ label, value }: { label: string; value: number | null }) {
   const color =
-    value >= 85
+    (value ?? 0) >= 85
       ? "bg-red-500"
-      : value >= 70
+      : (value ?? 0) >= 70
         ? "bg-amber-500"
         : "bg-emerald-500";
   return (
     <div>
       <span className="flex justify-between text-[10px] font-black">
         <span>{label}</span>
-        <span>{Math.round(value)}%</span>
+        <span>{value == null ? "Não informado" : `${Math.round(value)}%`}</span>
       </span>
       <div className="mt-1 h-1 overflow-hidden rounded bg-slate-100">
         <div
           className={`h-full ${color}`}
-          style={{ width: `${Math.min(100, value)}%` }}
+          style={{ width: `${Math.min(100, value ?? 0)}%` }}
         />
       </div>
     </div>
