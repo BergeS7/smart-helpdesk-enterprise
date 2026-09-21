@@ -814,6 +814,10 @@ function LoginScreen({
       toast.success("Login realizado com sucesso.");
       onLogin(usuarioNormalizado);
     } catch (error) {
+      if (error instanceof Error && error.message === "Confirme seu e-mail antes de entrar.") {
+        setVerificacao({ email: email.trim().toLowerCase(), codigo: "" });
+        setTela("verificar");
+      }
       toast.error(
         error instanceof Error ? error.message : "Erro ao fazer login.",
       );
@@ -1187,7 +1191,7 @@ function LoginScreen({
             {tela === "verificar" && (
               <form onSubmit={handleVerificarEmail} className="space-y-4">
                 <h2 className="text-center text-2xl font-black text-zinc-800">Confirmar e-mail</h2>
-                <p className="text-center text-sm leading-6 text-zinc-500">Enviamos um código de 6 dígitos para <strong>{verificacao.email}</strong>.</p>
+                <p className="text-center text-sm leading-6 text-zinc-500">Digite o código de 6 dígitos recebido em <strong>{verificacao.email}</strong>. Se não recebeu ou o código expirou, clique em Reenviar código. Após confirmar, aguarde a aprovação do administrador.</p>
                 <Field label="Código de confirmação">
                   <Input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={verificacao.codigo} onChange={(e) => setVerificacao({ ...verificacao, codigo: e.target.value.replace(/\D/g, "") })} placeholder="000000" />
                 </Field>
