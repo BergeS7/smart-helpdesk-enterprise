@@ -151,19 +151,17 @@ export function FilaChamadosView({
   }
 
   function tempoSla(chamado: ApiChamado) {
-    if (chamado.sla_status === "pausado") return "SLA pausado · aguardando usuário";
+    if (chamado.sla_status === "pausado") return chamado.sla_pausa_motivo === "fora_expediente" ? "SLA pausado · fora do expediente" : "SLA pausado · aguardando usuário";
     if (chamado.sla_minutos_restantes == null) return "SLA não informado";
     const minutos = Number(chamado.sla_minutos_restantes);
     const absoluto = Math.abs(minutos);
     const tempo =
-      absoluto >= 1440
-        ? `${Math.ceil(absoluto / 1440)} dia(s)`
-        : absoluto >= 60
+      absoluto >= 60
           ? `${Math.ceil(absoluto / 60)}h`
           : `${absoluto}min`;
     return minutos < 0 || chamado.vencido
       ? `Atraso: ${tempo}`
-      : `SLA: ${tempo}`;
+      : `SLA: ${tempo} úteis`;
   }
 
   async function abrirPainel(id: number) {

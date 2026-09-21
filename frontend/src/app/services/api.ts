@@ -278,6 +278,7 @@ export type ApiChamado = {
   vencido?: boolean;
   sla_status?: "normal" | "alerta" | "vencido" | string;
   sla_minutos_restantes?: number | null;
+  sla_pausa_motivo?: "aguardando_usuario" | "fora_expediente" | null;
   sla_pausado_em?: string | null;
   sla_tempo_pausado_segundos?: number;
   criado_em?: string;

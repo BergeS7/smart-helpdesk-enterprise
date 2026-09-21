@@ -7328,7 +7328,7 @@ function ChamadoDetalhe({
   const slaTexto = concluido
     ? "SLA encerrado"
     : chamado.sla_status === "pausado"
-      ? "SLA pausado · aguardando usuário"
+      ? chamado.sla_pausa_motivo === "fora_expediente" ? "SLA pausado · fora do expediente" : "SLA pausado · aguardando usuário"
       : chamado.vencido
       ? `Vencido há ${formatarMinutos(Math.abs(Number(chamado.sla_minutos_restantes || 0)))}`
       : chamado.sla_minutos_restantes != null

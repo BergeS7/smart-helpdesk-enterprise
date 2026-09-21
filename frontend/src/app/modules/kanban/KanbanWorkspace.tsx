@@ -477,7 +477,7 @@ function AdminTicketCard({
             className={`grid h-7 w-7 place-items-center rounded-lg ${chamado.vencido ? "bg-red-50 text-red-600" : chamado.sla_status === "alerta" ? "bg-amber-50 text-amber-600" : chamado.sla_status === "pausado" ? "bg-sky-50 text-sky-600" : ""}`}
             title={
               chamado.sla_status === "pausado"
-                ? "SLA pausado enquanto aguarda resposta do usuário"
+                ? chamado.sla_pausa_motivo === "fora_expediente" ? "SLA pausado fora do expediente" : "SLA pausado enquanto aguarda resposta do usuário"
                 : chamado.vencido
                 ? `SLA vencido há ${formatarMinutos(Math.abs(Number(chamado.sla_minutos_restantes || 0)))}`
                 : `Tempo restante do SLA: ${formatarMinutos(chamado.sla_minutos_restantes)}`

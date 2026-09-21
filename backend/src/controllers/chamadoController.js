@@ -16,6 +16,7 @@ const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../s
 const { generateExcelReport, generatePdfReport } = require("../services/reportService");
 const { generateTicketHistoryPdf } = require("../services/ticketHistoryPdfService");
 const { buildReportMetrics } = require("../domain/reportMetrics");
+const { isBusinessTime, businessMinutesBetween } = require("../domain/businessHours");
 const fs = require("fs");
 const path = require("path");
 const ticketPolicy = require("../policies/ticketPolicy");
@@ -89,7 +90,6 @@ function bloquearMutacaoNaoAutorizada(req, res, chamado) {
 function formatarPrazo(minutos) {
   const total = Number(minutos || 0);
   if (total < 60) return `${total}min`;
-  if (total % 1440 === 0) return `${total / 1440}d`;
   if (total % 60 === 0) return `${total / 60}h`;
   return `${Math.floor(total / 60)}h${total % 60}min`;
 }
@@ -111,7 +111,7 @@ function montarSLAConfiguravel(prioridade, config = {}) {
   return {
     respostaMinutos,
     resolucaoMinutos,
-    label: `Responder em até ${formatarPrazo(respostaMinutos)} / resolver em até ${formatarPrazo(resolucaoMinutos)}`,
+    label: `Resposta: ${formatarPrazo(respostaMinutos)} / resolução: ${formatarPrazo(resolucaoMinutos)} úteis`,
   };
 }
 
@@ -147,8 +147,8 @@ async function sincronizarSlaChamadosAtivosUmaVez() {
          )
          UPDATE chamados c SET
            sla_resposta_minutos=r.resposta, sla_resolucao_minutos=r.resolucao, sla=r.label,
-           sla_limite_resposta=c.criado_em + (r.resposta * INTERVAL '1 minute') + (COALESCE(c.sla_tempo_pausado_segundos,0) * INTERVAL '1 second'),
-           sla_limite_resolucao=c.criado_em + (r.resolucao * INTERVAL '1 minute') + (COALESCE(c.sla_tempo_pausado_segundos,0) * INTERVAL '1 second'),
+           sla_limite_resposta=CASE WHEN c.primeira_resposta_em IS NULL THEN sla_add_business_seconds(c.sla_limite_resposta, (r.resposta - c.sla_resposta_minutos) * 60.0) ELSE c.sla_limite_resposta END,
+           sla_limite_resolucao=sla_add_business_seconds(c.sla_limite_resolucao, (r.resolucao - c.sla_resolucao_minutos) * 60.0),
            vencido=FALSE, sla_alerta_enviado=FALSE, sla_escalado=FALSE
          FROM regras r
          WHERE c.id=r.id AND (c.sla_resposta_minutos IS DISTINCT FROM r.resposta OR c.sla_resolucao_minutos IS DISTINCT FROM r.resolucao)`,
@@ -177,20 +177,26 @@ const { criarNotificacao, notificarStatus, notificarAvaliacao, notificarInteraca
 
 function minutosRestantes(dataLimite, referencia = new Date()) {
   if (!dataLimite) return null;
-  const diff = new Date(dataLimite).getTime() - new Date(referencia).getTime();
-  return Math.round(diff / 60000);
+  const minutes = businessMinutesBetween(referencia, dataLimite);
+  return minutes === null ? null : Math.round(minutes);
 }
 
 function calcularIndicadoresSla(row) {
-  const pausado = canonicalizeStatus(row.status) === STATUS.WAITING_USER;
-  const restante = minutosRestantes(row.sla_limite_resolucao, pausado && row.sla_pausado_em ? row.sla_pausado_em : new Date());
+  const aguardando = canonicalizeStatus(row.status) === STATUS.WAITING_USER;
+  const finalizado = statusFinalizado(row.status);
+  const referencia = aguardando && row.sla_pausado_em ? row.sla_pausado_em : finalizado && row.finalizado_em ? row.finalizado_em : new Date();
+  const restante = minutosRestantes(row.sla_limite_resolucao, referencia);
+  const foraExpediente = !finalizado && Boolean(row.sla_limite_resolucao) && !isBusinessTime();
+  const vencido = !aguardando && Boolean(row.sla_limite_resolucao) && new Date(row.sla_limite_resolucao) < new Date(referencia);
+  const pausado = aguardando || (foraExpediente && !vencido);
   const resolucao = Number(row.sla_resolucao_minutos || 0);
   let sla_status = pausado ? "pausado" : "normal";
   if (!pausado && row.status && !statusFinalizado(row.status)) {
-    if (restante !== null && restante < 0) sla_status = "vencido";
+    if (vencido) sla_status = "vencido";
     else if (restante !== null && resolucao > 0 && restante <= Math.max(30, resolucao * 0.2)) sla_status = "alerta";
   }
-  return { ...row, vencido: pausado ? false : row.vencido, sla_minutos_restantes: restante, sla_status };
+  return { ...row, vencido, sla_minutos_restantes: restante, sla_status,
+    sla_pausa_motivo: aguardando ? "aguardando_usuario" : foraExpediente ? "fora_expediente" : null };
 }
 
 async function escolherResponsavelAutomatico({ departamento, categoria }) {
@@ -221,6 +227,7 @@ async function escolherResponsavelAutomatico({ departamento, categoria }) {
 
 // Detecta chamados próximos do vencimento e evita repetir alertas já enviados.
 async function verificarAlertasSla(req = null) {
+  if (!isBusinessTime()) return;
   const sistemaReq = req || { user: { id: null, nome: "Sistema", perfil: "sistema" } };
   const result = await pool.query(
     `SELECT id, numero_chamado, titulo, usuario_id, responsavel_id, sla_limite_resolucao, sla_resolucao_minutos, status,
@@ -230,14 +237,14 @@ async function verificarAlertasSla(req = null) {
      WHERE status NOT IN ('RESOLVED','CLOSED','CANCELED','WAITING_USER')
        AND sla_limite_resolucao IS NOT NULL
        AND (
-         (COALESCE(sla_alerta_enviado, FALSE) = FALSE AND sla_limite_resolucao <= CURRENT_TIMESTAMP + INTERVAL '30 minutes')
+         (COALESCE(sla_alerta_enviado, FALSE) = FALSE AND sla_business_seconds(CURRENT_TIMESTAMP::timestamp, sla_limite_resolucao) <= 1800)
          OR (COALESCE(sla_escalado, FALSE) = FALSE AND sla_limite_resolucao < CURRENT_TIMESTAMP)
        )
      LIMIT 50`
   ).catch(() => ({ rows: [] }));
 
   for (const chamado of result.rows) {
-    if (!chamado.sla_alerta_enviado && new Date(chamado.sla_limite_resolucao) <= new Date(Date.now() + 30 * 60000)) {
+    if (!chamado.sla_alerta_enviado && minutosRestantes(chamado.sla_limite_resolucao) <= 30) {
       await pool.query("UPDATE chamados SET sla_alerta_enviado = TRUE WHERE id = $1", [chamado.id]).catch(() => {});
       await registrarMovimentacao(chamado.id, sistemaReq, "sla_alerta", "Alerta automático de SLA próximo do vencimento.").catch(() => {});
     }
@@ -406,11 +413,6 @@ async function carregarDetalhesChamado(req, chamado) {
 
   return {
     ...await adicionarFotosParticipantes(req, calcularIndicadoresSla(chamado)),
-    vencido: canonicalizeStatus(chamado.status) === STATUS.WAITING_USER
-      ? false
-      : chamado.status && !statusFinalizado(chamado.status) && chamado.sla_limite_resolucao
-        ? new Date(chamado.sla_limite_resolucao) < new Date()
-        : Boolean(chamado.vencido),
     comentarios: await Promise.all(comentarios.rows.map(async ({ foto_perfil, ...comentario }) => ({
       ...comentario,
       foto_url: comentario.usuario_id
@@ -525,8 +527,8 @@ const criarChamado = async (req, res) => {
         $1, $2, $3, $4, $5, $6, $7, $7, $8, 'OPEN',
         $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25,
-        CURRENT_TIMESTAMP + ($24::integer * INTERVAL '1 minute'),
-        CURRENT_TIMESTAMP + ($25::integer * INTERVAL '1 minute'),
+        sla_add_business_seconds(CURRENT_TIMESTAMP::timestamp, $24::integer * 60.0),
+        sla_add_business_seconds(CURRENT_TIMESTAMP::timestamp, $25::integer * 60.0),
         $26, $27, $28, $29, $30
       )
       RETURNING *`,
@@ -886,17 +888,17 @@ const atualizarChamado = async (req, res) => {
           sla_resolucao_minutos = COALESCE($14::integer, sla_resolucao_minutos),
           tipo_chamado = COALESCE($6, tipo_chamado),
           sla_limite_resposta = CASE
-            WHEN $13::integer IS NOT NULL
-              THEN criado_em + ($13::integer * INTERVAL '1 minute') + (COALESCE(sla_tempo_pausado_segundos, 0) * INTERVAL '1 second')
-            WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL AND primeira_resposta_em IS NULL
-              THEN sla_limite_resposta + (CURRENT_TIMESTAMP - sla_pausado_em)
-            ELSE sla_limite_resposta END,
+            WHEN primeira_resposta_em IS NOT NULL THEN sla_limite_resposta
+            ELSE sla_add_business_seconds(sla_limite_resposta,
+              (COALESCE($13::integer, sla_resposta_minutos) - sla_resposta_minutos) * 60.0
+              + CASE WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
+                THEN sla_business_seconds(sla_pausado_em, CURRENT_TIMESTAMP::timestamp) ELSE 0 END) END,
           sla_limite_resolucao = CASE
-            WHEN $14::integer IS NOT NULL
-              THEN criado_em + ($14::integer * INTERVAL '1 minute') + (COALESCE(sla_tempo_pausado_segundos, 0) * INTERVAL '1 second')
-            WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
-              THEN sla_limite_resolucao + (CURRENT_TIMESTAMP - sla_pausado_em)
-            ELSE sla_limite_resolucao END,
+            WHEN sla_limite_resolucao IS NULL THEN NULL
+            ELSE sla_add_business_seconds(sla_limite_resolucao,
+              (COALESCE($14::integer, sla_resolucao_minutos) - sla_resolucao_minutos) * 60.0
+              + CASE WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
+                THEN sla_business_seconds(sla_pausado_em, CURRENT_TIMESTAMP::timestamp) ELSE 0 END) END,
           sla_tempo_pausado_segundos = COALESCE(sla_tempo_pausado_segundos, 0) + CASE
             WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
               THEN GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - sla_pausado_em))::BIGINT)
@@ -1005,8 +1007,8 @@ const adicionarComentario = async (req, res) => {
       await pool.query(
         `UPDATE chamados SET
            status = 'IN_PROGRESS',
-           sla_limite_resposta = CASE WHEN primeira_resposta_em IS NULL AND sla_pausado_em IS NOT NULL THEN sla_limite_resposta + (CURRENT_TIMESTAMP - sla_pausado_em) ELSE sla_limite_resposta END,
-           sla_limite_resolucao = CASE WHEN sla_pausado_em IS NOT NULL THEN sla_limite_resolucao + (CURRENT_TIMESTAMP - sla_pausado_em) ELSE sla_limite_resolucao END,
+           sla_limite_resposta = CASE WHEN primeira_resposta_em IS NULL AND sla_pausado_em IS NOT NULL THEN sla_add_business_seconds(sla_limite_resposta, sla_business_seconds(sla_pausado_em, CURRENT_TIMESTAMP::timestamp)) ELSE sla_limite_resposta END,
+           sla_limite_resolucao = CASE WHEN sla_pausado_em IS NOT NULL THEN sla_add_business_seconds(sla_limite_resolucao, sla_business_seconds(sla_pausado_em, CURRENT_TIMESTAMP::timestamp)) ELSE sla_limite_resolucao END,
            sla_tempo_pausado_segundos = COALESCE(sla_tempo_pausado_segundos, 0) + CASE WHEN sla_pausado_em IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - sla_pausado_em))::BIGINT) ELSE 0 END,
            sla_pausado_em = NULL, vencido = FALSE, sla_alerta_enviado = FALSE, sla_escalado = FALSE,
            atualizado_em = CURRENT_TIMESTAMP
