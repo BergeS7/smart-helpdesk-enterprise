@@ -43,7 +43,7 @@ status do último envio, data do último envio, **Enviar diagnóstico agora**, *
 e **Detalhes do agente**. O ícone inicia com o Windows (atalho em Inicializar de todos os usuários) e
 apenas lê `C:\ProgramData\SmartHelpDeskAgent\status.json`; ele nunca lê o token. A coleta continua na
 tarefa `SmartHelpDesk Agent` (conta SYSTEM), que executa `SmartHelpDeskTray.exe --collect` sem janela.
-Fechar o ícone não interrompe a coleta. O status reflete o último envio, não conexão em tempo real.
+O ícone só aparece depois que o cadastro é confirmado pelo servidor e abre automaticamente ao final da instalação; abrir o `.exe` do pacote apenas inicia a instalação. Fechar o ícone não interrompe a coleta. O status reflete o último envio, não conexão em tempo real.
 
 O instalador copia os arquivos para `C:\Program Files\SmartHelpDeskAgent` (gravável somente por
 administradores/SYSTEM). Para recompilar e gerar o ZIP: `powershell -File agent\Build-Agent.ps1`

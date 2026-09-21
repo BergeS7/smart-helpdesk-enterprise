@@ -24,12 +24,14 @@ internal static class AgentApp
         Application.SetCompatibleTextRenderingDefault(false);
         try
         {
-            string mode = args.Length == 0 ? "--tray" : args[0];
+            // Abrir o .exe do pacote sem argumentos inicia a instalação; o ícone só é aberto por --tray.
+            string mode = args.Length == 0 ? "--install" : args[0];
             if (mode == "--self-test") return SelfTest(args.Length > 1 ? args[1] : null);
             if (mode == "--collect") return Collect();
             if (mode == "--install-elevated") return RunPowerShell(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "InstalarSmartHelpDesk.ps1"), "");
             if (mode == "--install") return Install();
             if (mode != "--tray") return 2;
+            if (!IsRegistered()) return 0; // o ícone só aparece depois do cadastro concluído
             bool created;
             using (var mutex = new Mutex(true, "Local\\SmartHelpDeskTray", out created))
             {
@@ -61,7 +63,7 @@ internal static class AgentApp
             if (installer.ExitCode != 0) return installer.ExitCode;
         }
         var installed = Path.Combine(InstallDir, "SmartHelpDeskTray.exe");
-        if (!File.Exists(installed)) return 0; // instalação cancelada pelo usuário
+        if (!File.Exists(installed) || !IsRegistered()) return 0; // instalação cancelada ou cadastro não concluído
         var tray = new ProcessStartInfo(installed, "--tray");
         tray.UseShellExecute = false;
         tray.CreateNoWindow = true;
@@ -105,6 +107,18 @@ internal static class AgentApp
         return new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(File.ReadAllText(file)) ?? new Dictionary<string, object>();
     }
 
+    internal static bool IsRegistered()
+    {
+        try { return IsRegistered(ReadJson(Path.Combine(DataDir, "status.json"))); }
+        catch (Exception) { return false; }
+    }
+
+    // O agente só grava lastSuccessAt depois que o servidor confirmou o cadastro e o inventário.
+    internal static bool IsRegistered(Dictionary<string, object> state)
+    {
+        return Date(state, "lastSuccessAt").HasValue;
+    }
+
     internal static string Text(Dictionary<string, object> state, string key)
     {
         object value;
@@ -144,7 +158,9 @@ internal static class AgentApp
         var now = DateTimeOffset.UtcNow;
         var data = new Dictionary<string, object>();
         check(Status(data, now) == "Aguardando primeiro envio");
+        check(!IsRegistered(data));
         data["lastSuccessAt"] = now.ToString("o");
+        check(IsRegistered(data));
         check(Status(data, now) == "Último envio confirmado");
         check(Status(data, now.AddHours(31)) == "Sem envio recente");
         data["state"] = "error";
