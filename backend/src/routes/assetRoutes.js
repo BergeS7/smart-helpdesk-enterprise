@@ -7,6 +7,7 @@ const c=require("../controllers/assetController");
 const {agentEnrollmentLimiter}=require("../middlewares/securityMiddleware");
 router.get("/agent/locations",agentEnrollmentLimiter,c.locations); router.post("/agent/enroll",agentEnrollmentLimiter,c.enroll); router.post("/agent/heartbeat",c.authenticateAgent,c.heartbeat); router.post("/agent/report",c.authenticateAgent,c.reportInventory);
 router.post("/admin/invites",auth,exigirPerfis(["admin","desenvolvedor"]),c.createInvite);
+router.get("/admin/users",auth,exigirPermissao("administrar_ativos"),c.assignableUsers);
 router.get("/admin/locations",auth,exigirPerfis(["admin","desenvolvedor"]),c.adminLocations);
 router.get("/",auth,exigirPermissao("visualizar_patrimonio"),c.list);
 router.get("/:id",auth,exigirPermissao("visualizar_patrimonio"),c.detail);
@@ -18,6 +19,7 @@ router.get("/:id/snapshots/:snapshotId",auth,exigirPermissao("visualizar_patrimo
 router.get("/:id/alerts",auth,exigirPermissao("visualizar_patrimonio"),c.alerts);
 router.patch("/:id/alerts/:alertId/acknowledge",auth,exigirPermissao("administrar_ativos"),c.acknowledgeAlert);
 router.patch("/:id/location",auth,exigirPermissao("administrar_ativos"),c.updateLocation);
+router.patch("/:id/user",auth,exigirPermissao("administrar_ativos"),c.setUser);
 router.patch("/:id/status",auth,exigirPermissao("administrar_ativos"),c.updateStatus);
 router.post("/admin/locations",auth,exigirPerfis(["admin","desenvolvedor"]),c.saveLocation);
 module.exports=router;

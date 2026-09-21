@@ -9,6 +9,21 @@ export type DeviceMetrics = {
   diskUsage: number | null;
 };
 
+export type AssetLinkedUser = { id: number; nome: string | null; email: string | null };
+export type AssignableUser = { id: number; nome: string; email: string; departamento?: string | null };
+export type MyAsset = {
+  id: string;
+  hostname: string;
+  patrimonio: string;
+  fabricante: string | null;
+  modelo: string | null;
+  municipio: string | null;
+  unidade: string | null;
+  sistemaOperacional: string | null;
+  status: DeviceStatus;
+  ultimoHeartbeat: string | null;
+};
+
 export type Device = DeviceMetrics & {
   id: string;
   deviceId: string;
@@ -22,6 +37,7 @@ export type Device = DeviceMetrics & {
   ip: string;
   mac?: string;
   usuario: string;
+  usuarioVinculado?: AssetLinkedUser | null;
   sistemaOperacional: string;
   processador: string;
   ramTotal: number;

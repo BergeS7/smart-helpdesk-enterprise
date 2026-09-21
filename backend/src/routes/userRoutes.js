@@ -93,6 +93,7 @@ router.post("/reenviar-verificacao", registrationLimiter, reenviarVerificacaoEma
 // Rotas do próprio usuário
 router.get("/me", authMiddleware, obterMeuPerfil);
 router.put("/me", authMiddleware, atualizarMeuPerfil);
+router.get("/me/ativos", authMiddleware, require("../controllers/assetController").myAssets);
 router.patch("/me/foto", authMiddleware, uploadLimiter, tratarUploadFoto, atualizarMinhaFotoPerfil);
 router.delete("/me/foto", authMiddleware, removerMinhaFotoPerfil);
 

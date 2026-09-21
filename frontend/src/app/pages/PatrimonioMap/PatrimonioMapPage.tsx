@@ -40,6 +40,7 @@ import type {
 } from "../../types/device";
 import { AlertsList } from "../../components/patrimonio/AlertsList";
 import { AssetExplorerPanel } from "../../components/patrimonio/AssetExplorerPanel";
+import { ASSET_USER_LINKED_EVENT } from "../../components/patrimonio/AssetUserLink";
 import { DeviceDiagnostics } from "../../components/patrimonio/DeviceDiagnostics";
 import {
   DeviceFilters,
@@ -124,6 +125,16 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
       void correctLocation((e as CustomEvent<Device>).detail);
     window.addEventListener("asset-location-correct", handler);
     return () => window.removeEventListener("asset-location-correct", handler);
+  }, []);
+  useEffect(() => {
+    // Atualiza só o ativo alterado, sem recarregar a lista nem trocar a seleção.
+    const handler = (e: Event) => {
+      const updated = (e as CustomEvent<Device>).detail;
+      setDevices((rows) => rows.map((d) => (d.id === updated.id ? updated : d)));
+      setSelected((current) => (current?.id === updated.id ? updated : current));
+    };
+    window.addEventListener(ASSET_USER_LINKED_EVENT, handler);
+    return () => window.removeEventListener(ASSET_USER_LINKED_EVENT, handler);
   }, []);
   const filtered = useMemo(() => {
     const q = filters.query.trim().toLowerCase();
