@@ -72,3 +72,22 @@ test('busca de usuários escapa curingas do LIKE e limita o resultado', async ()
   assert.equal(calls[0].values[1], '%50\\%\\_a%');
   assert.match(calls[0].sql, /LIMIT 20/);
 });
+
+test('lista e detalhe trazem nome e foto do responsável vinculado', async () => {
+  const photo = require.resolve('../src/utils/profilePhoto');
+  const original = require.cache[photo];
+  require.cache[photo] = { id: photo, filename: photo, loaded: true, exports: { montarUrlFotoPerfil: async (_req, id, path) => `https://fotos.test/${id}/${path}` } };
+  try {
+    const linked = assetRow({ usuario_id: 9, vinculo_nome: 'João', vinculo_email: 'joao@x.test', vinculo_foto: 'usuarios/9/a.jpg' });
+    const { c } = controller((sql) => ({ rows: sql.includes('LEFT JOIN usuarios') ? [linked, assetRow({ id: 6 })] : [] }));
+    const res = response();
+    await c.list({}, res);
+    assert.equal(res.body[0].usuarioVinculado.fotoUrl, 'https://fotos.test/9/usuarios/9/a.jpg');
+    assert.equal(res.body[1].usuarioVinculado, null, 'ativo sem vínculo não expõe usuário');
+    const detail = response();
+    await c.detail({ params: { id: '5' } }, detail);
+    assert.equal(detail.body.usuarioVinculado.nome, 'João');
+  } finally {
+    if (original) require.cache[photo] = original; else delete require.cache[photo];
+  }
+});

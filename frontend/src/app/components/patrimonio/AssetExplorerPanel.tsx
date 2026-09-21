@@ -27,6 +27,7 @@ import type {
   Device,
   MunicipioSummary,
 } from "../../types/device";
+import { UserAvatar } from "./UserAvatar";
 
 type Props = {
   summary: MunicipioSummary[];
@@ -346,8 +347,28 @@ function DeviceView({
             <CircleUserRound size={15} />
             Usuário responsável
           </p>
-          <b className="mt-1 block text-base">{owner(device)}</b>
-          <small className="text-blue-700">
+          {device.usuarioVinculado ? (
+            <div className="mt-2 flex items-center gap-3">
+              <UserAvatar
+                name={device.usuarioVinculado.nome || device.usuarioVinculado.email || "Usuário"}
+                photoUrl={device.usuarioVinculado.fotoUrl}
+              />
+              <div className="min-w-0">
+                <b className="block truncate text-base">
+                  {device.usuarioVinculado.nome || device.usuarioVinculado.email}
+                </b>
+                {device.usuarioVinculado.nome && device.usuarioVinculado.email && (
+                  <small className="block truncate text-blue-700">{device.usuarioVinculado.email}</small>
+                )}
+              </div>
+            </div>
+          ) : (
+            <b className="mt-1 block text-base">{owner(device)}</b>
+          )}
+          {device.usuarioVinculado && (
+            <small className="mt-2 block text-blue-700">Usuário do Windows: {owner(device)}</small>
+          )}
+          <small className="block text-blue-700">
             {device.unidade} · {device.municipio}
           </small>
         </div>

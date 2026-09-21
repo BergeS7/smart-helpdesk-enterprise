@@ -89,6 +89,7 @@ import { ADMIN_ROUTES, buildAdminNavigation, type AdminRouteKey } from "./naviga
 import { WorkspaceNavigation } from "./components/WorkspaceNavigation";
 import { TicketWorkspaceToolbar } from "./components/TicketWorkspaceToolbar";
 import { Badge, Button, Card, Field, Input, Modal, Select, Textarea } from "./components/shared/FormPrimitives";
+import { UserAssetsField } from "./components/patrimonio/UserAssetsField";
 
 const PatrimonioMapPage = lazy(() =>
   import("./pages/PatrimonioMap/PatrimonioMapPage").then((module) => ({
@@ -6674,6 +6675,8 @@ function AdminPanel({
                 placeholder="Deixe em branco para manter a senha atual"
               />
             </Field>
+
+            <UserAssetsField userId={usuarioEditando.id} userName={usuarioEditando.nome} />
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button

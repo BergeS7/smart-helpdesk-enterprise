@@ -9,7 +9,7 @@ export type DeviceMetrics = {
   diskUsage: number | null;
 };
 
-export type AssetLinkedUser = { id: number; nome: string | null; email: string | null };
+export type AssetLinkedUser = { id: number; nome: string | null; email: string | null; fotoUrl?: string | null };
 export type AssignableUser = { id: number; nome: string; email: string; departamento?: string | null };
 export type MyAsset = {
   id: string;
