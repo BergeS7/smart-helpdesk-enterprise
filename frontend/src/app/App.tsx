@@ -83,13 +83,14 @@ import { Toaster, toast } from "sonner";
 import smartHelpdeskLogo from "../assets/smart-helpdesk-logo.png";
 import { PerformanceRatingCard } from "./components/PerformanceRatingCard";
 import { municipiosMaranhao } from "./data/municipiosMaranhao";
-import { TICKET_STATUS, canonicalTicketStatus, ticketStatusLabel, type TicketStatus } from "./domain/ticketStatus";
+import { TICKET_STATUS, canonicalTicketStatus, isFinalTicketStatus, ticketStatusLabel, type TicketStatus } from "./domain/ticketStatus";
 import { PORTAL_ROUTES, useModuleRoute } from "./routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation, type AdminRouteKey } from "./navigation/adminNavigation";
 import { WorkspaceNavigation } from "./components/WorkspaceNavigation";
 import { TicketWorkspaceToolbar } from "./components/TicketWorkspaceToolbar";
 import { Badge, Button, Card, Field, Input, Modal, Select, Textarea } from "./components/shared/FormPrimitives";
 import { UserAssetsField } from "./components/patrimonio/UserAssetsField";
+import { ReopenTicketCard } from "./components/chamados/ReopenTicketCard";
 
 const PatrimonioMapPage = lazy(() =>
   import("./pages/PatrimonioMap/PatrimonioMapPage").then((module) => ({
@@ -1332,16 +1333,15 @@ function UserPortal({
   }, [buscaRelatorio, chamados, mesRelatorio, statusRelatorio, tipoRelatorio]);
 
   const resumoUsuario = useMemo(() => {
-    const normalizar = (status?: string) => String(status || "").toLowerCase();
-
+    // A API devolve o status como código (OPEN, CLOSED...); o texto legado é tratado pelo mesmo helper.
     const abertos = chamados.filter((c) =>
-      ["em aberto", "aberto", "reaberto"].includes(normalizar(c.status)),
+      [TICKET_STATUS.OPEN, TICKET_STATUS.REOPENED].includes(canonicalTicketStatus(c.status) as typeof TICKET_STATUS.OPEN),
     ).length;
     const andamento = chamados.filter(
-      (c) => normalizar(c.status) === "em andamento",
+      (c) => canonicalTicketStatus(c.status) === TICKET_STATUS.IN_PROGRESS,
     ).length;
     const concluidos = chamados.filter((c) =>
-      ["concluido", "concluído", "resolvido"].includes(normalizar(c.status)),
+      [TICKET_STATUS.RESOLVED, TICKET_STATUS.CLOSED].includes(canonicalTicketStatus(c.status) as typeof TICKET_STATUS.RESOLVED),
     ).length;
     const atrasados = chamados.filter((c) => Boolean(c.vencido)).length;
 
@@ -7307,7 +7307,6 @@ function ChamadoDetalhe({
       urls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [chamado.id, chamado.anexos]);
-  const [motivoReabrir, setMotivoReabrir] = useState("");
   const [mostrarIA, setMostrarIA] = useState(false);
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
   const [edit, setEdit] = useState({
@@ -7322,12 +7321,7 @@ function ChamadoDetalhe({
   const podeGerenciar =
     !somenteLeitura &&
     (isAdmin || Number(chamado.responsavel_id) === Number(usuario.id));
-  const concluido = [
-    "Concluido",
-    "Concluído",
-    "Resolvido",
-    "Cancelado",
-  ].includes(chamado.status);
+  const concluido = isFinalTicketStatus(chamado.status);
   const slaTexto = concluido
     ? "SLA encerrado"
     : chamado.sla_status === "pausado"
@@ -7373,12 +7367,6 @@ function ChamadoDetalhe({
     await anexarArquivos(chamado.id, arquivos);
     setArquivos([]);
     if (arquivoInputRef.current) arquivoInputRef.current.value = "";
-    await onRefresh();
-  }
-  async function reabrir(event: FormEvent) {
-    event.preventDefault();
-    await reabrirChamado(chamado.id, motivoReabrir);
-    toast.success("Chamado reaberto.");
     await onRefresh();
   }
   async function salvarAdmin(event: FormEvent) {
@@ -7848,22 +7836,13 @@ function ChamadoDetalhe({
             </Card>
           )}
           {concluido && (
-            <Card>
-              <h3 className="mb-3 flex items-center gap-2 font-black">
-                <RotateCcw size={18} />
-                Reabrir chamado
-              </h3>
-              <form onSubmit={reabrir} className="space-y-3">
-                <Textarea
-                  value={motivoReabrir}
-                  onChange={(e) => setMotivoReabrir(e.target.value)}
-                  placeholder="Explique por que o problema não foi resolvido"
-                />
-                <Button variant="secondary" className="w-full">
-                  Reabrir
-                </Button>
-              </form>
-            </Card>
+            <ReopenTicketCard
+              onReopen={async (motivo) => {
+                await reabrirChamado(chamado.id, motivo);
+                toast.success("Chamado reaberto.");
+                await onRefresh();
+              }}
+            />
           )}
         </aside>
       </div>
