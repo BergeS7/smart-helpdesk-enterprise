@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: Módulo funcional de users module; reúne interface e ações do respectivo fluxo.
  */
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { MapPin, Search, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { criarUsuarioAdmin, type ApiUsuario } from "../../services/api";
@@ -66,6 +66,26 @@ export function UsersModule({
     [saving, setSaving] = useState(false),
     [query, setQuery] = useState(""),
     [municipio, setMunicipio] = useState("");
+  const pendingActions = useRef(new Set<number>());
+  const [actions, setActions] = useState<Record<number, "approve" | "reject">>({});
+  async function changeStatus(id: number, action: "approve" | "reject") {
+    if (pendingActions.current.has(id)) return;
+    pendingActions.current.add(id);
+    setActions((current) => ({ ...current, [id]: action }));
+    try {
+      await (action === "approve" ? onApprove(id) : onReject(id));
+      toast.success(action === "approve" ? "Usuário aprovado com sucesso." : "Usuário rejeitado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o usuário. Tente novamente.");
+    } finally {
+      pendingActions.current.delete(id);
+      setActions((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+    }
+  }
   const visibleUsers = users.filter((u) => {
     const q = query.trim().toLowerCase();
     return (
@@ -296,15 +316,19 @@ export function UsersModule({
                         <>
                           <button
                             className="ds-button ds-button--primary"
-                            onClick={() => void onApprove(u.id)}
+                            type="button"
+                            disabled={Boolean(actions[u.id])}
+                            onClick={() => void changeStatus(u.id, "approve")}
                           >
-                            Aprovar
+                            {actions[u.id] === "approve" ? "Aprovando…" : "Aprovar"}
                           </button>
                           <button
                             className="ds-button ds-button--danger"
-                            onClick={() => void onReject(u.id)}
+                            type="button"
+                            disabled={Boolean(actions[u.id])}
+                            onClick={() => void changeStatus(u.id, "reject")}
                           >
-                            Rejeitar
+                            {actions[u.id] === "reject" ? "Rejeitando…" : "Rejeitar"}
                           </button>
                         </>
                       ) : null}
