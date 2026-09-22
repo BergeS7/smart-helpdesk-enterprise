@@ -138,3 +138,61 @@ test('usuário sem relação com o chamado continua sem poder reabrir (permissã
   await c.reabrirChamado(req({ id: 99, perfil: 'usuario', email: 'outro@x.test' }, { motivo: 'x' }), res);
   assert.equal(res.code, 403);
 });
+
+// O editor de status genérico (usado pelo dropdown "Ações do suporte") também permite CLOSED->REOPENED
+// (única transição de TRANSITIONS para fora de um status concluído) e é uma segunda porta para reabrir,
+// além do botão dedicado. Sem essa checagem em atualizarChamado, ela bypassava o prazo de 7 dias por
+// completo: sem motivo, sem data de referência, sem limite.
+function handlerForUpdate(ticket) {
+  return (sql) => {
+    if (/FROM chamados c\s+LEFT JOIN usuarios sol/.test(sql)) return { rows: [ticket] };
+    // Consultada mesmo sem trocar de responsável, pois responsavelIdFinal cai para o responsável atual.
+    if (/SELECT nome, email FROM usuarios WHERE id = \$1/.test(sql)) return { rows: [{ nome: 'Técnico', email: 't@x.test' }] };
+    if (/^\s*UPDATE chamados SET/.test(sql)) return { rows: [{ ...ticket, status: 'REOPENED', finalizado_em: null }] };
+    return { rows: [] };
+  };
+}
+
+test('editor de status genérico bloqueia CLOSED->REOPENED depois de 7 dias (mesma regra do botão Reabrir)', async () => {
+  const finalizado_em = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em };
+  const { c, calls } = controller(handlerForUpdate(ticket));
+  const res = response();
+  await c.atualizarChamado(req({ id: 20, perfil: 'tecnico', email: 't@x.test' }, { status: 'REOPENED' }), res);
+  assert.equal(res.code, 400);
+  assert.match(res.body.erro, /7 dias/);
+  assert.equal(calls.some((x) => x.sql.startsWith('UPDATE chamados SET')), false, 'não deve gravar a reabertura');
+});
+
+test('editor de status genérico permite reabrir dentro de 7 dias e admin sem limite', async () => {
+  const dentro = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() };
+  let { c } = controller(handlerForUpdate(dentro));
+  let res = response();
+  await c.atualizarChamado(req({ id: 20, perfil: 'tecnico', email: 't@x.test' }, { status: 'REOPENED' }), res);
+  assert.equal(res.body.status, 'REOPENED', JSON.stringify(res.body));
+
+  const antigo = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString() };
+  ({ c } = controller(handlerForUpdate(antigo)));
+  res = response();
+  await c.atualizarChamado(req({ id: 1, perfil: 'admin', email: 'a@x.test' }, { status: 'REOPENED' }), res);
+  assert.equal(res.body.status, 'REOPENED');
+});
+
+test('editor de status genérico usa atualizado_em quando falta finalizado_em, igual ao botão Reabrir', async () => {
+  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: null, atualizado_em: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() };
+  const { c, calls } = controller(handlerForUpdate(ticket));
+  const res = response();
+  await c.atualizarChamado(req({ id: 20, perfil: 'tecnico', email: 't@x.test' }, { status: 'REOPENED' }), res);
+  assert.equal(res.code, 400);
+  assert.match(res.body.erro, /7 dias/);
+  assert.equal(calls.some((x) => x.sql.startsWith('UPDATE chamados SET')), false);
+});
+
+test('outras transições de status não são afetadas pela checagem de prazo', async () => {
+  const ticket = { id: 10, status: 'IN_PROGRESS', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: null };
+  const { c, calls } = controller(handlerForUpdate(ticket));
+  const res = response();
+  await c.atualizarChamado(req({ id: 20, perfil: 'tecnico', email: 't@x.test' }, { status: 'WAITING_USER' }), res);
+  assert.equal(res.body.erro, undefined, JSON.stringify(res.body));
+  assert.equal(calls.some((x) => x.sql.startsWith('UPDATE chamados SET')), true, 'a atualização deve prosseguir normalmente');
+});

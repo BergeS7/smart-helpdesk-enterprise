@@ -846,6 +846,18 @@ const atualizarChamado = async (req, res) => {
     if (statusCanonico && !canTransition(anterior.status, statusCanonico)) {
       return res.status(409).json({ erro: `Transição de ${anterior.status} para ${statusCanonico} não permitida` });
     }
+    // A única transição permitida para fora de um status concluído é REOPENED (ver TRANSITIONS em
+    // domain/ticketStatus.js), então este editor genérico de status é uma segunda porta para reabrir
+    // um chamado, além do botão dedicado "Reabrir". Sem esta checagem aqui, ela bypassava o prazo de
+    // 7 dias por completo (sem motivo, sem data de referência, sem limite).
+    if (statusCanonico === STATUS.REOPENED && statusFinalizado(anterior.status) && !usuarioEhAdmin(req)) {
+      const referenciaConclusao = anterior.finalizado_em || anterior.atualizado_em;
+      if (!isReopenWindowOpen(referenciaConclusao)) {
+        const prazo = reopenDeadline(referenciaConclusao);
+        const prazoTexto = prazo ? ` O prazo terminou em ${prazo.toLocaleDateString("pt-BR")}.` : "";
+        return res.status(400).json({ erro: `O chamado só pode ser reaberto em até ${REOPEN_WINDOW_DAYS} dias após a conclusão.${prazoTexto} Abra um novo chamado.` });
+      }
+    }
     let responsavelNome = alteraResponsavel ? null : anterior.responsavel;
     const responsavelIdFinal = alteraResponsavel ? (responsavel_id ? Number(responsavel_id) : null) : anterior.responsavel_id;
     const teamIdFinal = alteraEquipe ? (team_id ? Number(team_id) : null) : anterior.team_id;

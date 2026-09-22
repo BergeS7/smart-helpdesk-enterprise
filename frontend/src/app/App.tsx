@@ -7430,16 +7430,22 @@ function ChamadoDetalhe({
   }
   async function salvarAdmin(event: FormEvent) {
     event.preventDefault();
-    await atualizarChamado(chamado.id, {
-      status: edit.status,
-      prioridade: edit.prioridade,
-      ...(isAdmin && edit.responsavel_id
-        ? { responsavel_id: Number(edit.responsavel_id) }
-        : {}),
-      prioridade_manual_motivo: edit.prioridade_manual_motivo,
-    } as Partial<ApiChamado>);
-    toast.success("Chamado atualizado.");
-    await onRefresh();
+    try {
+      await atualizarChamado(chamado.id, {
+        status: edit.status,
+        prioridade: edit.prioridade,
+        ...(isAdmin && edit.responsavel_id
+          ? { responsavel_id: Number(edit.responsavel_id) }
+          : {}),
+        prioridade_manual_motivo: edit.prioridade_manual_motivo,
+      } as Partial<ApiChamado>);
+      toast.success("Chamado atualizado.");
+      await onRefresh();
+    } catch (e) {
+      // Sem isso, uma rejeição (ex.: prazo de 7 dias para reabrir) ficava sem nenhuma
+      // mensagem na tela — o formulário parecia simplesmente não fazer nada.
+      toast.error(e instanceof Error ? e.message : "Não foi possível salvar as alterações.");
+    }
   }
 
   return (
