@@ -32,7 +32,7 @@ const req = (user, body = {}) => ({ params: { id: '10' }, body, user, headers: {
 function handlerFor(ticket) {
   return (sql) => {
     if (/FROM chamados c\s+LEFT JOIN usuarios sol/.test(sql)) return { rows: [ticket] };
-    if (/^\s*UPDATE chamados SET status = 'IN_PROGRESS'/.test(sql)) return { rows: [{ ...ticket, status: 'IN_PROGRESS' }] };
+    if (/^\s*UPDATE chamados SET\s+status = 'IN_PROGRESS'/.test(sql)) return { rows: [{ ...ticket, status: 'IN_PROGRESS' }] };
     return { rows: [] };
   };
 }
@@ -45,7 +45,7 @@ test('dentro de 7 dias: solicitante e técnico responsável reabrem e o chamado 
   let res = response();
   await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou a falhar' }), res);
   assert.equal(res.body.status, 'IN_PROGRESS', JSON.stringify(res.body));
-  assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET status = 'IN_PROGRESS'")), true);
+  assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET")), true);
   // notifica quem já era responsável, para o chamado não passar despercebido na fila dele
   const notificacao = calls.find((x) => x.sql.startsWith('INSERT INTO notificacoes'));
   assert.deepEqual(notificacao.values.slice(0, 2), [20, 'Chamado reaberto']);
@@ -66,7 +66,7 @@ test('depois de 7 dias: solicitante e técnico são bloqueados com mensagem clar
     await c.reabrirChamado(req(user, { motivo: 'Voltou a falhar' }), res);
     assert.equal(res.code, 400);
     assert.match(res.body.erro, /7 dias/);
-    assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET status = 'IN_PROGRESS'")), false, 'não deve gravar a reabertura');
+    assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET")), false, 'não deve gravar a reabertura');
   }
 });
 
@@ -95,7 +95,7 @@ test('chamado antigo sem finalizado_em mas com atualizado_em de mais de 7 dias �
   await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou' }), res);
   assert.equal(res.code, 400);
   assert.match(res.body.erro, /7 dias/);
-  assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET status = 'IN_PROGRESS'")), false);
+  assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET")), false);
 });
 
 test('chamado antigo sem finalizado_em mas com atualizado_em recente ainda pode ser reaberto', async () => {
@@ -148,7 +148,8 @@ function handlerForUpdate(ticket) {
     if (/FROM chamados c\s+LEFT JOIN usuarios sol/.test(sql)) return { rows: [ticket] };
     // Consultada mesmo sem trocar de responsável, pois responsavelIdFinal cai para o responsável atual.
     if (/SELECT nome, email FROM usuarios WHERE id = \$1/.test(sql)) return { rows: [{ nome: 'Técnico', email: 't@x.test' }] };
-    if (/^\s*UPDATE chamados SET/.test(sql)) return { rows: [{ ...ticket, status: 'REOPENED', finalizado_em: null }] };
+    // status reflete o UPDATE real: reabrir por aqui também cai direto em IN_PROGRESS.
+    if (/^\s*UPDATE chamados SET/.test(sql)) return { rows: [{ ...ticket, status: 'IN_PROGRESS', finalizado_em: null }] };
     return { rows: [] };
   };
 }
@@ -164,18 +165,18 @@ test('editor de status genérico bloqueia CLOSED->REOPENED depois de 7 dias (mes
   assert.equal(calls.some((x) => x.sql.startsWith('UPDATE chamados SET')), false, 'não deve gravar a reabertura');
 });
 
-test('editor de status genérico permite reabrir dentro de 7 dias e admin sem limite', async () => {
+test('editor de status genérico permite reabrir dentro de 7 dias (e já cai em IN_PROGRESS); admin sem limite', async () => {
   const dentro = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() };
   let { c } = controller(handlerForUpdate(dentro));
   let res = response();
   await c.atualizarChamado(req({ id: 20, perfil: 'tecnico', email: 't@x.test' }, { status: 'REOPENED' }), res);
-  assert.equal(res.body.status, 'REOPENED', JSON.stringify(res.body));
+  assert.equal(res.body.status, 'IN_PROGRESS', JSON.stringify(res.body));
 
   const antigo = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString() };
   ({ c } = controller(handlerForUpdate(antigo)));
   res = response();
   await c.atualizarChamado(req({ id: 1, perfil: 'admin', email: 'a@x.test' }, { status: 'REOPENED' }), res);
-  assert.equal(res.body.status, 'REOPENED');
+  assert.equal(res.body.status, 'IN_PROGRESS');
 });
 
 test('editor de status genérico usa atualizado_em quando falta finalizado_em, igual ao botão Reabrir', async () => {
@@ -195,4 +196,31 @@ test('outras transições de status não são afetadas pela checagem de prazo', 
   await c.atualizarChamado(req({ id: 20, perfil: 'tecnico', email: 't@x.test' }, { status: 'WAITING_USER' }), res);
   assert.equal(res.body.erro, undefined, JSON.stringify(res.body));
   assert.equal(calls.some((x) => x.sql.startsWith('UPDATE chamados SET')), true, 'a atualização deve prosseguir normalmente');
+});
+
+// SLA na reabertura: sem isso, o chamado voltava com o prazo antigo (aparecia "vencido" na hora).
+test('reabrir pelo botão dedicado recalcula o SLA do zero a partir de agora', async () => {
+  const finalizado_em = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em };
+  const { c, calls } = controller(handlerFor(ticket));
+  const res = response();
+  await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou' }), res);
+  assert.equal(res.body.status, 'IN_PROGRESS');
+  const update = calls.find((x) => x.sql.startsWith('UPDATE chamados SET'));
+  for (const trecho of ['sla_add_business_seconds(CURRENT_TIMESTAMP', 'primeira_resposta_em = NULL', 'sla_pausado_em = NULL', 'sla_tempo_pausado_segundos = 0', 'vencido = FALSE']) {
+    assert.match(update.sql, new RegExp(trecho.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), trecho);
+  }
+});
+
+test('reabrir pelo editor de status genérico também recalcula o SLA (mesma fórmula)', async () => {
+  const finalizado_em = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em };
+  const { c, calls } = controller(handlerForUpdate(ticket));
+  const res = response();
+  await c.atualizarChamado(req({ id: 20, perfil: 'tecnico', email: 't@x.test' }, { status: 'REOPENED' }), res);
+  assert.equal(res.body.status, 'IN_PROGRESS');
+  const update = calls.find((x) => x.sql.startsWith('UPDATE chamados SET'));
+  assert.match(update.sql, /WHEN \$1 = 'REOPENED' THEN sla_add_business_seconds\(CURRENT_TIMESTAMP::timestamp, COALESCE\(\$13::integer, sla_resposta_minutos\) \* 60\.0\)/);
+  assert.match(update.sql, /WHEN \$1 = 'REOPENED' THEN sla_add_business_seconds\(CURRENT_TIMESTAMP::timestamp, COALESCE\(\$14::integer, sla_resolucao_minutos\) \* 60\.0\)/);
+  assert.match(update.sql, /primeira_resposta_em = CASE WHEN \$1 = 'REOPENED' THEN NULL/);
 });

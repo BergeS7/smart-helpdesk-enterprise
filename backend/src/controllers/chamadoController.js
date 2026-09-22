@@ -887,7 +887,9 @@ const atualizarChamado = async (req, res) => {
 
     const result = await pool.query(
       `UPDATE chamados SET
-          status = COALESCE($1, status),
+          -- Reabrir por aqui também cai direto em "Em andamento", igual ao botão dedicado (não fica
+          -- parado em "Reaberto" esperando um segundo passo).
+          status = CASE WHEN $1 = 'REOPENED' THEN 'IN_PROGRESS' ELSE COALESCE($1, status) END,
           prioridade = COALESCE($2, prioridade),
           prioridade_manual_motivo = CASE WHEN $2 IS NOT NULL AND $2 <> prioridade THEN $8 ELSE prioridade_manual_motivo END,
           prioridade_alterada_por = CASE WHEN $2 IS NOT NULL AND $2 <> prioridade THEN $9 ELSE prioridade_alterada_por END,
@@ -899,29 +901,36 @@ const atualizarChamado = async (req, res) => {
           sla_resposta_minutos = COALESCE($13::integer, sla_resposta_minutos),
           sla_resolucao_minutos = COALESCE($14::integer, sla_resolucao_minutos),
           tipo_chamado = COALESCE($6, tipo_chamado),
+          -- Reabertura (status vira REOPENED; só é possível a partir de um status concluído, já
+          -- validado acima) recomeça o SLA do zero a partir de agora, com a mesma fórmula da criação
+          -- do chamado. Sem isso, o prazo antigo ficava valendo e o chamado voltava já vencido.
+          primeira_resposta_em = CASE WHEN $1 = 'REOPENED' THEN NULL ELSE primeira_resposta_em END,
           sla_limite_resposta = CASE
+            WHEN $1 = 'REOPENED' THEN sla_add_business_seconds(CURRENT_TIMESTAMP::timestamp, COALESCE($13::integer, sla_resposta_minutos) * 60.0)
             WHEN primeira_resposta_em IS NOT NULL THEN sla_limite_resposta
             ELSE sla_add_business_seconds(sla_limite_resposta,
               (COALESCE($13::integer, sla_resposta_minutos) - sla_resposta_minutos) * 60.0
               + CASE WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
                 THEN sla_business_seconds(sla_pausado_em, CURRENT_TIMESTAMP::timestamp) ELSE 0 END) END,
           sla_limite_resolucao = CASE
+            WHEN $1 = 'REOPENED' THEN sla_add_business_seconds(CURRENT_TIMESTAMP::timestamp, COALESCE($14::integer, sla_resolucao_minutos) * 60.0)
             WHEN sla_limite_resolucao IS NULL THEN NULL
             ELSE sla_add_business_seconds(sla_limite_resolucao,
               (COALESCE($14::integer, sla_resolucao_minutos) - sla_resolucao_minutos) * 60.0
               + CASE WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
                 THEN sla_business_seconds(sla_pausado_em, CURRENT_TIMESTAMP::timestamp) ELSE 0 END) END,
-          sla_tempo_pausado_segundos = COALESCE(sla_tempo_pausado_segundos, 0) + CASE
+          sla_tempo_pausado_segundos = CASE WHEN $1 = 'REOPENED' THEN 0 ELSE COALESCE(sla_tempo_pausado_segundos, 0) + CASE
             WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' AND sla_pausado_em IS NOT NULL
               THEN GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - sla_pausado_em))::BIGINT)
-            ELSE 0 END,
+            ELSE 0 END END,
           sla_pausado_em = CASE
+            WHEN $1 = 'REOPENED' THEN NULL
             WHEN $1 = 'WAITING_USER' THEN COALESCE(sla_pausado_em, CURRENT_TIMESTAMP)
             WHEN status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER' THEN NULL
             ELSE sla_pausado_em END,
-          vencido = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE vencido END,
-          sla_alerta_enviado = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_alerta_enviado END,
-          sla_escalado = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_escalado END,
+          vencido = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR $1 = 'REOPENED' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE vencido END,
+          sla_alerta_enviado = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR $1 = 'REOPENED' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_alerta_enviado END,
+          sla_escalado = CASE WHEN $13::integer IS NOT NULL OR $1 = 'WAITING_USER' OR $1 = 'REOPENED' OR (status = 'WAITING_USER' AND $1 IS NOT NULL AND $1 <> 'WAITING_USER') THEN FALSE ELSE sla_escalado END,
           finalizado_em = CASE WHEN $1 IN ('RESOLVED','CLOSED','CANCELED') THEN CURRENT_TIMESTAMP WHEN $1 IN ('OPEN','REOPENED') THEN NULL ELSE finalizado_em END,
           atualizado_em = CURRENT_TIMESTAMP
        WHERE id = $7 RETURNING *`,
@@ -930,10 +939,12 @@ const atualizarChamado = async (req, res) => {
     const atualizado = result.rows[0];
 
     if (statusEfetivo && statusEfetivo !== canonicalizeStatus(anterior.status)) {
-      await registrarMovimentacao(id, req, "alteracao_status", `Status alterado de ${canonicalizeStatus(anterior.status)} para ${statusEfetivo}.`);
-      await notificarStatus(atualizado, statusEfetivo, anterior.status);
-      enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusEfetivo)}.` }).catch(() => {});
-      if (["RESOLVED", "CLOSED"].includes(statusEfetivo) && !["RESOLVED", "CLOSED"].includes(canonicalizeStatus(anterior.status))) await notificarUsuarioVinculadoAoAtivo(atualizado);
+      // status DB pode diferir de statusEfetivo quando reabrir cai direto em IN_PROGRESS (ver SQL acima).
+      const statusResultante = canonicalizeStatus(atualizado.status);
+      await registrarMovimentacao(id, req, "alteracao_status", `Status alterado de ${canonicalizeStatus(anterior.status)} para ${statusResultante}.`);
+      await notificarStatus(atualizado, statusResultante, anterior.status);
+      enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusResultante)}.` }).catch(() => {});
+      if (["RESOLVED", "CLOSED"].includes(statusResultante) && !["RESOLVED", "CLOSED"].includes(canonicalizeStatus(anterior.status))) await notificarUsuarioVinculadoAoAtivo(atualizado);
     }
     if (prioridadeAlterada) {
       await registrarMovimentacao(id, req, "alteracao_prioridade", `Prioridade final alterada de ${anterior.prioridade} para ${prioridade}. Motivo: ${prioridade_manual_motivo || "não informado"}`);
@@ -997,8 +1008,23 @@ const reabrirChamado = async (req, res) => {
     if (!normalizarTexto(motivo || "")) return res.status(400).json({ erro: "O motivo da reabertura é obrigatório" });
     // Reabrir já volta direto para "Em andamento" (não fica parado em "Reaberto"): cai na fila
     // de trabalho de quem já era responsável, sem precisar de um segundo passo para assumir.
+    // O SLA também recomeça do zero a partir de agora (mesma fórmula da criação do chamado, só que
+    // contando business time a partir de agora), senão o prazo antigo aparece vencido na hora.
     const result = await pool.query(
-      `UPDATE chamados SET status = 'IN_PROGRESS', finalizado_em = NULL, reaberto_em = CURRENT_TIMESTAMP, atualizado_em = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+      `UPDATE chamados SET
+         status = 'IN_PROGRESS',
+         finalizado_em = NULL,
+         reaberto_em = CURRENT_TIMESTAMP,
+         primeira_resposta_em = NULL,
+         sla_limite_resposta = sla_add_business_seconds(CURRENT_TIMESTAMP::timestamp, sla_resposta_minutos * 60.0),
+         sla_limite_resolucao = sla_add_business_seconds(CURRENT_TIMESTAMP::timestamp, sla_resolucao_minutos * 60.0),
+         sla_pausado_em = NULL,
+         sla_tempo_pausado_segundos = 0,
+         vencido = FALSE,
+         sla_alerta_enviado = FALSE,
+         sla_escalado = FALSE,
+         atualizado_em = CURRENT_TIMESTAMP
+       WHERE id = $1 RETURNING *`,
       [id]
     );
     const chamadoReaberto = result.rows[0];
