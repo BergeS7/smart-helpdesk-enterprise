@@ -2,7 +2,7 @@
  * Responsabilidade: Cartão de reabertura de chamado concluído, com validação do motivo e retorno de erros ao usuário.
  */
 import { RotateCcw } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button, Card, Textarea } from "../shared/FormPrimitives";
 import { REOPEN_WINDOW_DAYS, isReopenWindowOpen, reopenDeadline } from "../../domain/ticketStatus";
@@ -22,8 +22,7 @@ export function ReopenTicketCard({
   const dentroDoPrazo = isAdmin || isReopenWindowOpen(finalizadoEm);
   const prazo = reopenDeadline(finalizadoEm);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  async function submit() {
     if (!motivo.trim()) {
       toast.error("Explique por que o problema não foi resolvido para reabrir o chamado.");
       return;
@@ -46,14 +45,16 @@ export function ReopenTicketCard({
         Reabrir chamado
       </h3>
       {dentroDoPrazo ? (
-        <form onSubmit={submit} className="space-y-3">
+        // Sem <form>: o registro histórico é aberto em modo leitura, que oculta formulários,
+        // mas reabrir continua permitido dentro do prazo — só a edição do conteúdo fica bloqueada.
+        <div className="space-y-3">
           <Textarea
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="Explique por que o problema não foi resolvido"
             aria-label="Motivo da reabertura"
           />
-          <Button variant="secondary" className="w-full" disabled={sending}>
+          <Button type="button" variant="secondary" className="w-full" disabled={sending} onClick={() => void submit()}>
             {sending ? "Reabrindo..." : "Reabrir"}
           </Button>
           {prazo && (
@@ -61,7 +62,7 @@ export function ReopenTicketCard({
               Disponível até {prazo.toLocaleDateString("pt-BR")}.
             </p>
           )}
-        </form>
+        </div>
       ) : (
         <p className="text-sm text-zinc-500">
           O prazo de {REOPEN_WINDOW_DAYS} dias para reabertura terminou

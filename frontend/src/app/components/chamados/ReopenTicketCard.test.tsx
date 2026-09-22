@@ -18,7 +18,7 @@ const type = async (value: string) => {
     area.dispatchEvent(new Event("input", { bubbles: true }));
   });
 };
-const submit = () => act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+const submit = () => act(async () => { (container.querySelector("button") as HTMLButtonElement).click(); });
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -86,7 +86,7 @@ it("depois de 7 dias esconde o formulário e explica o prazo, sem chamar a API",
   const onReopen = vi.fn();
   await act(async () => root.render(<ReopenTicketCard finalizadoEm={daysAgo(8)} onReopen={onReopen} />));
   expect(container.querySelector("textarea")).toBeNull();
-  expect(container.querySelector("form")).toBeNull();
+  expect(container.querySelector("button")).toBeNull();
   expect(container.textContent).toContain("O prazo de 7 dias");
   expect(onReopen).not.toHaveBeenCalled();
 });
@@ -99,4 +99,13 @@ it("admin continua com acesso irrestrito mesmo depois de 7 dias", async () => {
 it("sem finalizado_em (compatibilidade) mostra o formulário normalmente", async () => {
   await act(async () => root.render(<ReopenTicketCard onReopen={vi.fn()} />));
   expect(container.querySelector("textarea")).not.toBeNull();
+});
+
+it("não usa <form>: continua visível na tela de histórico, que esconde formulários por CSS", async () => {
+  const onReopen = vi.fn().mockResolvedValue(undefined);
+  await act(async () => root.render(<ReopenTicketCard finalizadoEm={daysAgo(1)} onReopen={onReopen} />));
+  expect(container.querySelector("form")).toBeNull();
+  await type("Ainda falha");
+  await submit();
+  expect(onReopen).toHaveBeenCalledWith("Ainda falha");
 });

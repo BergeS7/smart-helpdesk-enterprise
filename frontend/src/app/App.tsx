@@ -7399,7 +7399,8 @@ function ChamadoDetalhe({
             </b>
             <span className="text-xs">
               As informações, mensagens, anexos e movimentações não podem ser
-              modificados nesta tela.
+              modificados nesta tela. Reabrir o chamado continua disponível
+              dentro do prazo.
             </span>
           </div>
           <Button
