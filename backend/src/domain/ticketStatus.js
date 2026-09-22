@@ -79,4 +79,21 @@ function canTransition(from, to) {
   return TRANSITIONS[source]?.has(target) || false;
 }
 
-module.exports = { STATUS, ALL, FINAL, LABELS, TRANSITIONS, canonicalize, label, isFinal, canTransition };
+// Janela para reabrir um chamado concluído (RESOLVED/CLOSED/CANCELED) sem abrir um novo.
+const REOPEN_WINDOW_DAYS = 7;
+
+function reopenDeadline(finalizadoEm) {
+  if (!finalizadoEm) return null;
+  const base = finalizadoEm instanceof Date ? finalizadoEm : new Date(finalizadoEm);
+  if (Number.isNaN(base.getTime())) return null;
+  return new Date(base.getTime() + REOPEN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+}
+
+function isReopenWindowOpen(finalizadoEm, now = new Date()) {
+  const deadline = reopenDeadline(finalizadoEm);
+  // Sem data de conclusão registrada: não bloqueia por prazo (comportamento anterior é preservado).
+  if (!deadline) return true;
+  return deadline.getTime() >= now.getTime();
+}
+
+module.exports = { STATUS, ALL, FINAL, LABELS, TRANSITIONS, REOPEN_WINDOW_DAYS, canonicalize, label, isFinal, canTransition, reopenDeadline, isReopenWindowOpen };

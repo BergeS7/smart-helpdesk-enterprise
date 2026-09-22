@@ -7837,6 +7837,8 @@ function ChamadoDetalhe({
           )}
           {concluido && (
             <ReopenTicketCard
+              finalizadoEm={chamado.finalizado_em}
+              isAdmin={isAdmin}
               onReopen={async (motivo) => {
                 await reabrirChamado(chamado.id, motivo);
                 toast.success("Chamado reaberto.");

@@ -1,8 +1,8 @@
 /**
  * Responsabilidade: ciclo de vida completo dos chamados.
  * Coordena autorização, SLA, prioridade, distribuição, comentários, anexos,
- * auditoria, notificações e relatórios para solicitantes e equipe.
- */
+ * auditoria, notificações e relatórios para solicitantes e equipe. sa
+ */  
 const pool = require("../config/database");
 const { decidirPrioridadeChamado } = require("../services/prioridadeIAService");
 const { carregarConfiguracoesObjeto } = require("./settingsController");
@@ -20,7 +20,7 @@ const { isBusinessTime, businessMinutesBetween } = require("../domain/businessHo
 const fs = require("fs");
 const path = require("path");
 const ticketPolicy = require("../policies/ticketPolicy");
-const { STATUS, canonicalize: canonicalizeStatus, label: statusLabel, isFinal: statusFinalizado, canTransition } = require("../domain/ticketStatus");
+const { STATUS, canonicalize: canonicalizeStatus, label: statusLabel, isFinal: statusFinalizado, canTransition, REOPEN_WINDOW_DAYS, reopenDeadline, isReopenWindowOpen } = require("../domain/ticketStatus");
 
 function normalizarEmail(email) {
   return String(email || "").trim().toLowerCase();
@@ -972,6 +972,13 @@ const reabrirChamado = async (req, res) => {
     if (acesso.erro) return res.status(acesso.status).json({ erro: acesso.erro });
     if (bloquearMutacaoNaoAutorizada(req, res, acesso.chamado)) return;
     if (!statusFinalizado(acesso.chamado.status)) return res.status(400).json({ erro: "Somente chamados concluídos ou cancelados podem ser reabertos" });
+    // Prazo de reabertura: preserva o acesso já existente (solicitante, técnico responsável e admin);
+    // admin mantém a atuação irrestrita que já tinha em outras ações do chamado.
+    if (!usuarioEhAdmin(req) && !isReopenWindowOpen(acesso.chamado.finalizado_em)) {
+      const prazo = reopenDeadline(acesso.chamado.finalizado_em);
+      const prazoTexto = prazo ? ` O prazo terminou em ${prazo.toLocaleDateString("pt-BR")}.` : "";
+      return res.status(400).json({ erro: `O chamado só pode ser reaberto em até ${REOPEN_WINDOW_DAYS} dias após a conclusão.${prazoTexto} Abra um novo chamado.` });
+    }
     if (!normalizarTexto(motivo || "")) return res.status(400).json({ erro: "O motivo da reabertura é obrigatório" });
     const result = await pool.query(
       `UPDATE chamados SET status = 'REOPENED', finalizado_em = NULL, reaberto_em = CURRENT_TIMESTAMP, atualizado_em = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,

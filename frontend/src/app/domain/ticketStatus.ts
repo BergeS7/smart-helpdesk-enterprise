@@ -55,3 +55,19 @@ export function ticketStatusLabel(value?: string | null) {
 export function isFinalTicketStatus(value?: string | null) {
   return [TICKET_STATUS.RESOLVED, TICKET_STATUS.CLOSED, TICKET_STATUS.CANCELED].includes(canonicalTicketStatus(value) as typeof TICKET_STATUS.RESOLVED);
 }
+
+// Espelha a janela de reabertura do backend (src/domain/ticketStatus.js): mesmo prazo, mesma regra.
+export const REOPEN_WINDOW_DAYS = 7;
+
+export function reopenDeadline(finalizadoEm?: string | null): Date | null {
+  if (!finalizadoEm) return null;
+  const base = new Date(finalizadoEm);
+  if (Number.isNaN(base.getTime())) return null;
+  return new Date(base.getTime() + REOPEN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+}
+
+export function isReopenWindowOpen(finalizadoEm?: string | null, now: Date = new Date()): boolean {
+  const deadline = reopenDeadline(finalizadoEm);
+  if (!deadline) return true;
+  return deadline.getTime() >= now.getTime();
+}
