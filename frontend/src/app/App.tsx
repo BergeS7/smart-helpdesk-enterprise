@@ -6838,7 +6838,10 @@ function HistoricoEquipeView({
       </div>
       <div className="divide-y divide-zinc-100">
         {filtrados.map((chamado) => {
-          const dentroDoPrazo = administrador || isReopenWindowOpen(chamado.finalizado_em);
+          // Mesma referência usada em "Encerrado em" logo abaixo: chamado antigo sem finalizado_em
+          // gravado cai para atualizado_em, em vez de liberar reabertura sem limite.
+          const referenciaConclusao = chamado.finalizado_em || chamado.atualizado_em;
+          const dentroDoPrazo = administrador || isReopenWindowOpen(referenciaConclusao);
           return (
             <div
               key={chamado.id}
@@ -7894,7 +7897,7 @@ function ChamadoDetalhe({
           )}
           {concluido && (
             <ReopenTicketCard
-              finalizadoEm={chamado.finalizado_em}
+              finalizadoEm={chamado.finalizado_em || chamado.atualizado_em}
               isAdmin={isAdmin}
               onReopen={async (motivo) => {
                 await reabrirChamado(chamado.id, motivo);

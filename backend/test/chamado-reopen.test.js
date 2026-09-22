@@ -79,8 +79,28 @@ test('admin reabre mesmo depois de 7 dias, sem mudar o acesso que ele já tinha'
   assert.equal(res.body.status, 'IN_PROGRESS');
 });
 
-test('chamado sem finalizado_em registrado não é bloqueado pelo prazo (compatibilidade)', async () => {
-  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: null };
+test('chamado sem finalizado_em e sem atualizado_em não é bloqueado pelo prazo (compatibilidade)', async () => {
+  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: null, atualizado_em: null };
+  const { c } = controller(handlerFor(ticket));
+  const res = response();
+  await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou' }), res);
+  assert.equal(res.body.status, 'IN_PROGRESS');
+});
+
+test('chamado antigo sem finalizado_em mas com atualizado_em de mais de 7 dias é bloqueado (bug corrigido)', async () => {
+  const atualizado_em = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: null, atualizado_em };
+  const { c, calls } = controller(handlerFor(ticket));
+  const res = response();
+  await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou' }), res);
+  assert.equal(res.code, 400);
+  assert.match(res.body.erro, /7 dias/);
+  assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET status = 'IN_PROGRESS'")), false);
+});
+
+test('chamado antigo sem finalizado_em mas com atualizado_em recente ainda pode ser reaberto', async () => {
+  const atualizado_em = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em: null, atualizado_em };
   const { c } = controller(handlerFor(ticket));
   const res = response();
   await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou' }), res);

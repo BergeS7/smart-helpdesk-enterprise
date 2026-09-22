@@ -974,8 +974,11 @@ const reabrirChamado = async (req, res) => {
     if (!statusFinalizado(acesso.chamado.status)) return res.status(400).json({ erro: "Somente chamados concluídos ou cancelados podem ser reabertos" });
     // Prazo de reabertura: preserva o acesso já existente (solicitante, técnico responsável e admin);
     // admin mantém a atuação irrestrita que já tinha em outras ações do chamado.
-    if (!usuarioEhAdmin(req) && !isReopenWindowOpen(acesso.chamado.finalizado_em)) {
-      const prazo = reopenDeadline(acesso.chamado.finalizado_em);
+    // Referência igual à exibida como "Encerrado em" nas telas (Histórico etc.): chamados antigos sem
+    // finalizado_em gravado usam atualizado_em, para não liberar reabertura sem limite nesses casos.
+    const referenciaConclusao = acesso.chamado.finalizado_em || acesso.chamado.atualizado_em;
+    if (!usuarioEhAdmin(req) && !isReopenWindowOpen(referenciaConclusao)) {
+      const prazo = reopenDeadline(referenciaConclusao);
       const prazoTexto = prazo ? ` O prazo terminou em ${prazo.toLocaleDateString("pt-BR")}.` : "";
       return res.status(400).json({ erro: `O chamado só pode ser reaberto em até ${REOPEN_WINDOW_DAYS} dias após a conclusão.${prazoTexto} Abra um novo chamado.` });
     }
