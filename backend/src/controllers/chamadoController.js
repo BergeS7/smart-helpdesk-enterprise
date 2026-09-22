@@ -980,13 +980,17 @@ const reabrirChamado = async (req, res) => {
       return res.status(400).json({ erro: `O chamado só pode ser reaberto em até ${REOPEN_WINDOW_DAYS} dias após a conclusão.${prazoTexto} Abra um novo chamado.` });
     }
     if (!normalizarTexto(motivo || "")) return res.status(400).json({ erro: "O motivo da reabertura é obrigatório" });
+    // Reabrir já volta direto para "Em andamento" (não fica parado em "Reaberto"): cai na fila
+    // de trabalho de quem já era responsável, sem precisar de um segundo passo para assumir.
     const result = await pool.query(
-      `UPDATE chamados SET status = 'REOPENED', finalizado_em = NULL, reaberto_em = CURRENT_TIMESTAMP, atualizado_em = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+      `UPDATE chamados SET status = 'IN_PROGRESS', finalizado_em = NULL, reaberto_em = CURRENT_TIMESTAMP, atualizado_em = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
       [id]
     );
-    await registrarMovimentacao(id, req, "reabertura", motivo ? `Chamado reaberto. Motivo: ${normalizarTexto(motivo)}` : "Chamado reaberto pelo usuário.");
-    enviarEmail({ para: result.rows[0].email_solicitante, assunto: `Chamado reaberto ${result.rows[0].numero_chamado}`, texto: `Seu chamado foi reaberto e voltou para atendimento. Motivo: ${normalizarTexto(motivo)}` }).catch(() => {});
-    return res.json(await carregarDetalhesChamado(req, result.rows[0]));
+    const chamadoReaberto = result.rows[0];
+    await registrarMovimentacao(id, req, "reabertura", motivo ? `Chamado reaberto e voltou para "Em andamento". Motivo: ${normalizarTexto(motivo)}` : "Chamado reaberto e voltou para \"Em andamento\".");
+    await criarNotificacao(chamadoReaberto.responsavel_id, "Chamado reaberto", `${chamadoReaberto.numero_chamado} voltou para o seu trabalho.`, "warning", `/chamados/${chamadoReaberto.id}`);
+    enviarEmail({ para: chamadoReaberto.email_solicitante, assunto: `Chamado reaberto ${chamadoReaberto.numero_chamado}`, texto: `Seu chamado foi reaberto e voltou para atendimento. Motivo: ${normalizarTexto(motivo)}` }).catch(() => {});
+    return res.json(await carregarDetalhesChamado(req, chamadoReaberto));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao reabrir chamado", detalhe: error.message });

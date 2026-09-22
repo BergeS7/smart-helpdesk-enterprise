@@ -32,25 +32,28 @@ const req = (user, body = {}) => ({ params: { id: '10' }, body, user, headers: {
 function handlerFor(ticket) {
   return (sql) => {
     if (/FROM chamados c\s+LEFT JOIN usuarios sol/.test(sql)) return { rows: [ticket] };
-    if (/^\s*UPDATE chamados SET status = 'REOPENED'/.test(sql)) return { rows: [{ ...ticket, status: 'REOPENED' }] };
+    if (/^\s*UPDATE chamados SET status = 'IN_PROGRESS'/.test(sql)) return { rows: [{ ...ticket, status: 'IN_PROGRESS' }] };
     return { rows: [] };
   };
 }
 
-test('dentro de 7 dias: solicitante e técnico responsável reabrem o chamado concluído', async () => {
+test('dentro de 7 dias: solicitante e técnico responsável reabrem e o chamado já volta "Em andamento"', async () => {
   const finalizado_em = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
   const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: 20, finalizado_em };
 
   let { c, calls } = controller(handlerFor(ticket));
   let res = response();
   await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou a falhar' }), res);
-  assert.equal(res.body.status, 'REOPENED', JSON.stringify(res.body));
-  assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET status = 'REOPENED'")), true);
+  assert.equal(res.body.status, 'IN_PROGRESS', JSON.stringify(res.body));
+  assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET status = 'IN_PROGRESS'")), true);
+  // notifica quem já era responsável, para o chamado não passar despercebido na fila dele
+  const notificacao = calls.find((x) => x.sql.startsWith('INSERT INTO notificacoes'));
+  assert.deepEqual(notificacao.values.slice(0, 2), [20, 'Chamado reaberto']);
 
   ({ c, calls } = controller(handlerFor(ticket)));
   res = response();
   await c.reabrirChamado(req({ id: 20, perfil: 'tecnico', email: 't@x.test' }, { motivo: 'Cliente pediu' }), res);
-  assert.equal(res.body.status, 'REOPENED');
+  assert.equal(res.body.status, 'IN_PROGRESS');
 });
 
 test('depois de 7 dias: solicitante e técnico são bloqueados com mensagem clara', async () => {
@@ -63,7 +66,7 @@ test('depois de 7 dias: solicitante e técnico são bloqueados com mensagem clar
     await c.reabrirChamado(req(user, { motivo: 'Voltou a falhar' }), res);
     assert.equal(res.code, 400);
     assert.match(res.body.erro, /7 dias/);
-    assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET status = 'REOPENED'")), false, 'não deve gravar a reabertura');
+    assert.equal(calls.some((x) => x.sql.startsWith("UPDATE chamados SET status = 'IN_PROGRESS'")), false, 'não deve gravar a reabertura');
   }
 });
 
@@ -73,7 +76,7 @@ test('admin reabre mesmo depois de 7 dias, sem mudar o acesso que ele já tinha'
   const { c } = controller(handlerFor(ticket));
   const res = response();
   await c.reabrirChamado(req({ id: 1, perfil: 'admin', email: 'a@x.test' }, { motivo: 'Auditoria' }), res);
-  assert.equal(res.body.status, 'REOPENED');
+  assert.equal(res.body.status, 'IN_PROGRESS');
 });
 
 test('chamado sem finalizado_em registrado não é bloqueado pelo prazo (compatibilidade)', async () => {
@@ -81,7 +84,16 @@ test('chamado sem finalizado_em registrado não é bloqueado pelo prazo (compati
   const { c } = controller(handlerFor(ticket));
   const res = response();
   await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou' }), res);
-  assert.equal(res.body.status, 'REOPENED');
+  assert.equal(res.body.status, 'IN_PROGRESS');
+});
+
+test('reabertura sem responsável definido não tenta notificar ninguém (nem quebra)', async () => {
+  const ticket = { id: 10, status: 'CLOSED', usuario_id: 5, email_solicitante: 'ana@x.test', responsavel_id: null, finalizado_em: new Date().toISOString() };
+  const { c, calls } = controller(handlerFor(ticket));
+  const res = response();
+  await c.reabrirChamado(req({ id: 5, perfil: 'usuario', email: 'ana@x.test' }, { motivo: 'Voltou' }), res);
+  assert.equal(res.body.status, 'IN_PROGRESS');
+  assert.equal(calls.some((x) => x.sql.startsWith('INSERT INTO notificacoes')), false);
 });
 
 test('o prazo é checado antes do motivo, mas continua exigindo motivo dentro do prazo', async () => {
