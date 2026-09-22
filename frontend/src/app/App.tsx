@@ -83,7 +83,7 @@ import { Toaster, toast } from "sonner";
 import smartHelpdeskLogo from "../assets/smart-helpdesk-logo.png";
 import { PerformanceRatingCard } from "./components/PerformanceRatingCard";
 import { municipiosMaranhao } from "./data/municipiosMaranhao";
-import { TICKET_STATUS, canonicalTicketStatus, isFinalTicketStatus, ticketStatusLabel, type TicketStatus } from "./domain/ticketStatus";
+import { REOPEN_WINDOW_DAYS, TICKET_STATUS, canonicalTicketStatus, isFinalTicketStatus, isReopenWindowOpen, ticketStatusLabel, type TicketStatus } from "./domain/ticketStatus";
 import { PORTAL_ROUTES, useModuleRoute } from "./routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation, type AdminRouteKey } from "./navigation/adminNavigation";
 import { WorkspaceNavigation } from "./components/WorkspaceNavigation";
@@ -5258,7 +5258,9 @@ function AdminPanel({
               <HistoricoEquipeView
                 chamados={historicoEquipe}
                 dark={dark}
+                administrador={administrador}
                 onAbrir={(id) => abrirDetalhe(id, true)}
+                onAtualizar={() => carregar()}
               />
             )}
 
@@ -6720,14 +6722,40 @@ function AdminPanel({
 function HistoricoEquipeView({
   chamados,
   dark,
+  administrador,
   onAbrir,
+  onAtualizar,
 }: {
   chamados: ApiChamado[];
   dark: boolean;
+  administrador: boolean;
   onAbrir: (id: number) => void;
+  onAtualizar: () => Promise<void> | void;
 }) {
   const [busca, setBusca] = useState("");
   const [responsavel, setResponsavel] = useState("");
+  const [reabrindoId, setReabrindoId] = useState<number | null>(null);
+  async function reabrirRapido(chamado: ApiChamado, event: React.MouseEvent) {
+    event.stopPropagation();
+    const motivo = window.prompt(
+      `Reabrir ${chamado.numero_chamado || `#${chamado.id}`}?\n\nExplique por que o problema não foi resolvido (obrigatório):`,
+    );
+    if (motivo === null) return;
+    if (!motivo.trim()) {
+      toast.error("Explique o motivo para reabrir o chamado.");
+      return;
+    }
+    try {
+      setReabrindoId(chamado.id);
+      await reabrirChamado(chamado.id, motivo.trim());
+      toast.success("Chamado reaberto e movido para Em andamento.");
+      await onAtualizar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível reabrir o chamado.");
+    } finally {
+      setReabrindoId(null);
+    }
+  }
   const responsaveis = useMemo(
     () =>
       Array.from(
@@ -6809,41 +6837,69 @@ function HistoricoEquipeView({
         </Badge>
       </div>
       <div className="divide-y divide-zinc-100">
-        {filtrados.map((chamado) => (
-          <button
-            key={chamado.id}
-            type="button"
-            onClick={() => onAbrir(chamado.id)}
-            className={`grid w-full gap-3 py-4 text-left transition md:grid-cols-[110px_minmax(0,1fr)_190px_170px_110px] md:items-center ${dark ? "hover:bg-white/5" : "hover:bg-zinc-50"}`}
-          >
-            <span className="text-sm font-black text-blue-700">
-              {chamado.numero_chamado || `#${chamado.id}`}
-            </span>
-            <span className="min-w-0">
-              <b className="block truncate text-sm">{chamado.titulo}</b>
-              <small className="block truncate text-zinc-500">
-                {chamado.solicitante} · {chamado.setor || "Sem departamento"}
-              </small>
-            </span>
-            <span className="flex items-center gap-2 text-xs font-bold">
-              <ResponsavelAvatar chamado={chamado} size="sm" />
-              {nomeResponsavelChamado(chamado) || "Não definido"}
-            </span>
-            <span className="text-xs text-zinc-500">
-              Encerrado em
-              <br />
-              <b className="text-zinc-700">
-                {formatDate(chamado.finalizado_em || chamado.atualizado_em)}
-              </b>
-            </span>
-            <span className="flex items-center justify-between gap-2">
-              <Badge className={statusClass(chamado.status)}>
-                {ticketStatusLabel(chamado.status)}
-              </Badge>
-              <Eye size={16} className="text-zinc-400" />
-            </span>
-          </button>
-        ))}
+        {filtrados.map((chamado) => {
+          const dentroDoPrazo = administrador || isReopenWindowOpen(chamado.finalizado_em);
+          return (
+            <div
+              key={chamado.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onAbrir(chamado.id)}
+              onKeyDown={(e) => {
+                // Ignora Enter/Espaço originado do botão "Reabrir" (foco nele, não na linha),
+                // senão o teclado abriria o detalhe junto com a reabertura.
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") onAbrir(chamado.id);
+              }}
+              className={`grid w-full cursor-pointer gap-3 py-4 text-left transition md:grid-cols-[110px_minmax(0,1fr)_190px_170px_110px_130px] md:items-center ${dark ? "hover:bg-white/5" : "hover:bg-zinc-50"}`}
+            >
+              <span className="text-sm font-black text-blue-700">
+                {chamado.numero_chamado || `#${chamado.id}`}
+              </span>
+              <span className="min-w-0">
+                <b className="block truncate text-sm">{chamado.titulo}</b>
+                <small className="block truncate text-zinc-500">
+                  {chamado.solicitante} · {chamado.setor || "Sem departamento"}
+                </small>
+              </span>
+              <span className="flex items-center gap-2 text-xs font-bold">
+                <ResponsavelAvatar chamado={chamado} size="sm" />
+                {nomeResponsavelChamado(chamado) || "Não definido"}
+              </span>
+              <span className="text-xs text-zinc-500">
+                Encerrado em
+                <br />
+                <b className="text-zinc-700">
+                  {formatDate(chamado.finalizado_em || chamado.atualizado_em)}
+                </b>
+              </span>
+              <span className="flex items-center justify-between gap-2">
+                <Badge className={statusClass(chamado.status)}>
+                  {ticketStatusLabel(chamado.status)}
+                </Badge>
+                <Eye size={16} className="text-zinc-400" />
+              </span>
+              <span className="flex justify-end">
+                {dentroDoPrazo ? (
+                  <button
+                    type="button"
+                    disabled={reabrindoId === chamado.id}
+                    onClick={(e) => void reabrirRapido(chamado, e)}
+                    title={`Reabertura permitida até ${REOPEN_WINDOW_DAYS} dias após a conclusão`}
+                    className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-black text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
+                  >
+                    <RotateCcw size={13} />
+                    {reabrindoId === chamado.id ? "Reabrindo..." : "Reabrir"}
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-zinc-400" title={`O prazo de ${REOPEN_WINDOW_DAYS} dias para reabertura terminou`}>
+                    Prazo encerrado
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
         {filtrados.length === 0 && (
           <div className="rounded-2xl border border-dashed p-10 text-center text-sm text-zinc-500">
             Nenhum chamado encerrado corresponde à pesquisa.
