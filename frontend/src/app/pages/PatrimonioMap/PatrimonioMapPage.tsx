@@ -173,7 +173,7 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
       const rows = await getDevices();
       setDevices(rows);
       setDiagnostics(rows.find((x) => x.id === diagnostics.id) || diagnostics);
-      toast.success("Dados atualizados.");
+      toast.success("Tela recarregada com os dados do último envio do agente.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao atualizar");
     } finally {
