@@ -4,10 +4,11 @@
 import { Activity, Cpu, HardDrive, History, Laptop, MapPin, MemoryStick, RefreshCw, ShieldCheck, Ticket, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Device } from "../../types/device";
+import { communicationStatusLabel } from "../../domain/assetInventoryFormat";
 import { AssetInventoryPanel } from "./AssetInventoryPanel";
 
 export function DeviceDiagnostics({device,onClose,onRefresh,onAction,refreshing}:{device:Device;onClose:()=>void;onRefresh:()=>void;onAction:(type:string,device:Device)=>void;refreshing?:boolean}){
- const communication=device.communicationStatus==="recent"?"Recente":device.communicationStatus==="attention"?"Atenção":"Sem comunicação";
+ const communication=communicationStatusLabel(device.communicationStatus);
  return <div className="fixed inset-0 z-[2000] grid bg-slate-950/45 p-0 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-label={`Diagnóstico de ${device.hostname}`}>
   <div className="m-auto flex max-h-screen w-full max-w-[1180px] flex-col overflow-hidden bg-[#f4f7fb] shadow-2xl sm:max-h-[calc(100vh-40px)] sm:rounded-3xl">
    <header className="flex shrink-0 items-center gap-3 border-b bg-white px-4 py-3 sm:px-5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white"><ShieldCheck size={21}/></span><div className="min-w-0 flex-1"><h1 className="truncate font-black text-slate-900">Diagnóstico · {device.hostname}</h1><p className="truncate text-xs text-slate-500">{device.patrimonio} · {device.municipio} / {device.unidade}</p></div><button onClick={onRefresh} disabled={refreshing} title="Recarrega a tela com os dados do último envio do agente. Não coleta na hora." className="flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-3 text-xs font-black text-white disabled:opacity-60"><RefreshCw size={14} className={refreshing?"animate-spin":""}/><span className="hidden sm:inline">Recarregar</span></button><button onClick={onClose} aria-label="Fechar" className="grid h-9 w-9 place-items-center rounded-xl border bg-white"><X size={18}/></button></header>
