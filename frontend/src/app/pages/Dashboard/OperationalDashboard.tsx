@@ -153,6 +153,12 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
       </div>
     </section>
 
+    <section className="grid gap-5 lg:grid-cols-3">
+      <Rank title="Carga por técnico" icon={<Users size={17}/>} rows={(data.porTecnico || []).map((item) => ({ label: item.tecnico, value: Number(item.total) }))} onClick={() => onNavigate("carteira")} dark={dark} color="bg-violet-500" />
+      <Rank title="Por departamento" icon={<Ticket size={17}/>} rows={data.porDepartamento.map((item) => ({ label: item.departamento, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-blue-500" />
+      <Rank title="Por prioridade" icon={<AlertTriangle size={17}/>} rows={data.porPrioridade.map((item) => ({ label: item.prioridade, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-amber-500" />
+    </section>
+
     <section className={`overflow-hidden rounded-3xl border shadow-sm ${panel}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-4 dark:border-white/10"><div><h3 className="font-black">Chamados recentes</h3><p className={`mt-1 text-xs ${muted}`}>Últimas movimentações registradas</p></div><button onClick={() => onNavigate("chamados")} className="flex items-center gap-1 text-xs font-extrabold text-blue-600 hover:text-blue-700">Ver todos <ArrowUpRight size={14}/></button></div>
       <div className="overflow-x-auto">
@@ -161,12 +167,6 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
           <tbody className="divide-y divide-slate-100 dark:divide-white/5">{(data.chamadosRecentes || []).slice(0, 7).map((ticket) => <tr key={ticket.id} onClick={() => onOpenTicket(Number(ticket.id))} className={`cursor-pointer text-xs transition ${dark ? "hover:bg-white/[.03]" : "hover:bg-blue-50/40"}`}><td className="px-5 py-3.5"><b className="block max-w-[300px] truncate">{ticket.numero_chamado || `#${ticket.id}`} · {ticket.titulo}</b><span className={`mt-1 block max-w-[340px] truncate text-[10px] ${muted}`}>{ticket.departamento || ticket.tipo_chamado || "Não informado"}</span></td><td className="px-4 py-3.5"><StatusBadge status={ticket.status || "Não informado"}/></td><td className="px-4 py-3.5"><PriorityBadge priority={ticket.prioridade || "Não informada"}/></td><td className={`px-4 py-3.5 font-semibold ${muted}`}>{ticket.responsavel || "Sem responsável"}</td><td className="px-5 py-3.5 text-right">{ticket.vencido ? <span className="font-black text-red-600">SLA vencido</span> : <span className="font-bold text-emerald-600">No prazo</span>}</td></tr>)}</tbody>
         </table>
       </div>
-    </section>
-
-    <section className="grid gap-5 lg:grid-cols-3">
-      <Rank title="Carga por técnico" icon={<Users size={17}/>} rows={(data.porTecnico || []).map((item) => ({ label: item.tecnico, value: Number(item.total) }))} onClick={() => onNavigate("carteira")} dark={dark} color="bg-violet-500" />
-      <Rank title="Por departamento" icon={<Ticket size={17}/>} rows={data.porDepartamento.map((item) => ({ label: item.departamento, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-blue-500" />
-      <Rank title="Por prioridade" icon={<AlertTriangle size={17}/>} rows={data.porPrioridade.map((item) => ({ label: item.prioridade, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-amber-500" />
     </section>
   </div>;
 }
