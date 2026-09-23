@@ -369,7 +369,12 @@ function DeviceView({
             <small className="mt-2 block text-blue-700">Usuário do Windows: {owner(device)}</small>
           )}
           <small className="block text-blue-700">
-            {device.unidade} · {device.municipio}
+            {/* A unidade já costuma trazer o município ("Maranhão Motos - Santa Inês"). */}
+            {!device.unidade
+              ? device.municipio
+              : device.municipio && !device.unidade.includes(device.municipio)
+                ? `${device.unidade} · ${device.municipio}`
+                : device.unidade}
           </small>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
