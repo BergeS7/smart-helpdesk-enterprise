@@ -1,31 +1,34 @@
 # Smart HelpDesk Agent
 
-Distribua a pasta `agent` por canal corporativo controlado e peça ao colaborador para abrir **Instalar Smart HelpDesk.vbs**.
-Antes da instalação, um administrador deve gerar um convite temporário e de uso único em `POST /api/assets/admin/invites`.
-O instalador solicita a URL HTTPS e o convite; nenhum segredo global fica incluído no pacote.
+## Instalador de arquivo único
 
-Para a aplicação `https://smart-helpdesk-enterprise.vercel.app/`, a URL do agente é:
+`powershell -File agent\Build-Agent.ps1` gera `output\Instalar-SmartHelpDesk-<versão>.exe`. É um único
+arquivo com o logo do SmartHelpDesk: ele já traz os scripts do agente, a chave pública de atualização
+e o endereço da API (`-ServerUrl`, padrão `https://smart-helpdesk-backend-dp5r.onrender.com/api/assets`).
 
-```text
-https://smart-helpdesk-backend-dp5r.onrender.com/api/assets
-```
+1. No painel, **Ativos → Gerar convite do agente** mostra o código de uso único (vale 2 horas).
+2. No computador, abra o instalador e aceite o pedido de administrador.
+3. Cole o código (o comando inteiro copiado do painel também funciona), confirme a unidade e o aviso
+   de privacidade e clique em **Cadastrar computador**.
+4. Ao terminar, o ícone do SmartHelpDesk fica perto do relógio (o Windows pode escondê-lo na seta ^).
 
-A interface está na Vercel, mas a API está no Render. Não use o endereço da
-Vercel no instalador. Também é possível copiar o parâmetro `-ServerUrl` do
-comando em **Ativos → Gerar convite do agente**, após publicar o frontend corrigido.
+O assistente grava os arquivos em `C:\Program Files\SmartHelpDeskAgent` antes de executar
+`SmartHelpDeskAgent.ps1 -Install`, e só informa sucesso depois que o cadastro e o primeiro
+diagnóstico forem confirmados pelo servidor. O endereço da API é o do Render, não o da Vercel.
+
+Instalação manual, sem assistente (PowerShell como administrador, na pasta `agent`):
 
 ```powershell
 .\SmartHelpDeskAgent.ps1 -ServerUrl "https://smart-helpdesk-backend-dp5r.onrender.com/api/assets" -EnrollmentKey "CONVITE_TEMPORARIO" -Municipio "MUNICIPIO_CONFIRMADO" -Unidade "UNIDADE_CONFIRMADA" -Latitude LATITUDE_CONFIRMADA -Longitude LONGITUDE_CONFIRMADA -Install
 ```
 
-O agente 2.1.0 coleta inventário técnico estruturado e métricas, registra um token exclusivo em
+O agente coleta inventário técnico estruturado e métricas, registra um token exclusivo em
 `C:\ProgramData\SmartHelpDeskAgent\agent.json` e envia um diagnóstico diariamente às 15h,
 na inicialização do Windows, sem abrir janela do PowerShell. Se o computador estiver desligado nesse horário, a tarefa
 será executada assim que o Windows voltar a disponibilizá-la.
 
 O agente exige HTTPS em produção. Durante os testes, o instalador aceita HTTP somente em endereços privados (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x` ou localhost), exibe um alerta explícito e preserva `-AllowInsecureHttp` na tarefa agendada.
 
-Para o ambiente atual, envie ao colaborador a pasta `agent` completa (ou o ZIP gerado), peça para extrair e executar `Instalar Smart HelpDesk.vbs`. No painel de Monitoramento de Ativos, use **Gerar convite do agente** e envie o código de uso único separadamente. A instalação só informa sucesso depois que o cadastro e o primeiro diagnóstico forem confirmados pelo servidor.
 
 Diagnóstico e suporte:
 
@@ -46,8 +49,35 @@ tarefa `SmartHelpDesk Agent` (conta SYSTEM), que executa `SmartHelpDeskTray.exe 
 O ícone só aparece depois que o cadastro é confirmado pelo servidor e abre automaticamente ao final da instalação; abrir o `.exe` do pacote apenas inicia a instalação. Fechar o ícone não interrompe a coleta. O status reflete o último envio, não conexão em tempo real.
 
 O instalador copia os arquivos para `C:\Program Files\SmartHelpDeskAgent` (gravável somente por
-administradores/SYSTEM). Para recompilar e gerar o ZIP: `powershell -File agent\Build-Agent.ps1`
+administradores/SYSTEM). Para recompilar e gerar o instalador: `powershell -File agent\Build-Agent.ps1`
 (requer .NET Framework 4.x, já presente no Windows).
+
+## Atualização automática assinada (2.2.0)
+
+A partir da 2.2.0, após cada coleta o agente consulta `GET /agent/update`. Havendo versão maior,
+baixa o pacote e **só instala se a assinatura RSA conferir** com `update-public-key.xml`, instalado em
+`C:\Program Files\SmartHelpDeskAgent`. A chave privada fica apenas com a TI; o servidor guarda o pacote,
+mas não consegue assinar. Pacote adulterado é descartado (`update REJECTED` no log). Se a versão nova não
+carregar, o agente restaura a anterior (`update ROLLBACK`) e não tenta a mesma versão de novo.
+
+Configuração, uma vez só:
+
+1. `powershell -File agent\Nova-ChaveAtualizacao.ps1` gera a chave privada em
+   `%USERPROFILE%\SmartHelpDesk-Chave-Atualizacao\` e `agent\update-public-key.xml`. Faça backup da
+   chave privada fora do computador; nunca a coloque no Git nem no servidor.
+2. `powershell -File agent\Build-Agent.ps1` e reinstale os agentes com esse pacote. Agentes 2.1.0 ou
+   anteriores não se atualizam sozinhos.
+
+Para cada versão nova:
+
+1. Aumente `$AgentVersion` em `SmartHelpDeskAgent.ps1`.
+2. `powershell -File agent\Publicar-Atualizacao.ps1` compila, empacota e assina, gerando
+   `output\SmartHelpDesk-Agent-<versão>.update.json`.
+3. No painel, abra **Ativos → Atualizações do agente** e envie o arquivo. Cada computador instala na
+   próxima coleta; o ícone da bandeja mostra a versão nova após o próximo login.
+
+**Revogar** interrompe a distribuição; quem já atualizou permanece na versão. Para corrigir, publique
+uma versão com número maior. Se a chave privada vazar, gere outra com `-Substituir` e reinstale os agentes.
 
 ## Atualização da versão 2.0
 

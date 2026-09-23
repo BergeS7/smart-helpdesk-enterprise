@@ -6,6 +6,11 @@ const auth=require("../middlewares/authMiddleware"); const {exigirPerfis,exigirP
 const c=require("../controllers/assetController");
 const {agentEnrollmentLimiter}=require("../middlewares/securityMiddleware");
 router.get("/agent/locations",agentEnrollmentLimiter,c.locations); router.post("/agent/enroll",agentEnrollmentLimiter,c.enroll); router.post("/agent/heartbeat",c.authenticateAgent,c.heartbeat); router.post("/agent/report",c.authenticateAgent,c.reportInventory);
+const releases=require("../controllers/agentReleaseController");
+router.get("/agent/update",c.authenticateAgent,releases.latestForAgent); router.get("/agent/update/package",c.authenticateAgent,releases.packageForAgent);
+router.get("/admin/agent-releases",auth,exigirPerfis(["admin","desenvolvedor"]),releases.adminList);
+router.post("/admin/agent-releases",auth,exigirPerfis(["admin","desenvolvedor"]),releases.adminPublish);
+router.patch("/admin/agent-releases/:id/revoke",auth,exigirPerfis(["admin","desenvolvedor"]),releases.adminRevoke);
 router.post("/admin/invites",auth,exigirPerfis(["admin","desenvolvedor"]),c.createInvite);
 router.get("/admin/users",auth,exigirPermissao("administrar_ativos"),c.assignableUsers);
 router.get("/admin/locations",auth,exigirPerfis(["admin","desenvolvedor"]),c.adminLocations);

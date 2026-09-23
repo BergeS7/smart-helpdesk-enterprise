@@ -111,17 +111,17 @@ Não altere apenas o `.env`: em volume existente, isso não muda automaticamente
 
 ## 8. Agente de diagnóstico
 
-Pacote atual: `SmartHelpDesk-Agent-v6-Teste-HTTP.zip`.
+Instalador: `output\Instalar-SmartHelpDesk-<versão>.exe`, gerado por `agent\Build-Agent.ps1`
+(use `-ServerUrl` para laboratório, por exemplo `http://192.168.10.54:8090/api/assets`).
 
 Fluxo:
 
 1. No Monitoramento de Ativos, clique em **Gerar convite do agente**.
-2. Envie o ZIP e o convite por canal corporativo controlado.
-3. O colaborador extrai a pasta completa e executa `Instalar Smart HelpDesk.vbs` como administrador.
-4. Em laboratório local, use `http://192.168.10.54:8090/api/assets`.
-5. Confirme o alerta de HTTP apenas dentro da rede privada.
-6. Selecione a unidade e aceite o aviso de monitoramento.
-7. O instalador só confirma sucesso depois do cadastro e do primeiro diagnóstico.
+2. Envie o instalador e o código do convite por canal corporativo controlado.
+3. O colaborador abre o instalador e aceita o pedido de administrador do Windows.
+4. Cola o código, confirma a unidade e aceita o aviso de monitoramento.
+5. Em laboratório com HTTP, confirme o alerta apenas dentro da rede privada.
+6. O instalador só confirma sucesso depois do cadastro e do primeiro diagnóstico; o ícone fica perto do relógio.
 
 Arquivos no computador:
 

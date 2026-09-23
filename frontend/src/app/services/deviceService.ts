@@ -8,6 +8,12 @@ export type AssetLocation={id:number;nome:string;municipio:string;latitude:numbe
 async function assetWrite<T>(path:string,method:string,body:unknown):Promise<T>{const response=await fetch(`${API_URL}/assets${path}`,{method,headers:{Authorization:`Bearer ${getToken()||""}`,"Content-Type":"application/json"},body:JSON.stringify(body)});const data=await response.json().catch(()=>null);if(!response.ok)throw new Error(data?.erro||"Erro ao atualizar ativo");return data as T;}
 export async function getAssetLocations():Promise<AssetLocation[]>{return assetRequest<AssetLocation[]>("/admin/locations");}
 export async function createAgentInvite(validadeHoras=2):Promise<{convite:string;expira_em:string;aviso:string}>{return assetWrite("/admin/invites","POST",{validade_horas:validadeHoras,descricao:"Instalação de computador"});}
+export type AgentRelease={id:string;version:string;sha256:string;sizeBytes:number;active:boolean;publishedAt:string;revokedAt:string|null};
+export type AgentReleaseOverview={currentVersion:string|null;releases:AgentRelease[];agents:{version:string;total:number}[]};
+export async function getAgentReleases():Promise<AgentReleaseOverview>{return assetRequest<AgentReleaseOverview>("/admin/agent-releases");}
+// O arquivo já vem assinado por agent/Publicar-Atualizacao.ps1; o painel só o repassa.
+export async function publishAgentRelease(release:unknown):Promise<AgentRelease>{return assetWrite<AgentRelease>("/admin/agent-releases","POST",release);}
+export async function revokeAgentRelease(id:string):Promise<AgentRelease>{return assetWrite<AgentRelease>(`/admin/agent-releases/${id}/revoke`,"PATCH",{});}
 export async function updateDeviceLocation(id:string,location:AssetLocation):Promise<Device>{return assetWrite<Device>(`/${id}/location`,"PATCH",{municipio:location.municipio,unidade:location.nome,latitude:location.latitude,longitude:location.longitude});}
 export async function updateDeviceStatus(id:string,status:Device["status"]):Promise<Device>{return assetWrite<Device>(`/${id}/status`,"PATCH",{status});}
 export async function getDevices(): Promise<Device[]> { return assetRequest<Device[]>(""); }

@@ -4,7 +4,7 @@ $tokens=$null; $errors=$null
 $ast=[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $source),[ref]$tokens,[ref]$errors)
 if($errors.Count){throw ($errors.Message -join '; ')}
 # Importa somente funções: não coleta inventário real, não registra tarefa e não envia dados.
-foreach($name in @('Normalize-ServerUrl','Get-CpuUsage','Safe')) {
+foreach($name in @('Normalize-ServerUrl','Get-CpuUsage','Safe','Compare-AgentVersion','Test-UpdateSignature')) {
  $definition=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
  . ([scriptblock]::Create($definition.Extent.Text))
 }
@@ -37,4 +37,19 @@ $ServerUrl=''
 . ([scriptblock]::Create($configBlock))
 Assert-Equal $ServerUrl 'https://old.example.test/api/assets' 'Execucao agendada usa cadastro salvo'
 Remove-Item -LiteralPath $configFile
-Write-Host 'OK: URL, CPU, coleta indisponivel, reinstalacao e cadastro salvo.'
+
+# Atualizacao assinada: so a chave privada correspondente produz pacote aceito.
+Assert-Equal (Compare-AgentVersion '2.10.0' '2.9.0') 1 'Versao numerica'
+Assert-Equal (Compare-AgentVersion '2.2.0' '2.2.0') 0 'Mesma versao'
+$key=New-Object Security.Cryptography.RSACryptoServiceProvider(3072);$other=New-Object Security.Cryptography.RSACryptoServiceProvider(3072)
+$package=[Text.Encoding]::UTF8.GetBytes('PK-pacote-de-teste')
+$sha=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($package)).Replace('-','').ToLowerInvariant()
+function Sign($Rsa,$Version){[Convert]::ToBase64String($Rsa.SignData([Text.Encoding]::UTF8.GetBytes("SmartHelpDeskAgent-update|$Version|$sha"),[Security.Cryptography.HashAlgorithmName]::SHA256,[Security.Cryptography.RSASignaturePadding]::Pkcs1))}
+$public=$key.ToXmlString($false)
+Assert-Equal (Test-UpdateSignature $package '2.3.0' $sha (Sign $key '2.3.0') $public) $true 'Pacote assinado aceito'
+Assert-Equal (Test-UpdateSignature $package '2.3.0' $sha (Sign $other '2.3.0') $public) $false 'Chave diferente recusada'
+Assert-Equal (Test-UpdateSignature $package '9.9.9' $sha (Sign $key '2.3.0') $public) $false 'Assinatura de outra versao recusada'
+$tampered=[byte[]]$package.Clone();$tampered[3]=0
+Assert-Equal (Test-UpdateSignature $tampered '2.3.0' $sha (Sign $key '2.3.0') $public) $false 'Pacote alterado recusado'
+Assert-Equal (Test-UpdateSignature $package '2.3.0' $sha 'nao-e-base64' $public) $false 'Assinatura invalida recusada'
+Write-Host 'OK: URL, CPU, coleta indisponivel, reinstalacao, cadastro salvo e atualizacao assinada.'

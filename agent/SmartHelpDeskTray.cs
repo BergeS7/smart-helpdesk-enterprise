@@ -28,7 +28,7 @@ internal static class AgentApp
             string mode = args.Length == 0 ? "--install" : args[0];
             if (mode == "--self-test") return SelfTest(args.Length > 1 ? args[1] : null);
             if (mode == "--collect") return Collect();
-            if (mode == "--install-elevated") return RunPowerShell(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "InstalarSmartHelpDesk.ps1"), "");
+            if (mode == "--install-elevated") return SetupWizard.Run();
             if (mode == "--install") return Install();
             if (mode != "--tray") return 2;
             if (!IsRegistered()) return 0; // o ícone só aparece depois do cadastro concluído
@@ -57,14 +57,23 @@ internal static class AgentApp
         start.UseShellExecute = true;
         start.Verb = "runas";
         start.WindowStyle = ProcessWindowStyle.Hidden;
-        using (var installer = Process.Start(start))
+        try
         {
-            installer.WaitForExit();
-            if (installer.ExitCode != 0) return installer.ExitCode;
+            using (var installer = Process.Start(start))
+            {
+                installer.WaitForExit();
+                if (installer.ExitCode != 0) return installer.ExitCode;
+            }
+        }
+        catch (System.ComponentModel.Win32Exception error)
+        {
+            if (error.NativeErrorCode == 1223) return 0; // usuário recusou o pedido de administrador
+            throw;
         }
         var installed = Path.Combine(InstallDir, "SmartHelpDeskTray.exe");
         if (!File.Exists(installed) || !IsRegistered()) return 0; // instalação cancelada ou cadastro não concluído
-        var tray = new ProcessStartInfo(installed, "--tray");
+        // --welcome: avisa onde o ícone ficou (o Windows costuma escondê-lo na seta ^).
+        var tray = new ProcessStartInfo(installed, "--tray --welcome");
         tray.UseShellExecute = false;
         tray.CreateNoWindow = true;
         Process.Start(tray);
@@ -211,6 +220,8 @@ internal static class AgentApp
             RefreshState();
             // Self-test cria e valida o menu sem exibir um ícone na área do usuário.
             icon.Visible = Array.IndexOf(Environment.GetCommandLineArgs(), "--self-test") < 0;
+            if (icon.Visible && Array.IndexOf(Environment.GetCommandLineArgs(), "--welcome") >= 0)
+                icon.ShowBalloonTip(8000, "SmartHelpDesk ativo", "Computador cadastrado. O SmartHelpDesk fica aqui perto do relógio; se não aparecer, clique na seta ^.", ToolTipIcon.Info);
             timer = new System.Windows.Forms.Timer { Interval = 5000 };
             timer.Tick += delegate { RefreshState(); };
             timer.Start();

@@ -1,6 +1,6 @@
 # Responsabilidade: Automação de smart help desk agent; executa uma tarefa operacional ou de geração do projeto.
-param([string]$ServerUrl="",[string]$EnrollmentKey="",[string]$Municipio="",[string]$Unidade="",[double]$Latitude=0,[double]$Longitude=0,[switch]$Install,[switch]$AllowInsecureHttp)
-$ErrorActionPreference="Stop";$AgentVersion="2.1.0";$SchemaVersion=1
+param([string]$ServerUrl="",[string]$EnrollmentKey="",[string]$Municipio="",[string]$Unidade="",[double]$Latitude=0,[double]$Longitude=0,[switch]$Install,[switch]$AllowInsecureHttp,[switch]$SelfCheck)
+$ErrorActionPreference="Stop";$AgentVersion="2.2.0";$SchemaVersion=1
 $DataDir=Join-Path $env:ProgramData "SmartHelpDeskAgent";$ConfigFile=Join-Path $DataDir "agent.json";$LogFile=Join-Path $DataDir "agent.log";$StatusFile=Join-Path $DataDir "status.json"
 if(!(Test-Path $DataDir)){New-Item -ItemType Directory -Path $DataDir -Force|Out-Null}
 function Write-Log($Stage,$Status,$Message){$safe=($Message-replace '(?i)(token|authorization|bearer)\s*[=:]\s*\S+','$1=[PROTEGIDO]');"$(Get-Date -Format o) stage=$Stage status=$Status message=$safe"|Add-Content -LiteralPath $LogFile -Encoding UTF8}
@@ -58,6 +58,59 @@ function Get-Inventory{
   metrics=[ordered]@{cpuUsagePercent=Get-CpuUsage;ramUsagePercent=if($os.TotalVisibleMemorySize){[math]::Round(100*(1-$os.FreePhysicalMemory/$os.TotalVisibleMemorySize),2)}else{$null};systemDiskUsagePercent=if($main.Size){[math]::Round(100*(1-$main.FreeSpace/$main.Size),2)}else{$null};uptimeHours=if($lastBoot){[math]::Round(((Get-Date)-$lastBoot).TotalHours,2)}else{$null}}}
  $r.ip=$r.network.primaryIpv4;$r.mac=$r.network.primaryMac;$r.usuario=$cs.UserName;$r.sistemaOperacional="$($os.Caption) $($os.Version)";$r.processador=if($cpus.Count){$cpus[0].Name}else{$null};$r.ramTotal=[math]::Round($ramTotal/1GB,2);$r.armazenamento=($vols|ForEach-Object{"$($_.DeviceID) $([math]::Round($_.Size/1GB)) GB"})-join " | ";$r.cpuUsage=$r.metrics.cpuUsagePercent;$r.ramUsage=$r.metrics.ramUsagePercent;$r.diskUsage=$r.metrics.systemDiskUsagePercent;$r.antivirusAtualizado=$r.security.defender.signaturesUpdated;$r.firewallEnabled=if($r.security.firewall.status-eq "UNKNOWN"){$null}else{$r.security.firewall.status-eq "ENABLED"};$r.uptimeHours=$r.metrics.uptimeHours;$r.lastBoot=$r.operatingSystem.lastBoot;return $r
 }
+# Atualizacao automatica: so instala pacote assinado com a chave privada da TI.
+# A chave publica fica em Program Files (gravavel so por administradores/SYSTEM).
+$UpdateDir=Join-Path $DataDir "update"
+function Compare-AgentVersion([string]$A,[string]$B){([version]$A).CompareTo([version]$B)}
+function Test-UpdateSignature([byte[]]$Package,[string]$Version,[string]$Sha256,[string]$Signature,[string]$PublicKeyXml){
+ $sha=[Security.Cryptography.SHA256]::Create()
+ $actual=[BitConverter]::ToString($sha.ComputeHash($Package)).Replace('-','').ToLowerInvariant();$sha.Dispose()
+ if($actual -ne "$Sha256".ToLowerInvariant()){return $false}
+ $rsa=New-Object Security.Cryptography.RSACryptoServiceProvider
+ try{
+  $rsa.FromXmlString($PublicKeyXml)
+  $message=[Text.Encoding]::UTF8.GetBytes("SmartHelpDeskAgent-update|$Version|$actual")
+  return $rsa.VerifyData($message,[Convert]::FromBase64String($Signature),[Security.Cryptography.HashAlgorithmName]::SHA256,[Security.Cryptography.RSASignaturePadding]::Pkcs1)
+ }catch{return $false}finally{$rsa.Dispose()}
+}
+function Invoke-AgentUpdate([string]$Token){
+ $keyFile=Join-Path $PSScriptRoot "update-public-key.xml"
+ if(!(Test-Path -LiteralPath $keyFile)){Write-Log "update" "SKIP" "chave publica ausente; atualizacao automatica desativada";return}
+ $headers=@{Authorization="Bearer $Token"}
+ $info=Invoke-RestMethod -Uri "$ServerUrl/agent/update" -Headers $headers -Method Get -TimeoutSec 60
+ if(!$info -or !$info.version -or (Compare-AgentVersion $info.version $AgentVersion) -le 0){return}
+ $failedFile=Join-Path $UpdateDir "failed.txt"
+ if((Test-Path -LiteralPath $failedFile) -and "$(Get-Content -LiteralPath $failedFile -Raw)".Trim() -eq $info.version){Write-Log "update" "SKIP" "versao=$($info.version) ja falhou neste computador";return}
+ if([long]$info.sizeBytes -le 0 -or [long]$info.sizeBytes -gt 6MB){throw "Tamanho de pacote invalido."}
+ $zip=Join-Path $UpdateDir "package.zip";$staging=Join-Path $UpdateDir "staging";$previous=Join-Path $UpdateDir "previous"
+ foreach($path in @($zip,$staging,$previous)){if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path -Recurse -Force}}
+ New-Item -ItemType Directory -Path $staging,$previous -Force|Out-Null
+ Invoke-WebRequest -UseBasicParsing -Uri "$ServerUrl/agent/update/package?version=$([Uri]::EscapeDataString($info.version))" -Headers $headers -OutFile $zip -TimeoutSec 120
+ # A assinatura e conferida antes de qualquer arquivo do pacote ser aberto.
+ if(!(Test-UpdateSignature ([IO.File]::ReadAllBytes($zip)) $info.version $info.sha256 $info.signature (Get-Content -LiteralPath $keyFile -Raw))){
+  Remove-Item -LiteralPath $zip -Force;Write-Log "update" "REJECTED" "versao=$($info.version) assinatura invalida; pacote descartado";return
+ }
+ Expand-Archive -LiteralPath $zip -DestinationPath $staging -Force
+ $files=@('SmartHelpDeskTray.exe','SmartHelpDeskAgent.ps1','Install-Tray.ps1','update-public-key.xml')
+ foreach($file in $files){if(!(Test-Path -LiteralPath (Join-Path $staging $file))){throw "Pacote sem $file."}}
+ $newScript=Join-Path $staging 'SmartHelpDeskAgent.ps1';$tokens=$null;$errors=$null
+ [void][Management.Automation.Language.Parser]::ParseFile($newScript,[ref]$tokens,[ref]$errors)
+ if($errors.Count -or (Get-Content -LiteralPath $newScript -Raw) -notmatch ('\$AgentVersion="'+[regex]::Escape($info.version)+'"')){throw "Script do pacote invalido ou com versao divergente."}
+ foreach($file in $files){$current=Join-Path $PSScriptRoot $file;if(Test-Path -LiteralPath $current){Copy-Item -LiteralPath $current -Destination $previous -Force}}
+ . (Join-Path $staging 'Install-Tray.ps1')
+ Install-AgentTray $staging $DataDir -FromUpdate
+ $powershell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+ & $powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'SmartHelpDeskAgent.ps1') -SelfCheck|Out-Null
+ if($LASTEXITCODE -ne 0){
+  Install-AgentTray $previous $DataDir -FromUpdate
+  Set-Content -LiteralPath $failedFile -Value $info.version -Encoding UTF8
+  Write-Log "update" "ROLLBACK" "versao=$($info.version) falhou na verificacao; versao $AgentVersion restaurada";return
+ }
+ Remove-Item -LiteralPath $zip,$staging -Recurse -Force -ErrorAction SilentlyContinue
+ Write-Log "update" "OK" "atualizado de $AgentVersion para $($info.version); vale a partir da proxima coleta"
+}
+# Usado apos uma atualizacao: confirma que o script novo carrega sem erro.
+if($SelfCheck){exit 0}
 $config=if(Test-Path $ConfigFile){Get-Content $ConfigFile -Raw|ConvertFrom-Json}else{$null}
 if(!$ServerUrl -and $config -and !$Install){$ServerUrl=$config.serverUrl}
 $ServerUrl=Normalize-ServerUrl $ServerUrl
@@ -72,4 +125,6 @@ $result=Post "$ServerUrl/agent/report" $inventory @{Authorization="Bearer $($con
 if($result.ok -ne $true){throw "O servidor nao confirmou o inventario. Verifique a URL da API."}
 Write-Log "report" "OK" "servidor=$ServerUrl report=$($inventory.reportId) snapshot=$($result.snapshotId)"
 Write-Status "ok"
+# Falha na atualizacao nunca invalida a coleta ja confirmada.
+if(!$Install){try{Invoke-AgentUpdate $config.token}catch{Write-Log "update" "ERROR" $_.Exception.Message}}
 if($Install){. (Join-Path $PSScriptRoot "Install-Tray.ps1");Install-AgentTray $PSScriptRoot $DataDir;Remove-Item -LiteralPath (Join-Path $DataDir "SmartHelpDeskAgent.ps1") -Force -ErrorAction SilentlyContinue;Write-Host "Cadastro confirmado, inventario enviado e tarefa criada."}

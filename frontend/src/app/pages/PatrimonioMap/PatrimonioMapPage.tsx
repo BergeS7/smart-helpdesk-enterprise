@@ -39,6 +39,7 @@ import type {
   MunicipioSummary,
 } from "../../types/device";
 import { AlertsList } from "../../components/patrimonio/AlertsList";
+import { AgentUpdatesDialog } from "../../components/patrimonio/AgentUpdatesDialog";
 import { AssetExplorerPanel } from "../../components/patrimonio/AssetExplorerPanel";
 import { ASSET_USER_LINKED_EVENT } from "../../components/patrimonio/AssetUserLink";
 import { DeviceDiagnostics } from "../../components/patrimonio/DeviceDiagnostics";
@@ -66,6 +67,7 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
     [agentLocations, setAgentLocations] = useState<AssetLocation[]>([]),
     [agentLocationId, setAgentLocationId] = useState(""),
     [agentCommand, setAgentCommand] = useState(""),
+    [agentCode, setAgentCode] = useState(""),
     [agentInviteLoading, setAgentInviteLoading] = useState(false);
   const [history, setHistory] = useState<DeviceHistory[]>([]),
     [historyOpen, setHistoryOpen] = useState(false),
@@ -274,8 +276,10 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
       const insecure = serverUrl.protocol === "http:" ? " -AllowInsecureHttp" : "";
       const command = `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\\SmartHelpDeskAgent.ps1" -ServerUrl "${serverUrl.href}" -EnrollmentKey "${result.convite}" -Municipio "${location.municipio}" -Unidade "${location.nome}" -Latitude ${location.latitude} -Longitude ${location.longitude} -Install${insecure}`;
       setAgentCommand(command);
-      await navigator.clipboard?.writeText(command);
-      toast.success("Comando de instalação criado e copiado.");
+      setAgentCode(result.convite);
+      // O instalador aceita só o código; o comando fica para a instalação manual.
+      await navigator.clipboard?.writeText(result.convite);
+      toast.success("Código de convite criado e copiado.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar convite");
     } finally {
@@ -466,6 +470,7 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
           onAction={action}
         />
       )}
+      <AgentUpdatesDialog />
       {agentWizardOpen && (
         <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/45 p-4" role="dialog" aria-modal="true" aria-labelledby="agent-wizard-title">
           <section className="w-full max-w-2xl overflow-hidden rounded-2xl border bg-white shadow-2xl">
@@ -474,9 +479,9 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
               <button type="button" onClick={()=>setAgentWizardOpen(false)} className="grid h-10 w-10 place-items-center rounded-lg border" aria-label="Fechar assistente"><X size={18}/></button>
             </header>
             <div className="space-y-5 p-5">
-              <div className="grid gap-3 sm:grid-cols-3"><WizardStep icon={<MapPin size={17}/>} number="1" label="Escolher unidade" active={!agentCommand}/><WizardStep icon={<Terminal size={17}/>} number="2" label="Gerar comando" active={Boolean(agentCommand)}/><WizardStep icon={<CheckCircle2 size={17}/>} number="3" label="Confirmar no mapa"/></div>
+              <div className="grid gap-3 sm:grid-cols-3"><WizardStep icon={<MapPin size={17}/>} number="1" label="Escolher unidade" active={!agentCommand}/><WizardStep icon={<Terminal size={17}/>} number="2" label="Gerar convite" active={Boolean(agentCommand)}/><WizardStep icon={<CheckCircle2 size={17}/>} number="3" label="Confirmar no mapa"/></div>
               <label className="block"><span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-700">Município e unidade</span><select value={agentLocationId} onChange={(event)=>{setAgentLocationId(event.target.value);setAgentCommand("")}} className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"><option value="">Selecione...</option>{agentLocations.map(location=><option key={location.id} value={location.id}>{location.municipio} — {location.nome}</option>)}</select></label>
-              {!agentCommand?<button type="button" onClick={()=>void generateInvite()} disabled={!agentLocationId||agentInviteLoading} className="ds-button ds-button--primary w-full justify-center disabled:cursor-not-allowed disabled:opacity-50">{agentInviteLoading?<RefreshCw className="animate-spin" size={17}/>:<Terminal size={17}/>}Gerar comando de instalação</button>:<div className="space-y-3"><div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="font-black text-emerald-900">Convite pronto por duas horas</p><p className="mt-1 text-xs text-emerald-800">Abra o PowerShell como administrador na pasta que contém SmartHelpDeskAgent.ps1.</p></div><pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-950 p-4 text-xs leading-5 text-slate-100">{agentCommand}</pre><button type="button" onClick={()=>navigator.clipboard?.writeText(agentCommand).then(()=>toast.success("Comando copiado."))} className="ds-button ds-button--secondary w-full justify-center"><Copy size={17}/>Copiar novamente</button><p className="text-xs leading-5 text-slate-600">Depois da execução, aguarde a coleta e confirme o equipamento em Ativos. O sistema exibirá hostname, usuário, memória, discos e números de série.</p></div>}
+              {!agentCommand?<button type="button" onClick={()=>void generateInvite()} disabled={!agentLocationId||agentInviteLoading} className="ds-button ds-button--primary w-full justify-center disabled:cursor-not-allowed disabled:opacity-50">{agentInviteLoading?<RefreshCw className="animate-spin" size={17}/>:<Terminal size={17}/>}Gerar código de convite</button>:<div className="space-y-3"><div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="font-black text-emerald-900">Código de convite pronto (vale 2 horas, um computador)</p><p className="mt-1 text-xs text-emerald-800">No computador, abra <b>Instalar-SmartHelpDesk.exe</b> e cole este código.</p><p className="mt-3 select-all break-all rounded-lg bg-white px-3 py-2 font-mono text-lg font-bold text-slate-950">{agentCode}</p></div><button type="button" onClick={()=>navigator.clipboard?.writeText(agentCode).then(()=>toast.success("Código copiado."))} className="ds-button ds-button--secondary w-full justify-center"><Copy size={17}/>Copiar código</button><details className="rounded-xl border p-3 text-xs text-slate-600"><summary className="cursor-pointer font-bold text-slate-700">Instalação manual (PowerShell)</summary><p className="mt-2">Abra o PowerShell como administrador na pasta que contém SmartHelpDeskAgent.ps1.</p><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-950 p-4 text-xs leading-5 text-slate-100">{agentCommand}</pre><button type="button" onClick={()=>navigator.clipboard?.writeText(agentCommand).then(()=>toast.success("Comando copiado."))} className="ds-button ds-button--secondary mt-2 w-full justify-center"><Copy size={17}/>Copiar comando</button></details><p className="text-xs leading-5 text-slate-600">Depois do cadastro, o equipamento aparece em Ativos com hostname, usuário, memória, discos e números de série.</p></div>}
             </div>
           </section>
         </div>

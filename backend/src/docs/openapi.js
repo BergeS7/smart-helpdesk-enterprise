@@ -194,6 +194,13 @@ const openapiDocument = {
     "/assets/agent/enroll": { post: op("Registrar agente (com limite de tentativas)", { auth: false, tags: ["Ativos"] }) },
     "/assets/agent/heartbeat": { post: op("Heartbeat do agente (token de agente)", { auth: false, tags: ["Ativos"] }) },
     "/assets/agent/report": { post: op("Reportar inventário (token de agente)", { auth: false, tags: ["Ativos"] }) },
+    "/assets/agent/update": { get: op("Versão vigente do agente (token de agente)", { auth: false, tags: ["Ativos"] }) },
+    "/assets/agent/update/package": { get: op("Pacote assinado da versão vigente (token de agente)", { auth: false, tags: ["Ativos"] }) },
+    "/assets/admin/agent-releases": {
+      get: op("Listar versões do agente e distribuição (admin/desenvolvedor)", { tags: ["Ativos"] }),
+      post: op("Publicar versão assinada do agente (admin/desenvolvedor)", { tags: ["Ativos"] }),
+    },
+    "/assets/admin/agent-releases/{id}/revoke": { patch: op("Revogar versão do agente", { tags: ["Ativos"], params: ["id"] }) },
     "/assets/admin/invites": { post: op("Criar convite de agente (admin/desenvolvedor)", { tags: ["Ativos"] }) },
     "/assets/admin/locations": {
       get: op("Listar localidades administráveis", { tags: ["Ativos"] }),
