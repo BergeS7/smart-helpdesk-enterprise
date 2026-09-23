@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: Página de operational dashboard; compõe a experiência e os dados desta área do sistema.
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -130,8 +130,8 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
           <div><h3 className="font-black">Fluxo de chamados</h3><p className={`mt-1 text-xs ${muted}`}>Recebidos e resolvidos no período selecionado</p></div>
           <Trend value={trend} />
         </div>
-        <div className="mt-5 h-72"><FlowChart items={data.evolucao || []} dark={dark}/></div>
-        <div className={`mt-2 flex flex-wrap gap-5 text-[11px] font-bold ${muted}`}><Legend color="bg-blue-600" label="Recebidos"/><Legend color="bg-emerald-500" label="Resolvidos"/></div>
+        <FlowSummary items={data.evolucao || []} dark={dark}/>
+        <div className="mt-4 h-72"><FlowChart items={data.evolucao || []} dark={dark}/></div>
       </div>
 
       <div className="col-span-12 grid gap-5 sm:grid-cols-2 xl:col-span-4 xl:grid-cols-1">
@@ -185,7 +185,6 @@ function Trend({ value }: { value: number }) {
   return <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${positive ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>{positive ? <TrendingUp size={14}/> : <TrendingDown size={14}/>} {Math.abs(value)}%</span>;
 }
 
-function Legend({ color, label }: { color: string; label: string }) { return <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${color}`}/>{label}</span>; }
 function MiniStat({ label, value }: { label: string; value: string }) { return <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</span><b className="mt-0.5 block text-sm">{value}</b></div>; }
 
 function Rank({ title, icon, rows, onClick, dark, color }: { title: string; icon: ReactNode; rows: { label: string; value: number }[]; onClick: () => void; dark: boolean; color: string }) {
@@ -204,25 +203,120 @@ function PriorityBadge({ priority }: { priority: string }) {
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black ${style}`}>{priority}</span>;
 }
 
-function FlowChart({ items, dark }: { items: { data: string; recebidos: number; resolvidos: number }[]; dark: boolean }) {
+type FlowPoint = { data: string; recebidos: number; resolvidos: number };
+
+// Cores validadas para daltonismo (azul x verde) em cada fundo.
+const flowColors = (dark: boolean) => dark
+  ? { received: "#3b82f6", resolved: "#12a87a", grid: "#1e293b", axis: "#94a3b8", hover: "rgba(148,163,184,.10)" }
+  : { received: "#2563eb", resolved: "#059669", grid: "#eef2f6", axis: "#64748b", hover: "rgba(100,116,139,.08)" };
+
+// A API manda o dia como meia-noite UTC; usar só AAAA-MM-DD evita mostrar o dia anterior no fuso local.
+function parseDay(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date(value);
+}
+
+// Escala com passos inteiros "redondos" (1, 2, 5, 10...) para o eixo Y.
+function niceTicks(max: number) {
+  const target = Math.max(1, max);
+  const rough = target / 4;
+  const power = 10 ** Math.floor(Math.log10(rough));
+  const step = Math.max(1, [1, 2, 5, 10].map((m) => m * power).find((candidate) => candidate >= rough) || power * 10);
+  const top = Math.ceil(target / step) * step;
+  return Array.from({ length: top / step + 1 }, (_, index) => index * step);
+}
+
+// Coluna com topo arredondado (4px) e base reta, crescendo a partir da linha de base.
+function columnPath(x: number, width: number, top: number, baseline: number) {
+  const r = Math.min(4, width / 2, (baseline - top) / 2);
+  return `M${x},${baseline} V${top + r} Q${x},${top} ${x + r},${top} H${x + width - r} Q${x + width},${top} ${x + width},${top + r} V${baseline} Z`;
+}
+
+function Swatch({ color }: { color: string }) {
+  return <svg width="10" height="10" aria-hidden="true" className="shrink-0"><rect width="10" height="10" rx="2.5" fill={color} stroke="none" /></svg>;
+}
+
+function FlowSummary({ items, dark }: { items: FlowPoint[]; dark: boolean }) {
+  const colors = flowColors(dark);
+  const received = items.reduce((sum, item) => sum + Number(item.recebidos || 0), 0);
+  const resolved = items.reduce((sum, item) => sum + Number(item.resolvidos || 0), 0);
+  const rate = received ? Math.round((resolved / received) * 100) : null;
+  const tile = `rounded-2xl border px-4 py-3 ${dark ? "border-white/10 bg-white/[.03]" : "border-slate-200/80 bg-slate-50/60"}`;
+  const label = `flex items-center gap-2 text-[11px] font-bold ${dark ? "text-slate-400" : "text-slate-500"}`;
+  // Também é a legenda: o quadradinho repete a cor de cada coluna do gráfico.
+  return <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className={tile}><span className={label}><Swatch color={colors.received} />Recebidos</span><b className="mt-1 block text-2xl font-black">{received}</b></div>
+    <div className={tile}><span className={label}><Swatch color={colors.resolved} />Resolvidos</span><b className="mt-1 block text-2xl font-black">{resolved}</b></div>
+    <div className={tile}><span className={label}>Pendentes do período</span><b className="mt-1 block text-2xl font-black">{Math.max(0, received - resolved)}</b></div>
+    <div className={tile}><span className={label}>Taxa de resolução</span><b className="mt-1 block text-2xl font-black">{rate === null ? "—" : `${rate}%`}</b></div>
+  </div>;
+}
+
+function FlowChart({ items, dark }: { items: FlowPoint[]; dark: boolean }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [active, setActive] = useState<number | null>(null);
+  useEffect(() => {
+    const element = box.current;
+    if (!element) return;
+    // Desenha no tamanho real do cartão: textos com 11px e o gráfico ocupa toda a altura.
+    const observer = new window.ResizeObserver(([entry]) => setSize({ width: Math.round(entry.contentRect.width), height: Math.round(entry.contentRect.height) }));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [items.length > 0]);
   if (!items.length) return <div className="grid h-full place-items-center text-xs text-slate-400">Ainda não há dados suficientes para o período.</div>;
-  const width = 760, height = 250, left = 34, right = 12, top = 12, bottom = 30;
-  const chartWidth = width - left - right, chartHeight = height - top - bottom;
-  const max = Math.max(1, ...items.flatMap((item) => [Number(item.recebidos), Number(item.resolvidos)]));
-  const x = (index: number) => left + index * (chartWidth / Math.max(1, items.length - 1));
-  const y = (value: number) => top + chartHeight - (Number(value) / max) * chartHeight;
-  const received = items.map((item, index) => `${index ? "L" : "M"}${x(index)},${y(item.recebidos)}`).join(" ");
-  const resolved = items.map((item, index) => `${index ? "L" : "M"}${x(index)},${y(item.resolvidos)}`).join(" ");
-  const receivedArea = `${received} L${x(items.length - 1)},${top + chartHeight} L${x(0)},${top + chartHeight} Z`;
-  const resolvedArea = `${resolved} L${x(items.length - 1)},${top + chartHeight} L${x(0)},${top + chartHeight} Z`;
-  const labelStep = Math.max(1, Math.ceil(items.length / 7));
-  return <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full" role="img" aria-label="Evolução de chamados recebidos e resolvidos">
-    <defs><linearGradient id="dashReceived" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2563eb" stopOpacity=".28"/><stop offset="1" stopColor="#2563eb" stopOpacity="0"/></linearGradient><linearGradient id="dashResolved" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#10b981" stopOpacity=".2"/><stop offset="1" stopColor="#10b981" stopOpacity="0"/></linearGradient></defs>
-    {[0, .25, .5, .75, 1].map((ratio) => <g key={ratio}><line x1={left} x2={width - right} y1={top + chartHeight * ratio} y2={top + chartHeight * ratio} stroke={dark ? "#334155" : "#e2e8f0"} strokeDasharray="4 5"/><text x={left - 8} y={top + chartHeight * ratio + 3} textAnchor="end" fontSize="9" fill={dark ? "#94a3b8" : "#64748b"}>{Math.round(max * (1 - ratio))}</text></g>)}
-    <path d={receivedArea} fill="url(#dashReceived)"/><path d={resolvedArea} fill="url(#dashResolved)"/>
-    <path d={received} fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/><path d={resolved} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
-    {items.map((item, index) => <g key={item.data}><circle cx={x(index)} cy={y(item.recebidos)} r="3" fill="#2563eb"><title>{shortDate(item.data)}: {item.recebidos} recebidos</title></circle><circle cx={x(index)} cy={y(item.resolvidos)} r="3" fill="#10b981"><title>{shortDate(item.data)}: {item.resolvidos} resolvidos</title></circle>{(index % labelStep === 0 || index === items.length - 1) && <text x={x(index)} y={height - 8} textAnchor="middle" fontSize="9" fill={dark ? "#94a3b8" : "#64748b"}>{shortDate(item.data)}</text>}</g>)}
-  </svg>;
+
+  const colors = flowColors(dark);
+  const { width, height } = size;
+  const left = 32, right = 8, top = 14, bottom = 28;
+  const plotWidth = Math.max(1, width - left - right), plotHeight = Math.max(1, height - top - bottom);
+  const ticks = niceTicks(Math.max(...items.flatMap((item) => [Number(item.recebidos), Number(item.resolvidos)])));
+  const max = ticks[ticks.length - 1];
+  const band = plotWidth / items.length;
+  // Colunas finas (até 14px) com 2px de respiro entre recebidos e resolvidos do mesmo dia.
+  const barWidth = Math.max(2, Math.min(14, (band - 6) / 2));
+  const center = (index: number) => left + band * index + band / 2;
+  const y = (value: number) => top + plotHeight - (Number(value) / max) * plotHeight;
+  const baseline = top + plotHeight;
+  const labelEvery = Math.max(1, Math.ceil(items.length / Math.max(2, Math.floor(plotWidth / 64))));
+  const dayLabel = (value: string) => parseDay(value).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  const current = active === null ? null : items[active];
+  const showLabel = (index: number) => index === items.length - 1 || (index % labelEvery === 0 && items.length - 1 - index >= labelEvery / 2);
+
+  function pick(clientX: number) {
+    const rect = box.current?.getBoundingClientRect();
+    if (!rect) return;
+    setActive(Math.max(0, Math.min(items.length - 1, Math.floor((clientX - rect.left - left) / band))));
+  }
+  function onKey(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    setActive((index) => Math.max(0, Math.min(items.length - 1, (index ?? items.length) + (event.key === "ArrowRight" ? 1 : -1))));
+  }
+
+  return <div ref={box} className="relative h-full w-full touch-pan-y outline-none" tabIndex={0} onKeyDown={onKey} onBlur={() => setActive(null)}
+    onPointerMove={(event) => pick(event.clientX)} onPointerDown={(event) => pick(event.clientX)} onPointerLeave={() => setActive(null)}
+    aria-label="Chamados recebidos e resolvidos por dia. Use as setas para percorrer os dias.">
+    {width > 0 && <svg width={width} height={height} className="block" aria-hidden="true">
+      {/* stroke explícito em tudo: o tema aplica contorno preto ao <svg> e os filhos herdariam. */}
+      {active !== null && <rect x={left + band * active} y={top} width={band} height={plotHeight} rx="6" fill={colors.hover} stroke="none"/>}
+      {ticks.map((tick) => <g key={tick}>
+        <line x1={left} x2={width - right} y1={y(tick)} y2={y(tick)} stroke={colors.grid} strokeWidth="1"/>
+        <text x={left - 10} y={y(tick) + 4} textAnchor="end" fontSize="11" fontWeight="600" fill={colors.axis} stroke="none" style={{ fontVariantNumeric: "tabular-nums" }}>{tick}</text>
+      </g>)}
+      {items.map((item, index) => <g key={item.data}>
+        {Number(item.recebidos) > 0 && <path d={columnPath(center(index) - barWidth - 1, barWidth, y(item.recebidos), baseline)} fill={colors.received} stroke="none"/>}
+        {Number(item.resolvidos) > 0 && <path d={columnPath(center(index) + 1, barWidth, y(item.resolvidos), baseline)} fill={colors.resolved} stroke="none"/>}
+        {showLabel(index) && <text x={center(index)} y={height - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill={colors.axis} stroke="none">{dayLabel(item.data)}</text>}
+      </g>)}
+    </svg>}
+    {current && active !== null && <div className={`pointer-events-none absolute top-1 z-10 min-w-[150px] rounded-xl border px-3 py-2 text-xs shadow-lg ${dark ? "border-white/10 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-950"}`}
+      style={center(active) > width / 2 ? { right: width - (left + band * active) + 8 } : { left: left + band * (active + 1) + 8 }}>
+      <p className={`mb-1.5 font-bold capitalize ${dark ? "text-slate-400" : "text-slate-500"}`}>{parseDay(current.data).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })}</p>
+      <p className="flex items-center gap-2"><Swatch color={colors.received} /><b className="text-sm">{current.recebidos}</b><span className={dark ? "text-slate-400" : "text-slate-500"}>recebidos</span></p>
+      <p className="mt-1 flex items-center gap-2"><Swatch color={colors.resolved} /><b className="text-sm">{current.resolvidos}</b><span className={dark ? "text-slate-400" : "text-slate-500"}>resolvidos</span></p>
+    </div>}
+  </div>;
 }
 
 function formatMinutes(minutes?: number) {
@@ -233,5 +327,4 @@ function formatMinutes(minutes?: number) {
   return rest ? `${hours}h ${rest}min` : `${hours}h`;
 }
 
-function shortDate(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }); }
 function signed(value: number) { return value >= 0 ? `+${value}` : String(value); }
