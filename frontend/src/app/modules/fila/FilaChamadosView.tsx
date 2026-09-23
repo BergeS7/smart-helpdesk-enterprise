@@ -2,6 +2,8 @@
  * Responsabilidade: Módulo funcional de fila chamados view; reúne interface e ações do respectivo fluxo.
  */
 import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type SelectHTMLAttributes } from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { useListChanges } from "../../components/motion";
 import { AlertTriangle, Check, CheckCircle2, ChevronDown, Clock3, Headphones, ListChecks, MapPin, MessageSquare, Monitor, ShieldAlert, SlidersHorizontal, Ticket, UserCheck, UserCog, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { atualizarChamado, buscarChamado, type ApiChamado, type ApiTeam, type ApiUsuario } from "../../services/api";
@@ -106,6 +108,9 @@ export function FilaChamadosView({
         return slaA - slaB;
       });
   }, [chamados, visao]);
+  // Chamado novo desliza para dentro; chamado que sai (assumido, delegado) desliza para a direita
+  // e os de baixo sobem. Troca de aba ou mudança em massa renderiza sem animação.
+  const changes = useListChanges(chamadosVisiveis.map((chamado) => chamado.id));
 
   function statusFila(chamado: ApiChamado) {
     if (chamado.sla_status === "pausado") {
@@ -353,14 +358,21 @@ export function FilaChamadosView({
         </div>
       )}
 
-      <div className="max-h-[calc(100vh-270px)] min-h-[360px] overflow-y-auto">
+      <div className="relative max-h-[calc(100vh-270px)] min-h-[360px] overflow-y-auto overflow-x-hidden">
+        <MotionConfig reducedMotion="user">
+        <AnimatePresence key={`${visao}-${changes.epoch}`} initial={false} mode="popLayout">
         {chamadosVisiveis.map((chamado) => {
           const indicador = statusFila(chamado);
           const data = chamado.criado_em ? new Date(chamado.criado_em) : null;
           return (
-            <article
+            <motion.article
               key={chamado.id}
-              className={`group relative border-b px-4 py-3 transition last:border-b-0 sm:px-5 ${novosIds.includes(chamado.id) ? "bg-emerald-50 ring-1 ring-inset ring-emerald-200" : dark ? "border-white/10 hover:bg-white/5" : "border-zinc-100 hover:bg-blue-50/40"}`}
+              layout="position"
+              initial={changes.isNew(chamado.id) ? { opacity: 0, y: -14 } : false}
+              animate={{ opacity: 1, y: 0, x: 0 }}
+              exit={{ opacity: 0, x: 80, transition: { duration: 0.25, ease: "easeIn" } }}
+              transition={{ type: "spring", stiffness: 380, damping: 34 }}
+              className={`group relative border-b px-4 py-3 transition-colors last:border-b-0 sm:px-5 ${novosIds.includes(chamado.id) ? "bg-emerald-50 ring-1 ring-inset ring-emerald-200" : dark ? "border-white/10 hover:bg-white/5" : "border-zinc-100 hover:bg-blue-50/40"}`}
             >
               <div className="flex min-w-0 items-start gap-3">
                 <input
@@ -500,9 +512,11 @@ export function FilaChamadosView({
                   </div>
                 </div>
               )}
-            </article>
+            </motion.article>
           );
         })}
+        </AnimatePresence>
+        </MotionConfig>
 
         {chamadosVisiveis.length === 0 && (
           <div className="grid min-h-[360px] place-items-center p-8 text-center">

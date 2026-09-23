@@ -1,7 +1,9 @@
 /**
  * Responsabilidade: Módulo funcional de kanban workspace; reúne interface e ações do respectivo fluxo.
  */
-import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { LayoutGroup, MotionConfig, motion } from "motion/react";
+import { useListChanges } from "../../components/motion";
 import { AlertTriangle, ArrowRight, CheckCircle2, CircleDot, Clock3, Columns3, List, Mail, MapPin, MessageSquare, Monitor, Paperclip, PauseCircle, RefreshCw, Rows3, Ticket } from "lucide-react";
 import { type ApiChamado } from "../../services/api";
 import { TICKET_STATUS, canonicalTicketStatus, ticketStatusLabel, type TicketStatus } from "../../domain/ticketStatus";
@@ -44,6 +46,12 @@ export function KanbanWorkspace({
   // A janela de permanência é aplicada pela API. O histórico usa consulta própria
   // e nunca depende desta lista operacional.
   const chamados = todosChamados;
+  // Só anima o que muda aos poucos: cartão novo entra, cartão que troca de coluna desliza até ela.
+  const changes = useListChanges(chamados.map((c) => c.id));
+  const [overColumn, setOverColumn] = useState<string | null>(null);
+  // Contador da coluna "pula" quando muda, mas não na primeira exibição.
+  const boardReady = useRef(false);
+  useEffect(() => { boardReady.current = true; }, []);
   const [preferredView, setPreferredView] = useState<KanbanViewMode>(() => {
     const saved = localStorage.getItem("smart_helpdesk_kanban_view");
     return saved === "list" || saved === "detailed" ? saved : "kanban";
@@ -107,6 +115,8 @@ export function KanbanWorkspace({
       </div>
 
       {view === "kanban" && (
+        <MotionConfig reducedMotion="user">
+        <LayoutGroup key={changes.epoch}>
         <div className="overflow-x-auto pb-4">
           <div className="grid min-w-[1180px] grid-cols-4 gap-3">
             {STATUS_COLUNAS.map((coluna) => {
@@ -116,12 +126,14 @@ export function KanbanWorkspace({
               return (
                 <section
                   key={coluna.status}
-                  onDragOver={(e) => e.preventDefault()}
+                  onDragOver={(e) => { e.preventDefault(); if (dragId && overColumn !== coluna.status) setOverColumn(coluna.status); }}
+                  onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOverColumn(null); }}
                   onDrop={() => {
                     if (dragId) onMover(dragId, coluna.status);
                     setDragId(null);
+                    setOverColumn(null);
                   }}
-                  className={`min-h-[610px] rounded-lg border shadow-sm ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
+                  className={`min-h-[610px] rounded-lg border shadow-sm transition-[box-shadow,background-color] duration-200 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"} ${overColumn === coluna.status ? (dark ? "bg-white/10 ring-2 ring-blue-400/60" : "bg-blue-50/60 ring-2 ring-blue-300") : ""}`}
                 >
                   <div className="overflow-hidden rounded-t-lg border-b border-zinc-200">
                     <div className={`h-1.5 ${coluna.accent}`} />
@@ -133,23 +145,36 @@ export function KanbanWorkspace({
                         <span className="truncate">{coluna.titulo}</span>
                       </h3>
                       <div className="flex items-center gap-2">
-                        <span
+                        <motion.span
+                          key={itens.length}
+                          initial={boardReady.current ? { scale: 1.35 } : false}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 18 }}
                           className={`grid h-7 min-w-7 place-items-center rounded-full px-2 text-xs font-black ${coluna.count}`}
                         >
                           {itens.length}
-                        </span>
+                        </motion.span>
                         <span className={coluna.tone}>◆</span>
                       </div>
                     </div>
                   </div>
                   <div className="space-y-3 p-3">
                     {itens.map((c) => (
-                      <AdminTicketCard
+                      // layoutId: ao mudar de coluna o cartão desliza da posição antiga até a nova.
+                      <motion.div
                         key={c.id}
-                        chamado={c}
-                        onOpen={() => onAbrir(c.id)}
-                        onDrag={() => setDragId(c.id)}
-                      />
+                        layoutId={`kanban-${c.id}`}
+                        initial={changes.isNew(c.id) ? { opacity: 0, scale: 0.94, y: -8 } : false}
+                        animate={{ opacity: dragId === c.id ? 0.45 : 1, scale: 1, y: 0 }}
+                        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                      >
+                        <AdminTicketCard
+                          chamado={c}
+                          onOpen={() => onAbrir(c.id)}
+                          onDrag={() => setDragId(c.id)}
+                          onDragEnd={() => { setDragId(null); setOverColumn(null); }}
+                        />
+                      </motion.div>
                     ))}
                     {itens.length === 0 && (
                       <div
@@ -164,6 +189,8 @@ export function KanbanWorkspace({
             })}
           </div>
         </div>
+        </LayoutGroup>
+        </MotionConfig>
       )}
 
       {view === "list" && (
@@ -347,10 +374,12 @@ function AdminTicketCard({
   chamado,
   onOpen,
   onDrag,
+  onDragEnd,
 }: {
   chamado: ApiChamado;
   onOpen: () => void;
   onDrag: () => void;
+  onDragEnd: () => void;
 }) {
   const tipo =
     chamado.tipo_chamado ||
@@ -366,6 +395,7 @@ function AdminTicketCard({
     <article
       draggable
       onDragStart={onDrag}
+      onDragEnd={onDragEnd}
       onClick={onOpen}
       className={`group cursor-grab rounded-md border bg-white p-3 text-[#202a33] shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md active:cursor-grabbing ${chamado.vencido ? "border-red-300 ring-2 ring-red-100" : "border-zinc-200"}`}
     >
