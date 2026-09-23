@@ -81,12 +81,6 @@ async function ensureAssetSchema() {
       cpu_usage NUMERIC(6,2), ram_usage NUMERIC(6,2), disk_usage NUMERIC(6,2), coletado_em TIMESTAMPTZ DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_ativo_metricas_ativo_data ON ativo_metricas(ativo_id, coletado_em DESC);
-    -- Pacotes assinados da atualização automática; o agente confere a assinatura.
-    CREATE TABLE IF NOT EXISTS agente_versoes (
-      id BIGSERIAL PRIMARY KEY, versao VARCHAR(20) UNIQUE NOT NULL, sha256 CHAR(64) NOT NULL, assinatura TEXT NOT NULL,
-      pacote BYTEA NOT NULL, tamanho_bytes INTEGER NOT NULL, ativa BOOLEAN NOT NULL DEFAULT TRUE,
-      publicado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL, publicado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), revogado_em TIMESTAMPTZ
-    );
     ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_id BIGINT;
     ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_hostname VARCHAR(255);
     ALTER TABLE chamados ADD COLUMN IF NOT EXISTS ativo_patrimonio VARCHAR(100);
