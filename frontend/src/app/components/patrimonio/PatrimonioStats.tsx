@@ -3,6 +3,7 @@
  */
 import { AlertTriangle, CheckCircle2, Monitor, XCircle } from "lucide-react";
 import type { Device } from "../../types/device";
+import { CountUp, enter } from "../motion";
 
 export function PatrimonioStats({ devices }: { devices: Device[] }) {
   const stats = [
@@ -36,7 +37,8 @@ export function PatrimonioStats({ devices }: { devices: Device[] }) {
       {stats.map(({ label, value, icon: Icon, tone }, index) => (
         <div
           key={label}
-          className={`flex items-center gap-3 px-4 py-2.5 ${index ? "border-t border-zinc-100 sm:border-l sm:border-t-0" : ""}`}
+          style={enter(index * 70)}
+          className={`motion-enter flex items-center gap-3 px-4 py-2.5 ${index ? "border-t border-zinc-100 sm:border-l sm:border-t-0" : ""}`}
         >
           <span
             className={`dashboard-tone-${tone} grid h-9 w-9 shrink-0 place-items-center rounded-xl`}
@@ -48,7 +50,8 @@ export function PatrimonioStats({ devices }: { devices: Device[] }) {
               {label}
             </p>
             <p className="text-xl font-black leading-tight text-zinc-900">
-              {value}
+              {/* Na atualização a cada 30 s só conta o que mudou. */}
+              <CountUp value={value} />
             </p>
           </div>
         </div>
