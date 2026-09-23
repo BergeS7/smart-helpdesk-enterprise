@@ -53,10 +53,7 @@ internal static class AgentApp
     {
         // O processo original permanece no usuário que abriu o instalador; somente
         // o assistente é elevado. O ícone é iniciado pelo processo original.
-        var start = new ProcessStartInfo(Application.ExecutablePath, "--install-elevated");
-        start.UseShellExecute = true;
-        start.Verb = "runas";
-        start.WindowStyle = ProcessWindowStyle.Hidden;
+        var start = ElevatedInstallerStart();
         try
         {
             using (var installer = Process.Start(start))
@@ -78,6 +75,16 @@ internal static class AgentApp
         tray.CreateNoWindow = true;
         Process.Start(tray);
         return 0;
+    }
+
+    // Sem WindowStyle.Hidden: o Windows aplicaria esse modo à primeira janela do
+    // processo elevado, e o assistente de cadastro abriria invisível.
+    internal static ProcessStartInfo ElevatedInstallerStart()
+    {
+        var start = new ProcessStartInfo(Application.ExecutablePath, "--install-elevated");
+        start.UseShellExecute = true;
+        start.Verb = "runas";
+        return start;
     }
 
     internal static ProcessStartInfo PowerShellStart(string script, string arguments)
@@ -183,6 +190,7 @@ internal static class AgentApp
         check(Portal(data) == "https://example.test/suporte/");
         var start = PowerShellStart(Path.Combine(InstallDir, "SmartHelpDeskAgent.ps1"), "");
         check(!start.UseShellExecute && start.CreateNoWindow && start.WindowStyle == ProcessWindowStyle.Hidden);
+        check(ElevatedInstallerStart().WindowStyle == ProcessWindowStyle.Normal);
         using (var icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath)) check(icon != null);
         using (var context = new AgentTray()) check(context != null);
         if (output != null) File.WriteAllText(output, checks + " verificações OK: status, expiração, URL, processo sem console e menu de bandeja.");
