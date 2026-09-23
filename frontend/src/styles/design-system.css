@@ -139,6 +139,8 @@
 @keyframes motion-ring{from{opacity:0;transform:rotate(-120deg) scale(.82)}}
 @keyframes motion-draw{from{stroke-dashoffset:1}}
 @keyframes motion-fade{from{opacity:0}}
+@keyframes motion-podium{from{opacity:0;transform:translateY(48px)}}
+@keyframes motion-crown{0%{opacity:0;transform:translateY(-22px) rotate(-25deg)}60%{opacity:1;transform:translateY(3px) rotate(8deg)}100%{transform:none}}
 @media(prefers-reduced-motion:no-preference){
   .motion-enter{animation:motion-rise .55s cubic-bezier(.2,.8,.2,1) backwards}
   .motion-column{transform-box:fill-box;transform-origin:50% 100%;animation:motion-grow-y .65s cubic-bezier(.2,.8,.2,1) backwards}
@@ -147,6 +149,8 @@
   .motion-ring{animation:motion-ring .9s cubic-bezier(.2,.8,.2,1) backwards}
   .motion-draw{stroke-dasharray:1;animation:motion-draw 1.2s cubic-bezier(.4,0,.2,1) backwards}
   .motion-fade{animation:motion-fade .9s ease-out backwards}
+  .motion-podium{animation:motion-podium .7s cubic-bezier(.2,.9,.25,1.15) backwards}
+  .motion-crown{animation:motion-crown .75s cubic-bezier(.2,.8,.2,1) backwards}
 }
 @media(max-width:640px){.ds-card,.shd-card{border-radius:14px!important}.ds-modal,.shd-modal-panel{border-radius:18px!important}.shd-app main{padding-inline:12px!important}}
 
