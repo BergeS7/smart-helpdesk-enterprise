@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: Componente de interface de patrimonio map; apresenta dados e interações do usuário.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import type { GeoJsonObject } from "geojson";
@@ -82,12 +82,16 @@ export function PatrimonioMap({ devices, allDevices, selected, municipio, onSele
     }
     return grouped;
   }, [allDevices]);
-  const cidades = useMemo(() => municipiosMaranhao.map((cidade) => {
+  // As bolinhas das cidades surgem em sequência só na primeira vez; a atualização a cada 30 s
+  // recria os ícones e não deve repetir a entrada.
+  const citiesShown = useRef(false);
+  const cidades = useMemo(() => municipiosMaranhao.map((cidade, index) => {
     const ativos = devicesByMunicipio.get(cidade.nome) || [];
     const alertas = ativos.filter((device) => device.status !== "online").length;
-    const icon = L.divIcon({ className: "city-dot-wrapper", html: `<div class="city-dot ${alertas ? "city-dot-alert" : ""}"><span>${ativos.length}</span></div>`, iconSize: [34, 34], iconAnchor: [17, 17] });
+    const icon = L.divIcon({ className: "city-dot-wrapper", html: `<div class="city-dot ${alertas ? "city-dot-alert" : ""}${citiesShown.current ? "" : " city-dot-intro"}" style="animation-delay:${Math.min(index, 30) * 35}ms"><span>${ativos.length}</span></div>`, iconSize: [34, 34], iconAnchor: [17, 17] });
     return { ...cidade, ativos, icon };
   }).filter((cidade) => cidade.ativos.length > 0), [devicesByMunicipio]);
+  useEffect(() => { if (cidades.length) citiesShown.current = true; }, [cidades]);
 
   return <MapContainer center={centroMaranhao} zoom={7} minZoom={7} maxZoom={15} maxBounds={MARANHAO_BOUNDS} maxBoundsViscosity={1} scrollWheelZoom className="h-full w-full">
     <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" bounds={MARANHAO_BOUNDS} noWrap />

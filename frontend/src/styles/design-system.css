@@ -139,6 +139,7 @@
 @keyframes motion-ring{from{opacity:0;transform:rotate(-120deg) scale(.82)}}
 @keyframes motion-draw{from{stroke-dashoffset:1}}
 @keyframes motion-fade{from{opacity:0}}
+@keyframes motion-panel{from{opacity:0;transform:translateX(18px)}}
 @keyframes motion-reveal{from{clip-path:inset(0 100% 0 0)}}
 @keyframes motion-star{from{opacity:0;transform:scale(0) rotate(-45deg)}60%{transform:scale(1.3)}}
 @keyframes motion-podium{from{opacity:0;transform:translateY(48px)}}
@@ -151,6 +152,7 @@
   .motion-ring{animation:motion-ring .9s cubic-bezier(.2,.8,.2,1) backwards}
   .motion-draw{stroke-dasharray:1;animation:motion-draw 1.2s cubic-bezier(.4,0,.2,1) backwards}
   .motion-fade{animation:motion-fade .9s ease-out backwards}
+  .motion-panel{animation:motion-panel .35s cubic-bezier(.2,.8,.2,1) backwards}
   .motion-reveal{animation:motion-reveal 1.1s cubic-bezier(.4,0,.2,1) backwards}
   .motion-star{animation:motion-star .45s cubic-bezier(.2,.8,.2,1) backwards}
   .motion-podium{animation:motion-podium .7s cubic-bezier(.2,.9,.25,1.15) backwards}

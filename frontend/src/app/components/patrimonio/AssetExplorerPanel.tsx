@@ -20,6 +20,7 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
+import { CountUp, enter } from "../motion";
 import React from "react";
 import { getDeviceInventory } from "../../services/deviceService";
 import type {
@@ -97,23 +98,25 @@ export function AssetExplorerPanel(props: Props) {
     (a, b) => b.offline * 10 + b.warning - (a.offline * 10 + a.warning),
   );
   return (
-    <aside className="asset-explorer flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <aside className="motion-panel asset-explorer flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm">
       <PanelHeader
         eyebrow="Visão operacional"
         title="Áreas de atuação"
         subtitle="Selecione uma área no mapa ou na lista"
       />
       <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-        <Kpi label="Áreas" value={summary.length} />
+        <Kpi label="Áreas" value={summary.length} delay={80} />
         <Kpi
           label="Com alerta"
           value={summary.filter((x) => x.warning + x.offline > 0).length}
           tone="amber"
+          delay={140}
         />
         <Kpi
           label="Sem comunicação"
           value={summary.reduce((n, x) => n + x.offline, 0)}
           tone="red"
+          delay={200}
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto border-t">
@@ -121,11 +124,12 @@ export function AssetExplorerPanel(props: Props) {
           Prioridade operacional
         </p>
         <div className="grid grid-cols-1 gap-px bg-slate-100 2xl:grid-cols-2">
-          {priority.map((city) => (
+          {priority.map((city, index) => (
             <button
               key={city.municipio}
               onClick={() => onCity(city.municipio)}
-              className="flex min-h-[66px] w-full items-center gap-3 bg-white p-3 text-left transition hover:bg-blue-50"
+              style={enter(260 + Math.min(index, 12) * 45)}
+              className="motion-enter flex min-h-[66px] w-full items-center gap-3 bg-white p-3 text-left transition hover:bg-blue-50"
             >
               <span
                 className={`grid h-9 w-9 place-items-center rounded-xl ${city.offline ? "bg-red-50 text-red-600" : city.warning ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}
@@ -173,7 +177,7 @@ function CityView({
         )),
   );
   return (
-    <aside className="asset-explorer flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <aside className="motion-panel asset-explorer flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="flex items-start gap-3 border-b p-4">
         <button
           onClick={onBack}
@@ -226,10 +230,11 @@ function CityView({
         </div>
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-        {rows.map((device) => (
+        {rows.map((device, index) => (
           <DeviceCard
             key={device.id}
             device={device}
+            delay={120 + Math.min(index, 12) * 45}
             onClick={() => onDevice(device)}
           />
         ))}
@@ -245,16 +250,19 @@ function CityView({
 function DeviceCard({
   device,
   onClick,
+  delay,
 }: {
   device: Device;
   onClick: () => void;
+  delay: number;
 }) {
   const meta = status[device.status],
     Icon = meta.icon;
   return (
     <button
       onClick={onClick}
-      className="w-full rounded-xl border p-3 text-left transition hover:border-blue-300 hover:shadow-md"
+      style={enter(delay)}
+      className="motion-enter w-full rounded-xl border p-3 text-left transition hover:border-blue-300 hover:shadow-md"
     >
       <div className="flex items-start gap-3">
         <span
@@ -318,7 +326,7 @@ function DeviceView({
     disks = inventory?.storage?.physicalDisks || [],
     volumes = inventory?.storage?.volumes || [];
   return (
-    <aside className="asset-explorer flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <aside className="motion-panel asset-explorer flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="flex items-start gap-3 border-b p-4">
         <button
           onClick={onBack}
@@ -713,16 +721,21 @@ function Kpi({
   label,
   value,
   tone = "blue",
+  delay,
 }: {
   label: string;
   value: number;
   tone?: string;
+  delay: number;
 }) {
   return (
     <div
-      className={`rounded-xl p-3 ${tone === "red" ? "bg-red-50 text-red-700" : tone === "amber" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}
+      style={enter(delay)}
+      className={`motion-enter rounded-xl p-3 ${tone === "red" ? "bg-red-50 text-red-700" : tone === "amber" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}
     >
-      <b className="block text-lg">{value}</b>
+      <b className="block text-lg">
+        <CountUp value={value} />
+      </b>
       <small className="font-bold">{label}</small>
     </div>
   );
@@ -742,8 +755,8 @@ function MiniMetric({ label, value }: { label: string; value: number | null }) {
       </span>
       <div className="mt-1 h-1 overflow-hidden rounded bg-slate-100">
         <div
-          className={`h-full ${color}`}
-          style={{ width: `${Math.min(100, value ?? 0)}%` }}
+          className={`motion-bar h-full ${color}`}
+          style={{ ...enter(250), width: `${Math.min(100, value ?? 0)}%` }}
         />
       </div>
     </div>
