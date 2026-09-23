@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: Página de operational dashboard; compõe a experiência e os dados desta área do sistema.
  */
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -96,7 +96,7 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
   }
 
   return <div ref={root} className={`ds-page dashboard-modern space-y-5 ${dark ? "text-white" : "text-slate-950"}`}>
-    <section className={`relative overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-6 ${dark ? "border-blue-400/20 bg-gradient-to-r from-slate-900 to-slate-950" : "border-blue-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50"}`}>
+    <section style={enter(0)} className={`dash-enter relative overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-6 ${dark ? "border-blue-400/20 bg-gradient-to-r from-slate-900 to-slate-950" : "border-blue-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50"}`}>
       <div className="absolute -right-14 -top-20 h-52 w-52 rounded-full bg-blue-500/10" />
       <div className="relative flex flex-wrap items-center gap-4">
         <div className="mr-auto">
@@ -121,11 +121,11 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
     </section>
 
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-      {cards.map((card) => <MetricCard key={card.label} {...card} dark={dark} onClick={() => onNavigate(card.label === "Satisfação" ? "satisfacao" : card.tab)} />)}
+      {cards.map((card, index) => <MetricCard key={card.label} {...card} delay={60 + index * 45} dark={dark} onClick={() => onNavigate(card.label === "Satisfação" ? "satisfacao" : card.tab)} />)}
     </section>
 
     <section className="grid grid-cols-12 gap-5">
-      <div className={`col-span-12 rounded-3xl border p-5 shadow-sm xl:col-span-8 ${panel}`}>
+      <div style={enter(280)} className={`dash-enter col-span-12 rounded-3xl border p-5 shadow-sm xl:col-span-8 ${panel}`}>
         <div className="flex items-start justify-between gap-3">
           <div><h3 className="font-black">Fluxo de chamados</h3><p className={`mt-1 text-xs ${muted}`}>Recebidos e resolvidos no período selecionado</p></div>
           <Trend value={trend} />
@@ -135,15 +135,15 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
       </div>
 
       <div className="col-span-12 grid gap-5 sm:grid-cols-2 xl:col-span-4 xl:grid-cols-1">
-        <section className={`rounded-3xl border p-5 shadow-sm ${panel}`}>
+        <section style={enter(340)} className={`dash-enter rounded-3xl border p-5 shadow-sm ${panel}`}>
           <div className="flex items-center justify-between"><div><h3 className="font-black">Saúde da operação</h3><p className={`mt-1 text-xs ${muted}`}>Indicadores de eficiência</p></div><CheckCircle2 size={20} className="text-emerald-500"/></div>
           <div className="mt-5 flex flex-col items-center gap-5 min-[430px]:flex-row min-[430px]:items-center">
-            <div className="relative grid h-28 w-28 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#2563eb ${slaCompliance}%, ${dark ? "#1e293b" : "#e2e8f0"} 0)` }}><div className={`grid h-20 w-20 place-items-center rounded-full ${dark ? "bg-slate-900" : "bg-white"}`}><div className="w-16 text-center leading-none"><b className="block text-lg leading-none">{slaCompliance}%</b><span className={`mt-2 block text-[8px] font-extrabold uppercase leading-[1.25] ${muted}`}>Dentro do SLA</span></div></div></div>
+            <div className="dash-sla relative grid h-28 w-28 shrink-0 place-items-center rounded-full" style={{ ...enter(500), "--dash-sla": `${slaCompliance}%`, background: `conic-gradient(#2563eb var(--dash-sla), ${dark ? "#1e293b" : "#e2e8f0"} 0)` } as CSSProperties}><div className={`grid h-20 w-20 place-items-center rounded-full ${dark ? "bg-slate-900" : "bg-white"}`}><div className="w-16 text-center leading-none"><b className="block text-lg leading-none"><CountUp value={slaCompliance} />%</b><span className={`mt-2 block text-[8px] font-extrabold uppercase leading-[1.25] ${muted}`}>Dentro do SLA</span></div></div></div>
             <div className="space-y-3"><MiniStat label="Resposta média" value={formatMinutes(data.tempoMedioRespostaMinutos)}/><MiniStat label="Resolução média" value={formatMinutes(data.tempoMedioResolucaoMinutos)}/><MiniStat label="Ativos disponíveis" value={`${onlineRate}%`}/></div>
           </div>
         </section>
 
-        <section className={`rounded-3xl border p-5 shadow-sm ${panel}`}>
+        <section style={enter(400)} className={`dash-enter rounded-3xl border p-5 shadow-sm ${panel}`}>
           <div className="flex items-center justify-between"><div><h3 className="font-black">Atenção agora</h3><p className={`mt-1 text-xs ${muted}`}>Itens que exigem ação</p></div><AlertTriangle size={20} className="text-amber-500"/></div>
           <div className="mt-4 space-y-2">
             {urgent.slice(0, 3).map((ticket) => <button key={ticket.id} onClick={() => onOpenTicket(Number(ticket.id))} className={`group w-full rounded-2xl border p-3 text-left transition ${dark ? "border-white/10 hover:border-red-400/40 hover:bg-white/5" : "border-slate-100 hover:border-red-200 hover:bg-red-50/60"}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><b className="block truncate text-xs">{ticket.numero_chamado || `#${ticket.id}`} · {ticket.titulo}</b><p className={`mt-1 truncate text-[10px] ${muted}`}>{ticketStatusLabel(ticket.status)} · {ticket.responsavel || "Sem responsável"}</p></div><span className="shrink-0 rounded-full bg-red-50 px-2 py-1 text-[8px] font-black uppercase text-red-600">{ticket.vencido ? "Vencido" : ticket.prioridade}</span></div></button>)}
@@ -154,12 +154,12 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
     </section>
 
     <section className="grid gap-5 lg:grid-cols-3">
-      <Rank title="Carga por técnico" icon={<Users size={17}/>} rows={(data.porTecnico || []).map((item) => ({ label: item.tecnico, value: Number(item.total) }))} onClick={() => onNavigate("carteira")} dark={dark} color="bg-violet-500" />
-      <Rank title="Por departamento" icon={<Ticket size={17}/>} rows={data.porDepartamento.map((item) => ({ label: item.departamento, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-blue-500" />
-      <Rank title="Por prioridade" icon={<AlertTriangle size={17}/>} rows={data.porPrioridade.map((item) => ({ label: item.prioridade, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-amber-500" />
+      <Rank title="Carga por técnico" icon={<Users size={17}/>} rows={(data.porTecnico || []).map((item) => ({ label: item.tecnico, value: Number(item.total) }))} onClick={() => onNavigate("carteira")} dark={dark} color="bg-violet-500" delay={460} />
+      <Rank title="Por departamento" icon={<Ticket size={17}/>} rows={data.porDepartamento.map((item) => ({ label: item.departamento, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-blue-500" delay={520} />
+      <Rank title="Por prioridade" icon={<AlertTriangle size={17}/>} rows={data.porPrioridade.map((item) => ({ label: item.prioridade, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-amber-500" delay={580} />
     </section>
 
-    <section className={`overflow-hidden rounded-3xl border shadow-sm ${panel}`}>
+    <section style={enter(640)} className={`dash-enter overflow-hidden rounded-3xl border shadow-sm ${panel}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-4 dark:border-white/10"><div><h3 className="font-black">Chamados recentes</h3><p className={`mt-1 text-xs ${muted}`}>Últimas movimentações registradas</p></div><button onClick={() => onNavigate("chamados")} className="flex items-center gap-1 text-xs font-extrabold text-blue-600 hover:text-blue-700">Ver todos <ArrowUpRight size={14}/></button></div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-left">
@@ -171,9 +171,31 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
   </div>;
 }
 
-function MetricCard({ label, value, icon: Icon, tone, hint, onClick, dark }: { label: string; value: string | number; icon: typeof Ticket; tone: string; hint: string; onClick: () => void; dark: boolean }) {
+// Animação de entrada (classes dash-* em design-system.css): só o atraso varia por elemento.
+const enter = (delay: number): CSSProperties => ({ animationDelay: `${delay}ms` });
+
+// Conta do valor anterior até o novo; na primeira exibição, parte de zero.
+function CountUp({ value, duration = 900 }: { value: number; duration?: number }) {
+  const [shown, setShown] = useState(0);
+  const from = useRef(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { from.current = value; setShown(value); return; }
+    const origin = from.current, start = window.performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      setShown(Math.round(origin + (value - origin) * (1 - (1 - progress) ** 3)));
+      if (progress < 1) frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => { window.cancelAnimationFrame(frame); from.current = value; };
+  }, [value, duration]);
+  return <>{shown}</>;
+}
+
+function MetricCard({ label, value, icon: Icon, tone, hint, onClick, dark, delay }: { label: string; value: string | number; icon: typeof Ticket; tone: string; hint: string; onClick: () => void; dark: boolean; delay: number }) {
   const tones: Record<string, string> = { blue: "bg-blue-50 text-blue-600", violet: "bg-violet-50 text-violet-600", amber: "bg-amber-50 text-amber-600", red: "bg-red-50 text-red-600", rose: "bg-rose-50 text-rose-600", emerald: "bg-emerald-50 text-emerald-600" };
-  return <button onClick={onClick} className={`group rounded-2xl border p-4 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg ${dark ? "border-white/10 bg-slate-900" : "border-slate-200/80 bg-white"}`}><div className="flex items-start justify-between"><span className={`grid h-10 w-10 place-items-center rounded-xl ${tones[tone]}`}><Icon size={18}/></span><ArrowUpRight size={15} className="text-slate-300 transition group-hover:text-blue-500"/></div><p className={`mt-4 text-[9px] font-black uppercase tracking-[.12em] ${dark ? "text-slate-400" : "text-slate-500"}`}>{label}</p><b className="mt-1 block text-2xl tracking-tight">{value}</b><small className={`mt-1 block truncate text-[10px] ${dark ? "text-slate-500" : "text-slate-400"}`}>{hint}</small></button>;
+  return <button onClick={onClick} style={enter(delay)} className={`dash-enter group rounded-2xl border p-4 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg ${dark ? "border-white/10 bg-slate-900" : "border-slate-200/80 bg-white"}`}><div className="flex items-start justify-between"><span className={`grid h-10 w-10 place-items-center rounded-xl ${tones[tone]}`}><Icon size={18}/></span><ArrowUpRight size={15} className="text-slate-300 transition group-hover:text-blue-500"/></div><p className={`mt-4 text-[9px] font-black uppercase tracking-[.12em] ${dark ? "text-slate-400" : "text-slate-500"}`}>{label}</p><b className="mt-1 block text-2xl tracking-tight">{typeof value === "number" ? <CountUp value={value} /> : value}</b><small className={`mt-1 block truncate text-[10px] ${dark ? "text-slate-500" : "text-slate-400"}`}>{hint}</small></button>;
 }
 
 function ActionButton({ children, title, onClick, dark, wide = false }: { children: ReactNode; title: string; onClick: () => void; dark: boolean; wide?: boolean }) {
@@ -187,9 +209,9 @@ function Trend({ value }: { value: number }) {
 
 function MiniStat({ label, value }: { label: string; value: string }) { return <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</span><b className="mt-0.5 block text-sm">{value}</b></div>; }
 
-function Rank({ title, icon, rows, onClick, dark, color }: { title: string; icon: ReactNode; rows: { label: string; value: number }[]; onClick: () => void; dark: boolean; color: string }) {
+function Rank({ title, icon, rows, onClick, dark, color, delay }: { title: string; icon: ReactNode; rows: { label: string; value: number }[]; onClick: () => void; dark: boolean; color: string; delay: number }) {
   const max = Math.max(1, ...rows.map((row) => row.value));
-  return <button onClick={onClick} className={`rounded-3xl border p-5 text-left shadow-sm transition hover:shadow-md ${dark ? "border-white/10 bg-slate-900" : "border-slate-200/80 bg-white"}`}><h3 className="flex items-center gap-2 font-black">{icon}{title}</h3><div className="mt-5 space-y-4">{rows.slice(0, 5).map((row) => <div key={row.label}><div className={`flex justify-between gap-3 text-xs ${dark ? "text-slate-300" : "text-slate-700"}`}><b className="truncate">{row.label || "Não informado"}</b><span className="font-black">{row.value}</span></div><div className={`mt-2 h-1.5 overflow-hidden rounded-full ${dark ? "bg-white/10" : "bg-slate-100"}`}><div className={`h-full rounded-full ${color}`} style={{ width: `${row.value / max * 100}%` }}/></div></div>)}{!rows.length && <p className="py-5 text-center text-xs text-slate-400">Nenhum dado disponível.</p>}</div></button>;
+  return <button onClick={onClick} style={enter(delay)} className={`dash-enter rounded-3xl border p-5 text-left shadow-sm transition hover:shadow-md ${dark ? "border-white/10 bg-slate-900" : "border-slate-200/80 bg-white"}`}><h3 className="flex items-center gap-2 font-black">{icon}{title}</h3><div className="mt-5 space-y-4">{rows.slice(0, 5).map((row, index) => <div key={row.label}><div className={`flex justify-between gap-3 text-xs ${dark ? "text-slate-300" : "text-slate-700"}`}><b className="truncate">{row.label || "Não informado"}</b><span className="font-black">{row.value}</span></div><div className={`mt-2 h-1.5 overflow-hidden rounded-full ${dark ? "bg-white/10" : "bg-slate-100"}`}><div className={`dash-bar h-full rounded-full ${color}`} style={{ ...enter(delay + 180 + index * 70), width: `${row.value / max * 100}%` }}/></div></div>)}{!rows.length && <p className="py-5 text-center text-xs text-slate-400">Nenhum dado disponível.</p>}</div></button>;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -245,10 +267,10 @@ function FlowSummary({ items, dark }: { items: FlowPoint[]; dark: boolean }) {
   const label = `flex items-center gap-2 text-[11px] font-bold ${dark ? "text-slate-400" : "text-slate-500"}`;
   // Também é a legenda: o quadradinho repete a cor de cada coluna do gráfico.
   return <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-    <div className={tile}><span className={label}><Swatch color={colors.received} />Recebidos</span><b className="mt-1 block text-2xl font-black">{received}</b></div>
-    <div className={tile}><span className={label}><Swatch color={colors.resolved} />Resolvidos</span><b className="mt-1 block text-2xl font-black">{resolved}</b></div>
-    <div className={tile}><span className={label}>Pendentes do período</span><b className="mt-1 block text-2xl font-black">{Math.max(0, received - resolved)}</b></div>
-    <div className={tile}><span className={label}>Taxa de resolução</span><b className="mt-1 block text-2xl font-black">{rate === null ? "—" : `${rate}%`}</b></div>
+    <div className={tile}><span className={label}><Swatch color={colors.received} />Recebidos</span><b className="mt-1 block text-2xl font-black"><CountUp value={received} /></b></div>
+    <div className={tile}><span className={label}><Swatch color={colors.resolved} />Resolvidos</span><b className="mt-1 block text-2xl font-black"><CountUp value={resolved} /></b></div>
+    <div className={tile}><span className={label}>Pendentes do período</span><b className="mt-1 block text-2xl font-black"><CountUp value={Math.max(0, received - resolved)} /></b></div>
+    <div className={tile}><span className={label}>Taxa de resolução</span><b className="mt-1 block text-2xl font-black">{rate === null ? "—" : <><CountUp value={rate} />%</>}</b></div>
   </div>;
 }
 
@@ -281,6 +303,8 @@ function FlowChart({ items, dark }: { items: FlowPoint[]; dark: boolean }) {
   const labelEvery = Math.max(1, Math.ceil(items.length / Math.max(2, Math.floor(plotWidth / 64))));
   const dayLabel = (value: string) => parseDay(value).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
   const current = active === null ? null : items[active];
+  // Colunas entram em sequência, em até ~0,6s no total, qualquer que seja o período.
+  const columnDelay = (index: number) => enter(320 + index * Math.min(28, 600 / items.length));
   const showLabel = (index: number) => index === items.length - 1 || (index % labelEvery === 0 && items.length - 1 - index >= labelEvery / 2);
 
   function pick(clientX: number) {
@@ -305,8 +329,8 @@ function FlowChart({ items, dark }: { items: FlowPoint[]; dark: boolean }) {
         <text x={left - 10} y={y(tick) + 4} textAnchor="end" fontSize="11" fontWeight="600" fill={colors.axis} stroke="none" style={{ fontVariantNumeric: "tabular-nums" }}>{tick}</text>
       </g>)}
       {items.map((item, index) => <g key={item.data}>
-        {Number(item.recebidos) > 0 && <path d={columnPath(center(index) - barWidth - 1, barWidth, y(item.recebidos), baseline)} fill={colors.received} stroke="none"/>}
-        {Number(item.resolvidos) > 0 && <path d={columnPath(center(index) + 1, barWidth, y(item.resolvidos), baseline)} fill={colors.resolved} stroke="none"/>}
+        {Number(item.recebidos) > 0 && <path className="dash-column" style={columnDelay(index)} d={columnPath(center(index) - barWidth - 1, barWidth, y(item.recebidos), baseline)} fill={colors.received} stroke="none"/>}
+        {Number(item.resolvidos) > 0 && <path className="dash-column" style={columnDelay(index)} d={columnPath(center(index) + 1, barWidth, y(item.resolvidos), baseline)} fill={colors.resolved} stroke="none"/>}
         {showLabel(index) && <text x={center(index)} y={height - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill={colors.axis} stroke="none">{dayLabel(item.data)}</text>}
       </g>)}
     </svg>}
