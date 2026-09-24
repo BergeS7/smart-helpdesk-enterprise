@@ -1,5 +1,5 @@
 /**
- * Responsabilidade: Controlador HTTP de dashboard; valida a requisição e coordena regras e persistência.
+ * Responsabilidade: Controlador HTTP de dashboard;   valida a requisição e coordena regras e persistência.
  */
 const pool = require("../config/database");
 

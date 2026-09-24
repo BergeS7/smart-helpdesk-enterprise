@@ -49,3 +49,4 @@ exports.status = async (req, res) => {
     res.set("Cache-Control", "no-store").json({ enabled: result.rows.length > 0 });
   } catch { res.status(503).json({ erro: "Não foi possível verificar a inscrição no servidor." }); }
 };
+// (👉ﾟヮﾟ)👉 👈(ﾟヮﾟ👈)

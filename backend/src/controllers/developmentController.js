@@ -21,7 +21,7 @@ async function requestAccess(id, user, client = pool) {
   if (ehUsuarioComum(user.perfil) && Number(item.requester_id) !== Number(user.id)) throw httpError(403, "Você não pode acessar esta demanda.");
   return item;
 }
-
+  
 async function listRequests(req, res) { try {
   const values=[]; const where=[]; const add=(sql,value)=>{values.push(value);where.push(sql.replace("?",`$${values.length}`));};
   if (ehUsuarioComum(req.user.perfil)) add("c.usuario_id=?",req.user.id);

@@ -149,4 +149,16 @@ const avaliarArtigoBase = async (req, res) => {
   }
 };
 
-module.exports = { listarCatalogo, criarCatalogo, atualizarCatalogo, listarBase, criarBase, atualizarBase, registrarVisualizacaoBase, avaliarArtigoBase };
+module.exports = { 
+   listarCatalogo,
+   criarCatalogo,
+   atualizarCatalogo, 
+   listarBase, 
+   criarBase, 
+   atualizarBase, 
+   registrarVisualizacaoBase, 
+   avaliarArtigoBase,
+  };
+
+  
+ // (👉ﾟヮﾟ)👉 👈(ﾟヮﾟ👈)

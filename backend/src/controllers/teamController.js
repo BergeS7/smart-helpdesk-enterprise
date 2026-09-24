@@ -115,3 +115,4 @@ exports.searchUsers = async (req, res) => {
   try { const q=text(req.query.q,120); const result=await pool.query(`SELECT id,nome,email,perfil,departamento FROM usuarios WHERE COALESCE(status,'ativo')='ativo' AND perfil = ANY($1::text[]) AND ($2='' OR nome ILIKE '%' || $2 || '%' OR email ILIKE '%' || $2 || '%') ORDER BY nome LIMIT 30`,[Array.from(TEAM_PROFILES),q]); res.json(result.rows); }
   catch (_) { res.status(500).json({ erro:"Erro ao pesquisar usuários" }); }
 };
+// (👉ﾟヮﾟ)👉 👈(ﾟヮﾟ👈)

@@ -22,5 +22,5 @@ const marcarLida = async (req, res) => {
     return res.status(500).json({ erro: "Erro ao atualizar notificação", detalhe: error.message });
   }
 };
-
+  
 module.exports = { listarNotificacoes, marcarLida };

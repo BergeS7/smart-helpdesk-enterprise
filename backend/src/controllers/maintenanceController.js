@@ -20,7 +20,7 @@ function parseBoolean(valor, fallback = true) {
   if (typeof valor === "boolean") return valor;
   return ["true", "1", "sim", "ativo"].includes(String(valor).toLowerCase());
 }
-
+  
 function normalizarData(valor) {
   if (!valor) return null;
   const data = new Date(valor);

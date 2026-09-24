@@ -26,3 +26,4 @@ exports.update = async (req, res) => {
     res.json({ usuario_id: target.rows[0].id, permissions });
   } catch (error) { res.status(500).json({ erro: "Erro ao atualizar permissões", detalhe: error.message }); }
 };
+// (👉ﾟヮﾟ)👉 👈(ﾟヮﾟ👈)
