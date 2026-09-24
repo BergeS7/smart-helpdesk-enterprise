@@ -22,6 +22,8 @@ test("sessão parcial é removida antes de montar áreas protegidas", async ({ p
   await page.addInitScript(() => localStorage.setItem("smart_helpdesk_usuario", JSON.stringify({ id: 1, nome: "Inválido", email: "x@x.com", perfil: "admin" })));
   const protectedRequests: string[] = [];
   page.on("request", (request) => {
+    // Só chamadas de dados: no servidor de desenvolvimento, src/app/services/api/*.ts também casa com o padrão.
+    if (!["fetch", "xhr"].includes(request.resourceType())) return;
     if (/\/api\/(chamados|dashboard|usuarios|notificacoes|permissoes)/.test(request.url())) protectedRequests.push(request.url());
   });
   await page.goto("/");
