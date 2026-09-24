@@ -2,6 +2,7 @@
  * Responsabilidade: Módulo funcional de fila chamados view; reúne interface e ações do respectivo fluxo.
  */
 import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type SelectHTMLAttributes } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useListChanges } from "../../components/motion";
 import { AlertTriangle, Check, CheckCircle2, ChevronDown, Clock3, Headphones, ListChecks, MapPin, MessageSquare, Monitor, ShieldAlert, SlidersHorizontal, Ticket, UserCheck, UserCog, Users, X } from "lucide-react";
@@ -535,7 +536,8 @@ export function FilaChamadosView({
           </div>
         )}
       </div>
-      {detalheFila && (
+      {/* Portal: a animação de entrada aplica transform num ancestral, o que prenderia o "fixed" ao card. */}
+      {detalheFila && createPortal(
         <div className="fixed inset-0 z-[70] flex justify-end">
           <button
             type="button"
@@ -643,7 +645,8 @@ export function FilaChamadosView({
               </div>
             )}
           </aside>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   );
