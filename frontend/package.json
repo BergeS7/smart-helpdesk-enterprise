@@ -7,6 +7,7 @@
     "check:jsx": "node scripts/check-jsx-bindings.mjs",
     "build": "npm run check:jsx && vite build",
     "dev": "vite",
+    "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
@@ -78,6 +79,7 @@
     "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
     "vite": "^6.4.3",
     "vitest": "^4.1.11"
   },

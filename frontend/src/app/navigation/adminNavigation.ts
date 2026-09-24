@@ -44,7 +44,7 @@ export type NavigationArea = { id:string; label:string; title:string; descriptio
 
 export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
   const reports=ctx.permissions.includes("visualizar_relatorios")||ctx.permissions.includes("baixar_relatorios");
-  return [
+  const areas:NavigationArea[]=[
     {id:"home",label:"Início",title:"Visão operacional",description:"Acompanhe os principais indicadores e prioridades da operação.",icon:LayoutDashboard,defaultTab:"dashboard",tabs:["dashboard"],visible:ctx.permissions.includes("visualizar_dashboard")},
     {id:"service",label:"Atendimento",title:"Central de Atendimento",description:"Organize, distribua e acompanhe os chamados em tempo real.",icon:Headphones,defaultTab:"fila",tabs:["fila","kanban","chamados","historico"],visible:true},
     {id:"development",label:"Desenvolvimento",title:"Desenvolvimento e Projetos",description:"Analise melhorias, automações, backlog, entregas e resultados gerados pela TI.",icon:Code2,defaultTab:"desenvolvimento",tabs:["desenvolvimento","projetos"],visible:ctx.desenvolvedor||ctx.administrador||ctx.permissions.includes("desenvolvimento_visualizar")},
@@ -53,7 +53,8 @@ export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
     {id:"knowledge",label:"Base",title:"Base de Conhecimento",description:"Centralize orientações e soluções reutilizáveis para a equipe.",icon:BookOpen,defaultTab:"base",tabs:["base"],visible:ctx.permissions.includes("gerenciar_base")},
     {id:"assets",label:"Ativos",title:"Monitoramento de Ativos",description:"Acompanhe equipamentos, disponibilidade e alertas da operação.",icon:MapPinned,defaultTab:"patrimonio",tabs:["patrimonio"],visible:ctx.permissions.includes("visualizar_patrimonio")},
     {id:"admin",label:"Ajustes",title:"Ajustes",description:"Configure regras, catálogos, integrações e serviços do sistema.",icon:Settings,defaultTab:ctx.desenvolvedor?"configuracoes":"catalogos",tabs:ctx.desenvolvedor?["configuracoes","config_sla","catalogos","config_integracoes","manutencao","diagnostico"]:["catalogos"],visible:ctx.administrador||ctx.desenvolvedor},
-  ].filter(area=>area.visible);
+  ];
+  return areas.filter(area=>area.visible);
 }
 
 export const TAB_LABELS:Record<AdminRouteKey,string>={

@@ -2789,7 +2789,7 @@ export function AdminPanel({
         <ProfileCenter
           profile={usuario as ApiUsuario}
           draft={perfilForm}
-          setDraft={setPerfilForm}
+          setDraft={(draft) => setPerfilForm({ ...perfilForm, ...draft })}
           photo={fotoPerfil}
           initials={inicialPerfil}
           uploading={enviandoFoto}

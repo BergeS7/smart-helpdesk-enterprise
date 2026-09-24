@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { MapPin, Search, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { criarUsuarioAdmin, type ApiUsuario } from "../../services/api";
+import { criarUsuarioAdmin, type ApiUsuario, type PerfilUsuario } from "../../services/api";
 import { PermissionMatrixPage } from "../../components/PermissionMatrixPage";
 import { municipiosMaranhao } from "../../data/municipiosMaranhao";
 
@@ -12,7 +12,7 @@ const initial = {
   nome: "",
   email: "",
   senha: "",
-  perfil: "usuario",
+  perfil: "usuario" as PerfilUsuario,
   departamento: "",
   cargo: "",
   municipio: "",
@@ -185,7 +185,7 @@ export function UsersModule({
               Perfil
               <select
                 value={form.perfil}
-                onChange={(e) => setForm({ ...form, perfil: e.target.value })}
+                onChange={(e) => setForm({ ...form, perfil: e.target.value as PerfilUsuario })}
                 className="mt-1 w-full px-3"
               >
                 <option value="usuario">Usuário</option>

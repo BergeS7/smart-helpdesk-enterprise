@@ -88,6 +88,7 @@ export type ApiChamado = {
   telefone_solicitante?: string;
   cargo_solicitante?: string;
   setor?: string;
+  departamento?: string;
   responsavel_id?: number | null;
   team_id?: number | null;
   team_name?: string;
