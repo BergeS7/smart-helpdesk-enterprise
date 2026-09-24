@@ -46,6 +46,17 @@ export function sugerirArtigosBase(texto: string) {
   );
 }
 
+export function registrarCliqueRecomendacao(id: number) {
+  return request<null>(`/catalogos/base-conhecimento/recomendacoes/${id}/clique`, { method: "POST" });
+}
+
+export function responderRecomendacao(id: number, resolveu: boolean) {
+  return request<null>(`/catalogos/base-conhecimento/recomendacoes/${id}/resposta`, {
+    method: "POST",
+    body: JSON.stringify({ resolveu }),
+  });
+}
+
 export function obterArtigoBase(id: number | string) {
   return request<ArtigoBase>(`/catalogos/base-conhecimento/${id}`);
 }

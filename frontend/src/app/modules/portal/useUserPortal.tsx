@@ -37,6 +37,8 @@ export function useUserPortal({
   const [perfil, setPerfil] = useState<ApiUsuario | null>(null);
   const [tipos, setTipos] = useState<CatalogoItem[]>([]);
   const [sugestoesBase, setSugestoesBase] = useState<ArtigoSugerido[]>([]);
+  // Todas as recomendações exibidas neste formulário, mesmo as que sumiram enquanto o usuário digitava.
+  const recomendacoesExibidas = useRef(new Set<number>());
   const [artigosBase, setArtigosBase] = useState<ArtigoBase[]>([]);
   const [novo, setNovo] = useState({
     titulo: "",
@@ -418,7 +420,11 @@ export function useUserPortal({
     let cancelado = false;
     const timer = window.setTimeout(() => {
       sugerirArtigosBase(texto)
-        .then((sugestoes) => { if (!cancelado) setSugestoesBase(sugestoes); })
+        .then((sugestoes) => {
+          if (cancelado) return;
+          setSugestoesBase(sugestoes);
+          sugestoes.forEach((s) => { if (s.recomendacao_id) recomendacoesExibidas.current.add(s.recomendacao_id); });
+        })
         .catch(() => {});
     }, ATRASO_SUGESTOES_MS);
     return () => { cancelado = true; window.clearTimeout(timer); };
@@ -533,12 +539,25 @@ export function useUserPortal({
     }
   }
 
+  function limparFormularioChamado() {
+    setNovo({ titulo: "", descricao: "", tipo_chamado: "Incidente", processo_atual:"", problema:"", resultado_esperado:"", frequencia:"", pessoas:"", tempo_minutos:"", sistemas:"", impacto_nao_execucao:"", beneficios:"" });
+    setSugestoesBase([]);
+    recomendacoesExibidas.current.clear();
+    setModalChamadoAberto(false);
+  }
+
+  // O usuário confirmou que a solução resolveu e escolheu sair sem abrir chamado.
+  function encerrarPorAutoatendimento() {
+    limparFormularioChamado();
+    toast.success("Que bom que resolveu! Registramos a solução por autoatendimento.");
+  }
+
   async function abrirChamado(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
 
     try {
-      const criado = await criarChamado(novo);
+      const criado = await criarChamado({ ...novo, recomendacoes_ids: [...recomendacoesExibidas.current] });
       const developmentNature:Record<string,string>={"Bug":"bug","Melhoria":"melhoria","Automação":"automacao","Integração":"integracao","Dashboard / Relatório":"dashboard_relatorio","Novo Sistema":"novo_sistema"};
       const nature=developmentNature[novo.tipo_chamado];
       let complementoPendente = false;
@@ -551,9 +570,7 @@ export function useUserPortal({
         }
       }
       setChamados((atuais) => [criado, ...atuais.filter((item) => Number(item.id) !== Number(criado.id))]);
-      setNovo({ titulo: "", descricao: "", tipo_chamado: "Incidente", processo_atual:"", problema:"", resultado_esperado:"", frequencia:"", pessoas:"", tempo_minutos:"", sistemas:"", impacto_nao_execucao:"", beneficios:"" });
-      setSugestoesBase([]);
-      setModalChamadoAberto(false);
+      limparFormularioChamado();
       setTab("chamados");
       if (complementoPendente) toast.warning("Chamado criado. Os dados complementares serão revisados pela equipe de TI.");
       else toast.success("Chamado criado com sucesso.");
@@ -639,6 +656,7 @@ export function useUserPortal({
     tipos,
     setTipos,
     sugestoesBase,
+    encerrarPorAutoatendimento,
     artigosBase,
     setArtigosBase,
     novo,

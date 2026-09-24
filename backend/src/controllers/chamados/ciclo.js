@@ -11,6 +11,7 @@ const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../.
 const { STATUS, canonicalize: canonicalizeStatus, label: statusLabel, isFinal: statusFinalizado, canTransition, REOPEN_WINDOW_DAYS, reopenDeadline, isReopenWindowOpen } = require("../../domain/ticketStatus");
 const { criarNotificacao, notificarStatus, notificarAvaliacao, notificarInteracao } = require("../../services/ticketNotificationService");
 const { registrarAuditoria, registrarMovimentacao } = require("./registro");
+const { vincularChamado } = require("../../services/knowledgeRecommendationService");
 const { calcularSLAConfiguravel, sincronizarSlaChamadosAtivosUmaVez, verificarAlertasSla } = require("./sla");
 const { adicionarFotosParticipantes, bloquearMutacaoNaoAutorizada, buscarChamadoAutorizado, carregarDetalhesChamado, consultarChamados, detectarDuplicidade, escolherResponsavelAutomatico, gerarNumeroChamado, normalizarEmail, normalizarTexto, notificarUsuarioVinculadoAoAtivo, obterUsuarioAtual, usuarioEhAdmin, usuarioEhEquipe, validarCamposCriacao } = require("./comum");
 
@@ -153,6 +154,9 @@ const criarChamado = async (req, res) => {
       await criarNotificacao(responsavelAutomatico.id, "Chamado atribuído a você", `${chamado.titulo} — ${chamado.numero_chamado}`, "info", `/chamados/${chamado.id}`);
       await criarNotificacao(chamado.usuario_id, "Chamado assumido", `${chamado.titulo} — Seu atendimento ficará com ${responsavelAutomatico.nome}.`, "info", `/chamados/${chamado.id}`);
     }
+    // Recomendações da base vistas no formulário: o chamado aberto mesmo assim entra nas métricas.
+    await vincularChamado({ chamadoId: chamado.id, usuarioId: usuario.id, ids: req.body.recomendacoes_ids })
+      .catch((error) => console.error("Erro ao vincular recomendações ao chamado:", error.message));
     if (!tipoDesenvolvimento && chamado.responsavel_id == null) {
       await require("../services/queueNotificationService").notificarNovoChamadoNaFila(chamado, criarNotificacao);
     }

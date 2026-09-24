@@ -18,7 +18,8 @@ function loadController(fakePool) {
     async enviarArquivo() { return IMAGEM; },
     async urlAssinada(ref) { return `https://projeto.supabase.co/assinada/${ref.split("/").pop()}`; },
   });
-  for (const modulo of ["../src/controllers/catalogController", "../src/services/permissionService", "../src/controllers/chamados/registro", "../src/utils/profilePhoto"]) {
+  for (const modulo of ["../src/controllers/catalogController", "../src/services/permissionService", "../src/controllers/chamados/registro", "../src/utils/profilePhoto",
+    "../src/services/knowledgeSearchService", "../src/services/knowledgeRecommendationService"]) {
     delete require.cache[require.resolve(modulo)];
   }
   return require("../src/controllers/catalogController");
@@ -33,7 +34,7 @@ function response() {
   };
 }
 
-function fakePool({ artigo, statusAtual = "rascunho" } = {}) {
+function fakePool({ artigo, statusAtual = "rascunho", sugestoes = [], falharRecomendacao = false, recomendacaoDoUsuario = true } = {}) {
   const queries = [];
   return {
     queries,
@@ -46,6 +47,12 @@ function fakePool({ artigo, statusAtual = "rascunho" } = {}) {
         return { rows: artigo && !oculto ? [artigo] : [] };
       }
       if (String(sql).startsWith("SELECT status FROM base_conhecimento")) return { rows: [{ status: statusAtual }] };
+      if (String(sql).startsWith("WITH termos")) return { rows: sugestoes };
+      if (String(sql).startsWith("WITH entrada")) {
+        if (falharRecomendacao) throw new Error("tabela indisponível");
+        return { rows: values[1].map((artigoId, i) => ({ id: String(100 + i), artigo_id: artigoId })) };
+      }
+      if (String(sql).startsWith("UPDATE base_conhecimento_recomendacoes")) return { rowCount: recomendacaoDoUsuario ? 1 : 0 };
       if (String(sql).includes("FROM usuario_permissoes")) return { rows: [], rowCount: 0 };
       if (String(sql).startsWith("INSERT INTO base_conhecimento")) return { rows: [{ id: 1, titulo: values[0], status: "rascunho" }] };
       if (String(sql).includes("UPDATE base_conhecimento")) return { rows: [{ id: 1, titulo: "Impressora", status: "publicado" }] };
@@ -206,4 +213,30 @@ test("usuário comum não vê artigos internos; a equipe técnica vê", async ()
   const paraTecnico = response();
   await loadController(fakePool({ artigo: interno })).obterBase({ params: { id: "9" }, user: { id: 4, perfil: "tecnico" } }, paraTecnico);
   assert.equal(paraTecnico.statusCode, 200);
+});
+
+test("cada sugestão entregue vem com o id da recomendação registrada", async () => {
+  const pool = fakePool({ sugestoes: [{ id: 5, titulo: "Impressora", confianca: "0.90" }] });
+  const res = response();
+  await loadController(pool).sugerirBase({ query: { texto: "impressora não imprime" }, user: { id: 7, perfil: "usuario" } }, res);
+  assert.deepEqual(res.body, [{ id: 5, titulo: "Impressora", confianca: 0.9, nivel: "alta", recomendacao_id: 100 }]);
+});
+
+test("falha ao registrar recomendação não impede a sugestão", async () => {
+  const pool = fakePool({ sugestoes: [{ id: 5, titulo: "Impressora", confianca: "0.50" }], falharRecomendacao: true });
+  const res = response();
+  await loadController(pool).sugerirBase({ query: { texto: "impressora não imprime" }, user: { id: 7, perfil: "usuario" } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body[0].recomendacao_id, null);
+});
+
+test("resposta exige sim ou não e só vale para a própria recomendação", async () => {
+  const { responderRecomendacao } = loadController(fakePool());
+  const invalida = response();
+  await responderRecomendacao({ params: { id: "1" }, body: { resolveu: "talvez" }, user: { id: 7 } }, invalida);
+  assert.equal(invalida.statusCode, 400);
+
+  const alheia = response();
+  await loadController(fakePool({ recomendacaoDoUsuario: false })).responderRecomendacao({ params: { id: "1" }, body: { resolveu: true }, user: { id: 7 } }, alheia);
+  assert.equal(alheia.statusCode, 404);
 });

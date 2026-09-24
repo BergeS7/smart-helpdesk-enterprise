@@ -166,6 +166,8 @@ export type NovoChamado = {
   descricao: string;
   tipo_chamado?: string;
   ativo_id?: string | number;
+  // Recomendações da base vistas no formulário, para ligar o chamado às métricas.
+  recomendacoes_ids?: number[];
 };
 
 export type NovoCadastroUsuario = {
@@ -293,6 +295,7 @@ export type ArtigoBase = {
 export type ArtigoSugerido = Pick<ArtigoBase, "id" | "titulo" | "resumo" | "categoria" | "video_url"> & {
   confianca: number;
   nivel: "alta" | "moderada";
+  recomendacao_id: number | null;
 };
 
 export type RespostaRapida = {

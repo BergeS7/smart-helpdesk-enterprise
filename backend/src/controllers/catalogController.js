@@ -8,6 +8,7 @@ const { arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { userHasPermission } = require("../services/permissionService");
 const { registrarAuditoria } = require("./chamados/registro");
 const { buscarArtigosRelacionados } = require("../services/knowledgeSearchService");
+const { registrarExibicoes, registrarClique, registrarResposta } = require("../services/knowledgeRecommendationService");
 
 function tabelaValida(tipo) {
   if (tipo === "departamentos") return "departamentos";
@@ -105,12 +106,43 @@ const listarBase = async (req, res) => {
 };
 
 // Artigos relacionados a um texto livre (ex.: descrição do chamado), já filtrados por confiança e visibilidade.
+// Cada sugestão exibida vira uma recomendação; se o registro falhar, a sugestão ainda é entregue.
 const sugerirBase = async (req, res) => {
   try {
-    return res.json(await buscarArtigosRelacionados({ texto: req.query.texto, user: req.user }));
+    const sugestoes = await buscarArtigosRelacionados({ texto: req.query.texto, user: req.user });
+    let recomendacoes = new Map();
+    try {
+      recomendacoes = await registrarExibicoes({ usuarioId: req.user.id, sugestoes });
+    } catch (error) {
+      console.error("Erro ao registrar recomendações:", error.message);
+    }
+    return res.json(sugestoes.map((artigo) => ({ ...artigo, recomendacao_id: recomendacoes.get(artigo.id) || null })));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao buscar artigos relacionados", detalhe: error.message });
+  }
+};
+
+const registrarCliqueRecomendacao = async (req, res) => {
+  try {
+    const ok = await registrarClique({ id: req.params.id, usuarioId: req.user.id });
+    if (!ok) return res.status(404).json({ erro: "Recomendação não encontrada" });
+    return res.status(204).end();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao registrar clique", detalhe: error.message });
+  }
+};
+
+const responderRecomendacao = async (req, res) => {
+  try {
+    if (typeof req.body.resolveu !== "boolean") return res.status(400).json({ erro: "Informe se a solução resolveu (sim ou não)" });
+    const ok = await registrarResposta({ id: req.params.id, usuarioId: req.user.id, resolveu: req.body.resolveu });
+    if (!ok) return res.status(404).json({ erro: "Recomendação não encontrada" });
+    return res.status(204).end();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao registrar resposta", detalhe: error.message });
   }
 };
 
@@ -260,6 +292,8 @@ module.exports = {
    listarBase, 
    obterBase,
    sugerirBase,
+   registrarCliqueRecomendacao,
+   responderRecomendacao,
    enviarImagemBase,
    criarBase, 
    atualizarBase, 

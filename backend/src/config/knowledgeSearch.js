@@ -18,4 +18,6 @@ module.exports = Object.freeze({
   MAX_RESULTADOS: 3,
   TEXTO_MIN_CARACTERES: 10,
   TEXTO_MAX_CARACTERES: 2000,
+  // Enquanto o usuário digita, o mesmo artigo exibido de novo nesta janela reaproveita a recomendação.
+  JANELA_RECOMENDACAO_MINUTOS: 30,
 });

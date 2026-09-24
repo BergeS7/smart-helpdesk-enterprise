@@ -34,6 +34,7 @@ export function UserPortal(props: UserPortalProps) {
     setPerfil,
     tipos,
     sugestoesBase,
+    encerrarPorAutoatendimento,
     artigosBase,
     novo,
     setNovo,
@@ -454,6 +455,7 @@ export function UserPortal(props: UserPortalProps) {
           novo={novo}
           setNovo={setNovo}
           sugestoes={sugestoesBase}
+          onResolvido={encerrarPorAutoatendimento}
           loading={loading}
           onClose={() => setModalChamadoAberto(false)}
           onSubmit={abrirChamado}

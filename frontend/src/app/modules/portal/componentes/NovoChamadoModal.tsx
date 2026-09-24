@@ -2,9 +2,9 @@
  * Responsabilidade: modal de abertura de chamado pelo solicitante.
  */
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
-import { ArrowRight, BookOpen, FileText, PlayCircle, X } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, FileText, PlayCircle, X } from "lucide-react";
 import { Button, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
-import { type ApiUsuario, type ArtigoSugerido, type CatalogoItem, type UsuarioLogado } from "../../../services/api";
+import { registrarCliqueRecomendacao, responderRecomendacao, type ApiUsuario, type ArtigoSugerido, type CatalogoItem, type UsuarioLogado } from "../../../services/api";
 import { ArtigoDetalhe } from "./ArtigoDetalhe";
 
 const NIVEL_SUGESTAO = {
@@ -21,6 +21,7 @@ export function UsuarioNovoChamadoModal({
   loading,
   onClose,
   onSubmit,
+  onResolvido,
 }: {
   perfil: UsuarioLogado | ApiUsuario;
   tipos: CatalogoItem[];
@@ -32,6 +33,7 @@ export function UsuarioNovoChamadoModal({
   loading: boolean;
   onClose: () => void;
   onSubmit: (event: FormEvent) => void;
+  onResolvido: () => void;
 }) {
   const tiposDisponiveis =
     tipos.length > 0
@@ -45,7 +47,20 @@ export function UsuarioNovoChamadoModal({
           "Equipamento",
         ];
   const allTypes=Array.from(new Set([...tiposDisponiveis,"Bug","Melhoria","Automação","Integração","Dashboard / Relatório","Novo Sistema"]));
-  const [artigoAberto, setArtigoAberto] = useState<number | null>(null);
+  const [artigoAberto, setArtigoAberto] = useState<ArtigoSugerido | null>(null);
+  const [resposta, setResposta] = useState<"sim" | "nao" | null>(null);
+
+  function abrirSugestao(artigo: ArtigoSugerido) {
+    setArtigoAberto(artigo);
+    if (artigo.recomendacao_id) registrarCliqueRecomendacao(artigo.recomendacao_id).catch(() => {});
+  }
+
+  // Registrar é melhor esforço: a falha não pode travar o usuário, que segue com ou sem chamado.
+  async function responder(resolveu: boolean) {
+    if (artigoAberto?.recomendacao_id) await responderRecomendacao(artigoAberto.recomendacao_id, resolveu).catch(() => {});
+    setResposta(resolveu ? "sim" : "nao");
+    setArtigoAberto(null);
+  }
   const developmentType=["Bug","Melhoria","Automação","Integração","Dashboard / Relatório","Novo Sistema"].includes(novo.tipo_chamado);
 
   return (
@@ -149,7 +164,20 @@ export function UsuarioNovoChamadoModal({
           </div>
 
           {/* Só sugere: o chamado pode ser aberto normalmente a qualquer momento. */}
-          {!developmentType && sugestoes.length > 0 && (
+          {!developmentType && resposta === "sim" && (
+            <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
+              <div className="flex items-start gap-2 text-emerald-800">
+                <CheckCircle2 size={20} className="mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-black">Que bom que resolveu!</p>
+                  <p className="text-xs">Registramos a solução. Se ainda precisar de ajuda, você pode criar o chamado normalmente.</p>
+                </div>
+              </div>
+              <Button type="button" variant="secondary" onClick={onResolvido}>Fechar sem abrir chamado</Button>
+            </div>
+          )}
+
+          {!developmentType && resposta !== "sim" && sugestoes.length > 0 && (
             <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4" aria-live="polite">
               <div className="mb-1 flex items-center gap-2 text-blue-800">
                 <BookOpen size={18} />
@@ -157,7 +185,11 @@ export function UsuarioNovoChamadoModal({
                   {sugestoes.length === 1 ? "Encontramos uma possível solução para o seu problema" : "Encontramos possíveis soluções para o seu problema"}
                 </p>
               </div>
-              <p className="mb-3 text-xs text-blue-700">Veja se resolve antes de enviar. Se não resolver, basta criar o chamado normalmente.</p>
+              <p className="mb-3 text-xs text-blue-700">
+                {resposta === "nao"
+                  ? "Tudo bem. Continue preenchendo e crie o chamado: a equipe vai te ajudar."
+                  : "Veja se resolve antes de enviar. Se não resolver, basta criar o chamado normalmente."}
+              </p>
               <div className="grid gap-3 md:grid-cols-3">
                 {sugestoes.map((artigo) => (
                   <div key={artigo.id} className="flex flex-col rounded-2xl bg-white p-3 shadow-sm">
@@ -167,7 +199,7 @@ export function UsuarioNovoChamadoModal({
                     </div>
                     <p className="text-sm font-black text-zinc-800">{artigo.titulo}</p>
                     {artigo.resumo && <p className="mt-1 line-clamp-3 text-xs leading-5 text-zinc-500">{artigo.resumo}</p>}
-                    <button type="button" onClick={() => setArtigoAberto(artigo.id)} className="mt-auto pt-3 text-left text-xs font-black text-blue-700 hover:text-blue-800">
+                    <button type="button" onClick={() => abrirSugestao(artigo)} className="mt-auto pt-3 text-left text-xs font-black text-blue-700 hover:text-blue-800">
                       Ver solução passo a passo →
                     </button>
                   </div>
@@ -187,7 +219,7 @@ export function UsuarioNovoChamadoModal({
           </div>
         </form>
       </div>
-      {artigoAberto && <ArtigoDetalhe artigoId={artigoAberto} onClose={() => setArtigoAberto(null)} />}
+      {artigoAberto && <ArtigoDetalhe artigoId={artigoAberto.id} onClose={() => setArtigoAberto(null)} onResposta={responder} />}
     </div>
   );
 }

@@ -3,8 +3,8 @@
  */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { PlayCircle, RefreshCw } from "lucide-react";
-import { Modal } from "../../../components/shared/FormPrimitives";
+import { PlayCircle, RefreshCw, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Button, Modal } from "../../../components/shared/FormPrimitives";
 import { obterArtigoBase, registrarVisualizacaoArtigo, type ArtigoBase } from "../../../services/api";
 
 function Secao({ titulo, texto }: { titulo: string; texto?: string | null }) {
@@ -17,9 +17,17 @@ function Secao({ titulo, texto }: { titulo: string; texto?: string | null }) {
   );
 }
 
-export function ArtigoDetalhe({ artigoId, onClose }: { artigoId: number; onClose: () => void }) {
+// onResposta só é passado quando o artigo veio de uma recomendação: aí perguntamos se resolveu.
+export function ArtigoDetalhe({ artigoId, onClose, onResposta }: { artigoId: number; onClose: () => void; onResposta?: (resolveu: boolean) => Promise<void> }) {
   const [artigo, setArtigo] = useState<ArtigoBase | null>(null);
   const [erro, setErro] = useState("");
+  const [respondendo, setRespondendo] = useState(false);
+
+  async function responder(resolveu: boolean) {
+    if (!onResposta) return;
+    setRespondendo(true);
+    try { await onResposta(resolveu); } finally { setRespondendo(false); }
+  }
 
   useEffect(() => {
     let ativo = true;
@@ -65,6 +73,15 @@ export function ArtigoDetalhe({ artigoId, onClose }: { artigoId: number; onClose
             </a>
           )}
           <Secao titulo="Detalhes" texto={artigo.conteudo} />
+          {onResposta && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-black text-zinc-800">Essa solução resolveu seu problema?</p>
+              <div className="flex gap-2">
+                <Button type="button" disabled={respondendo} onClick={() => void responder(true)}><ThumbsUp size={16} /> Sim</Button>
+                <Button type="button" variant="secondary" disabled={respondendo} onClick={() => void responder(false)}><ThumbsDown size={16} /> Não</Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </Modal>,
