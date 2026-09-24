@@ -23,7 +23,8 @@ function controller(handler) {
   const database = require.resolve('../src/config/database');
   require.cache[database] = { id: database, filename: database, loaded: true, exports: { query, connect: async () => ({ query, release() {} }) } };
   const file = require.resolve('../src/controllers/chamadoController');
-  delete require.cache[file];
+  // O controller é dividido em src/controllers/chamados/*: recarrega tudo para usar o banco falso.
+  for (const key of Object.keys(require.cache)) if (/controllers[\\/]chamado/.test(key)) delete require.cache[key];
   return { c: require(file), calls };
 }
 function response() { return { status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } }; }
