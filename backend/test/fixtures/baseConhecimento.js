@@ -81,4 +81,38 @@ const CONSULTAS = {
   rascunho: "Preciso da segunda via do boleto",
 };
 
-module.exports = { ARTIGOS, CONSULTAS };
+// Chamados dos últimos dias para a detecção de problemas recorrentes (casos 7 e afins).
+const CHAMADOS_RECORRENTES = {
+  // Muitos chamados sem artigo: deve virar sugestão de tutorial.
+  vpn: [
+    ["Não consigo conectar na VPN", "Trabalhando de casa, a VPN não conecta desde cedo."],
+    ["VPN caiu", "A VPN da empresa cai a cada cinco minutos."],
+    ["Erro ao conectar VPN", "O FortiClient mostra erro ao conectar na VPN."],
+    ["Sem acesso à VPN", "Não consigo acessar a VPN para usar o ERP de casa."],
+    ["VPN pedindo senha", "A VPN pede a senha o tempo todo e não conecta."],
+    ["Problema na VPN do notebook", "Notebook novo não conecta na VPN corporativa."],
+  ],
+  // Recorrente, mas já existe artigo.
+  impressora: [
+    ["Impressora não imprime", "Os documentos ficam presos na fila de impressão."],
+    ["Fila de impressão travada", "Mandei imprimir e o documento ficou preso na fila."],
+    ["Impressora do financeiro parada", "A impressora não imprime nada desde ontem."],
+    ["Documento preso na impressora", "Nada sai da impressora, a fila mostra erro."],
+    ["Não consigo imprimir", "A impressora aparece online mas não imprime."],
+  ],
+  // Poucos chamados: abaixo do mínimo, não é recorrência.
+  wifi: [
+    ["Wi-Fi lento na sala de reunião", "A rede sem fio está muito lenta na sala de reunião."],
+    ["Wi-Fi caindo", "A rede sem fio cai toda hora na sala de reunião."],
+  ],
+  // Chamados isolados, sem relação entre si.
+  isolados: [
+    ["Cadeira quebrada", "Preciso de uma cadeira nova para a recepção."],
+    ["Monitor piscando", "O monitor fica piscando quando ligo o computador."],
+    ["Assinatura de e-mail", "Como altero a assinatura do meu e-mail?"],
+    ["Acesso à pasta do RH", "Preciso de acesso à pasta compartilhada do RH."],
+    ["Teclado sem teclas", "O teclado está com teclas soltas."],
+  ],
+};
+
+module.exports = { ARTIGOS, CONSULTAS, CHAMADOS_RECORRENTES };

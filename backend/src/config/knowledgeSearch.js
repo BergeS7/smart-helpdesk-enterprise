@@ -24,4 +24,15 @@ module.exports = Object.freeze({
   // Taxa de sucesso = resoluções por autoatendimento / recomendações exibidas.
   REVISAO_MIN_RECOMENDACOES: 10,
   REVISAO_TAXA_SUCESSO_MAXIMA: 0.2,
+  // Problemas recorrentes: cada termo agrupa os chamados que o citam, e termos que dividem
+  // boa parte dos mesmos chamados viram um só problema (ex.: "impressora" e "imprimir").
+  RECORRENCIA_DIAS: 30,
+  RECORRENCIA_MIN_CHAMADOS: 5,
+  // Fração de chamados em comum (0 a 1) para dois termos contarem como o mesmo problema.
+  RECORRENCIA_SOBREPOSICAO: 0.4,
+  // Palavras comuns a qualquer chamado, que não indicam o assunto. Escritas por extenso:
+  // o banco as reduz ao radical com a mesma configuração da busca.
+  RECORRENCIA_PALAVRAS_GENERICAS: "erro problema consigo acesso ajuda urgente preciso favor bom dia tarde noite obrigado solicitação dúvida desde hoje ontem",
+  RECORRENCIA_MAX_CHAMADOS: 2000,
+  RECORRENCIA_MAX_GRUPOS: 10,
 });

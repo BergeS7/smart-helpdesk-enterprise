@@ -3,7 +3,7 @@
  */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizarArtigo, erroPublicacao, efetividade } = require("../src/domain/knowledgeBase");
+const { normalizarArtigo, erroPublicacao, efetividade, agruparChamados, situacaoRecorrencia } = require("../src/domain/knowledgeBase");
 
 const IMAGEM = "supabase://knowledge-base/artigos/123e4567-e89b-12d3-a456-426614174000.png";
 
@@ -246,4 +246,26 @@ test("efetividade: sem recomendação não há taxa; muito recomendado e pouco r
   assert.deepEqual(efetividade({ recomendacoes: 12, autoatendimentos: 1 }), { taxa_sucesso: 0.08, revisar: true });
   assert.deepEqual(efetividade({ recomendacoes: 10, autoatendimentos: 5 }), { taxa_sucesso: 0.5, revisar: false });
   assert.equal(efetividade({ recomendacoes: 3, autoatendimentos: 0 }).revisar, false, "poucos dados ainda não bastam");
+});
+
+test("agrupa chamados pelo assunto e ignora palavras genéricas", () => {
+  const chamado = (id, termos, termos_titulo = termos) => ({ id, termos, termos_titulo });
+  const chamados = [
+    chamado(1, ["vpn", "conect", "consig"]), chamado(2, ["vpn", "cai"]), chamado(3, ["vpn", "conect", "erro"]),
+    chamado(4, ["impressor", "imprim"]), chamado(5, ["impressor", "imprim", "fil", "consig"]), chamado(6, ["impressor", "fil"]),
+    chamado(7, ["cadeir", "consig", "filial"], ["cadeir"]), chamado(8, ["monitor", "erro", "filial"], ["monitor"]),
+    chamado(9, ["teclad", "filial"], ["teclad"]),
+  ];
+  const grupos = agruparChamados(chamados, { sobreposicaoMinima: 0.4, minChamados: 3, termosGenericos: new Set(["consig", "erro"]) });
+  assert.deepEqual(grupos.map((g) => g.chamados.map((c) => c.id)), [[1, 2, 3], [4, 5, 6]]);
+  assert.equal(grupos[0].representante.id, 1, "representante é quem mais cita os termos do grupo");
+  assert.deepEqual(agruparChamados(chamados, { sobreposicaoMinima: 0.4, minChamados: 3 }).length, 3, "sem a lista, \"consig\" vira um falso problema");
+  assert.ok(!grupos.some((g) => g.chamados.some((c) => c.id === 9)), "local citado só na descrição não vira problema");
+});
+
+test("situação do problema recorrente", () => {
+  assert.equal(situacaoRecorrencia(null), "sem_artigo");
+  assert.equal(situacaoRecorrencia({ visibilidade: "interno" }), "artigo_interno");
+  assert.equal(situacaoRecorrencia({ visibilidade: "publico", recomendacoes: 12, autoatendimentos: 1 }), "artigo_pouco_efetivo");
+  assert.equal(situacaoRecorrencia({ visibilidade: "publico", recomendacoes: 12, autoatendimentos: 6 }), "coberto");
 });

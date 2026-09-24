@@ -137,4 +137,56 @@ function efetividade({ recomendacoes = 0, autoatendimentos = 0 } = {}) {
   };
 }
 
-module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao, condicaoLeitura, nivelConfianca, efetividade };
+const sobreposicao = (a, b) => {
+  let comuns = 0;
+  a.forEach((i) => { if (b.has(i)) comuns += 1; });
+  return comuns / (a.size + b.size - comuns);
+};
+
+// Agrupa chamados que falam do mesmo problema, sem ML: cada termo reúne os chamados que o citam
+// e termos que dividem boa parte dos mesmos chamados se juntam (maiores primeiro).
+// Só termo presente no título de 2+ chamados abre grupo: o título diz o assunto, enquanto a
+// descrição traz setor, local e cumprimentos que se repetem sem ser o problema.
+// Devolve os grupos com o chamado que mais cita os termos do grupo como representante.
+function agruparChamados(chamados, { sobreposicaoMinima, minChamados, termosGenericos = new Set() }) {
+  const porTermo = new Map();
+  const titulos = new Map();
+  chamados.forEach((chamado, i) => {
+    new Set(chamado.termos).forEach((termo) => {
+      if (termosGenericos.has(termo)) return;
+      if (!porTermo.has(termo)) porTermo.set(termo, new Set());
+      porTermo.get(termo).add(i);
+    });
+    new Set(chamado.termos_titulo).forEach((termo) => titulos.set(termo, (titulos.get(termo) || 0) + 1));
+  });
+
+  const grupos = [];
+  [...porTermo]
+    .filter(([termo, indices]) => indices.size >= 2 && (titulos.get(termo) || 0) >= 2)
+    .sort((a, b) => b[1].size - a[1].size)
+    .forEach(([termo, indices]) => {
+      const mesmoProblema = grupos.find((grupo) => sobreposicao(grupo.indices, indices) >= sobreposicaoMinima);
+      if (!mesmoProblema) return grupos.push({ termos: new Set([termo]), indices: new Set(indices) });
+      mesmoProblema.termos.add(termo);
+      indices.forEach((i) => mesmoProblema.indices.add(i));
+    });
+
+  return grupos
+    .filter((grupo) => grupo.indices.size >= minChamados)
+    .map(({ termos, indices }) => {
+      const cobertura = (i) => chamados[i].termos.filter((t) => termos.has(t)).length;
+      const lista = [...indices].sort((a, b) => a - b);
+      const central = lista.reduce((melhor, i) => (cobertura(i) > cobertura(melhor) ? i : melhor), lista[0]);
+      return { chamados: lista.map((i) => chamados[i]), representante: chamados[central] };
+    });
+}
+
+// O que fazer com um problema recorrente, do mais urgente ao resolvido.
+function situacaoRecorrencia(artigo) {
+  if (!artigo) return "sem_artigo";
+  if (artigo.visibilidade === "interno") return "artigo_interno";
+  if (efetividade(artigo).revisar) return "artigo_pouco_efetivo";
+  return "coberto";
+}
+
+module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao, condicaoLeitura, nivelConfianca, efetividade, agruparChamados, situacaoRecorrencia };

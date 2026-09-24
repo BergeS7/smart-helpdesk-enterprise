@@ -18,7 +18,7 @@ async function buscarArtigosRelacionados({ texto, user }) {
      ), consulta AS (
        SELECT to_tsquery('simple', string_agg(quote_literal(lexeme), ' | ')) AS q, count(*) AS total FROM termos
      ), candidatos AS (
-       SELECT b.id, b.titulo, b.resumo, b.categoria, b.video_url, c.total,
+       SELECT b.id, b.titulo, b.resumo, b.categoria, b.video_url, b.visibilidade, c.total,
          word_similarity(lower(b.titulo), lower($1)) AS similaridade_titulo,
          (SELECT COALESCE(SUM(CASE
              WHEN b.busca @@ to_tsquery('simple', quote_literal(t.lexeme) || ':AB') THEN 1
@@ -28,7 +28,7 @@ async function buscarArtigosRelacionados({ texto, user }) {
        WHERE ${condicaoLeitura(user, "b")}
          AND (b.busca @@ c.q OR word_similarity(lower(b.titulo), lower($1)) >= $3)
      ), pontuados AS (
-       SELECT id, titulo, resumo, categoria, video_url,
+       SELECT id, titulo, resumo, categoria, video_url, visibilidade,
          ROUND(($4 * LEAST(1, COALESCE(pontos / NULLIF(LEAST(total, $5), 0), 0)) + $6 * similaridade_titulo)::numeric, 2) AS confianca
        FROM candidatos
      )

@@ -10,6 +10,7 @@ const { registrarAuditoria } = require("./chamados/registro");
 const { buscarArtigosRelacionados } = require("../services/knowledgeSearchService");
 const { registrarExibicoes, registrarClique, registrarResposta } = require("../services/knowledgeRecommendationService");
 const { SQL_EFETIVIDADE_POR_ARTIGO } = require("../services/knowledgeMetricsService");
+const { detectarRecorrencias } = require("../services/knowledgeRecurrenceService");
 
 function tabelaValida(tipo) {
   if (tipo === "departamentos") return "departamentos";
@@ -133,6 +134,16 @@ const sugerirBase = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao buscar artigos relacionados", detalhe: error.message });
+  }
+};
+
+// Problemas que se repetem nos chamados recentes e se a base já tem artigo adequado para eles.
+const listarRecorrencias = async (req, res) => {
+  try {
+    return res.json(await detectarRecorrencias({ user: req.user }));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao analisar problemas recorrentes", detalhe: error.message });
   }
 };
 
@@ -305,6 +316,7 @@ module.exports = {
    listarBase, 
    obterBase,
    sugerirBase,
+   listarRecorrencias,
    registrarCliqueRecomendacao,
    responderRecomendacao,
    enviarImagemBase,

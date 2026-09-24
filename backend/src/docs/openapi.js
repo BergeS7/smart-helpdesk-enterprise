@@ -138,6 +138,7 @@ const openapiDocument = {
     "/catalogos/base-conhecimento/sugestoes": { get: op("Artigos relacionados a um texto (?texto=), com confiança alta ou moderada", { tags: ["Catálogos"] }) },
     "/catalogos/base-conhecimento/recomendacoes/{id}/clique": { post: op("Registrar que o usuário abriu o artigo recomendado", { tags: ["Catálogos"], params: ["id"] }) },
     "/catalogos/base-conhecimento/recomendacoes/{id}/resposta": { post: op("Registrar se a solução recomendada resolveu ({ resolveu: boolean })", { tags: ["Catálogos"], params: ["id"] }) },
+    "/catalogos/base-conhecimento/recorrentes": { get: op("Problemas recorrentes nos chamados recentes e situação da base para cada um (gerenciar_base)", { tags: ["Catálogos"] }) },
     "/catalogos/base-conhecimento/imagens": { post: op("Enviar imagem de passo do artigo (PNG, JPG ou WEBP)", { tags: ["Catálogos"] }) },
     "/catalogos/base-conhecimento/{id}": {
       get: op("Abrir artigo (rascunhos só para quem gerencia a base; internos só para a equipe)", { tags: ["Catálogos"], params: ["id"] }),
