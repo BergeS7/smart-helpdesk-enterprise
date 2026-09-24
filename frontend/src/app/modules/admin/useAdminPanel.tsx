@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
-import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, criarArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, salvarFiltroChamados, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
+import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, criarArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
 import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDevApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, ticketFiltersFromUrl } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 
@@ -65,7 +65,6 @@ export function useAdminPanel({
   );
   const [avisosAdmin, setAvisosAdmin] = useState<ApiAvisoSistema[]>([]);
   const [filtrosSalvos, setFiltrosSalvos] = useState<FiltroSalvo[]>([]);
-  const [novoFiltroNome, setNovoFiltroNome] = useState("");
   const [novaResposta, setNovaResposta] = useState({
     titulo: "",
     mensagem: "",
@@ -148,10 +147,6 @@ export function useAdminPanel({
 
   const equipe = useMemo(
     () => usuarios.filter((u) => isEquipeApp(u.perfil) && u.status === "ativo"),
-    [usuarios],
-  );
-  const pendentes = useMemo(
-    () => usuarios.filter((u) => u.status === "pendente"),
     [usuarios],
   );
   const dadosRelatorio = useMemo(() => {
@@ -417,23 +412,6 @@ export function useAdminPanel({
     }
   }
 
-  async function executarPesquisa(event?: FormEvent) {
-    event?.preventDefault();
-    const termo = String(filtros.q || "").trim();
-    const novosFiltros = { ...filtros, q: termo };
-    if (!termo) delete novosFiltros.q;
-    try {
-      setTab("kanban");
-      setFiltros(novosFiltros);
-      await carregar("kanban", novosFiltros);
-      toast.success(termo ? "Pesquisa aplicada." : "Pesquisa limpa.");
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Erro ao pesquisar chamados.",
-      );
-    }
-  }
-
   async function limparPesquisa() {
     const { q: _q, ...novosFiltros } = filtros;
     try {
@@ -453,20 +431,6 @@ export function useAdminPanel({
       toast.success("Filtros limpos.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao limpar filtros.");
-    }
-  }
-
-  async function salvarFiltroAtual() {
-    const nome =
-      novoFiltroNome.trim() ||
-      `Filtro ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-    try {
-      await salvarFiltroChamados(nome, filtros);
-      setNovoFiltroNome("");
-      setFiltrosSalvos(await listarFiltrosSalvos());
-      toast.success("Filtro salvo.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao salvar filtro.");
     }
   }
 
@@ -1009,7 +973,6 @@ export function useAdminPanel({
   const sistemaLogo1 = logoSistema1(configSistema);
   // Alias somente para o renderer antigo já oculto; a aplicação possui uma única logo configurável.
   const sistemaLogo2 = sistemaLogo1;
-  const ActiveIcon = activeArea?.icon ?? activeTab.icon;
   const unread = notificacoes.filter((n) => !n.lida).length;
   const filtrosAtivos = useMemo(
     () =>
@@ -1034,12 +997,8 @@ export function useAdminPanel({
 
   return {
     usuario,
-    setUsuario,
     onLogout,
-    configSistemaInicial,
-    onConfigSistemaChange,
     avisosSistema,
-    onAvisosSistemaChange,
     tab,
     setTab,
     dark,
@@ -1047,41 +1006,22 @@ export function useAdminPanel({
     modoCompacto,
     setModoCompacto,
     dashboard,
-    setDashboard,
     chamados,
-    setChamados,
     filaChamados,
-    setFilaChamados,
     carteiraEquipe,
-    setCarteiraEquipe,
     historicoEquipe,
-    setHistoricoEquipe,
-    chamadosRelatorio,
-    setChamadosRelatorio,
     usuarios,
-    setUsuarios,
     teams,
-    setTeams,
     novaTeam,
     setNovaTeam,
     departamentos,
-    setDepartamentos,
     tipos,
-    setTipos,
     base,
-    setBase,
     baseCarregando,
-    setBaseCarregando,
     erroBase,
-    setErroBase,
     respostasRapidas,
-    setRespostasRapidas,
     avisosAdmin,
-    setAvisosAdmin,
     filtrosSalvos,
-    setFiltrosSalvos,
-    novoFiltroNome,
-    setNovoFiltroNome,
     novaResposta,
     setNovaResposta,
     novoAviso,
@@ -1089,13 +1029,10 @@ export function useAdminPanel({
     configSistema,
     setConfigSistema,
     enviandoLogoSistema,
-    setEnviandoLogoSistema,
     notificacoes,
-    setNotificacoes,
     notificacoesAberta,
     setNotificacoesAberta,
     carregandoNotificacoes,
-    setCarregandoNotificacoes,
     filtros,
     setFiltros,
     mostrarFiltros,
@@ -1111,7 +1048,6 @@ export function useAdminPanel({
     usuarioForm,
     setUsuarioForm,
     salvandoUsuarioAdmin,
-    setSalvandoUsuarioAdmin,
     novoCatalogo,
     setNovoCatalogo,
     novoArtigo,
@@ -1122,38 +1058,23 @@ export function useAdminPanel({
     setMenuMaisAdmin,
     buscaGlobalAberta,
     setBuscaGlobalAberta,
-    atalhoG,
     salvandoPerfil,
-    setSalvandoPerfil,
     enviandoFoto,
-    setEnviandoFoto,
     perfilForm,
     setPerfilForm,
-    permissoesAtuais,
-    setPermissoesAtuais,
-    permissoesCarregadas,
-    setPermissoesCarregadas,
     usuarioPermissoes,
     setUsuarioPermissoes,
-    sincronizandoTelaRef,
-    abaPendenteRef,
-    perfilAtual,
     desenvolvedor,
     administrador,
     tecnico,
     equipe,
-    pendentes,
     dadosRelatorio,
-    sincronizarUsuario,
     sincronizarChamadoEquipe,
     carregar,
     criarNovaTeam,
-    carregarNotificacoes,
     aplicarFiltros,
-    executarPesquisa,
     limparPesquisa,
     limparFiltros,
-    salvarFiltroAtual,
     aplicarFiltroSalvo,
     assumirChamadoAdmin,
     criarRespostaRapidaAdmin,
@@ -1174,14 +1095,12 @@ export function useAdminPanel({
     criarAvisoManutencao,
     alternarAvisoManutencao,
     removerAvisoManutencao,
-    adminTabs,
     navigationAreas,
     activeArea,
     activeTab,
     sistemaNome,
     sistemaLogo1,
     sistemaLogo2,
-    ActiveIcon,
     unread,
     filtrosAtivos,
     rootClass,
