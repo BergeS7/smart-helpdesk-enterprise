@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
-import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, criarArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
+import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type StatusArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
 import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDevApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, ticketFiltersFromUrl } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 
@@ -21,6 +21,18 @@ export type AdminPanelProps = {
   onConfigSistemaChange: (config: ConfiguracoesSistema) => void;
   avisosSistema: ApiAvisoSistema[];
   onAvisosSistemaChange: (avisos: ApiAvisoSistema[]) => void;
+};
+
+const ARTIGO_VAZIO = {
+  titulo: "",
+  categoria: "",
+  palavras_chave: "",
+  resumo: "",
+  problema: "",
+  sintomas: "",
+  solucao: "",
+  conteudo: "",
+  status: "rascunho" as StatusArtigo,
 };
 
 // Estado, carregamentos e ações do painel da equipe. O AdminPanel e as abas recebem tudo daqui.
@@ -114,12 +126,8 @@ export function useAdminPanel({
     descricao: "",
     tipo: "departamentos" as "departamentos" | "tipos",
   });
-  const [novoArtigo, setNovoArtigo] = useState({
-    titulo: "",
-    categoria: "",
-    palavras_chave: "",
-    conteudo: "",
-  });
+  const [novoArtigo, setNovoArtigo] = useState(ARTIGO_VAZIO);
+  const [artigoEditandoId, setArtigoEditandoId] = useState<number | null>(null);
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
   const [menuMaisAdmin, setMenuMaisAdmin] = useState(false);
   const [buscaGlobalAberta, setBuscaGlobalAberta] = useState(false);
@@ -273,7 +281,7 @@ export function useAdminPanel({
         setBaseCarregando(true);
         setErroBase("");
         try {
-          setBase(await listarBaseConhecimento());
+          setBase(await listarBaseConhecimento(undefined, { todos: true }));
         } catch (error) {
           setBase([]);
           setErroBase(error instanceof Error ? error.message : "Não foi possível carregar os artigos.");
@@ -731,20 +739,36 @@ export function useAdminPanel({
     }
   }
 
-  async function criarArtigo(event: FormEvent) {
+  function editarArtigo(artigo: ArtigoBase) {
+    setArtigoEditandoId(artigo.id);
+    setNovoArtigo({
+      titulo: artigo.titulo,
+      categoria: artigo.categoria || "",
+      palavras_chave: artigo.palavras_chave || "",
+      resumo: artigo.resumo || "",
+      problema: artigo.problema || "",
+      sintomas: artigo.sintomas || "",
+      solucao: artigo.solucao || "",
+      conteudo: artigo.conteudo,
+      status: artigo.status || "rascunho",
+    });
+  }
+
+  function cancelarEdicaoArtigo() {
+    setArtigoEditandoId(null);
+    setNovoArtigo(ARTIGO_VAZIO);
+  }
+
+  async function salvarArtigo(event: FormEvent) {
     event.preventDefault();
     try {
-      await criarArtigoBase(novoArtigo);
-      toast.success("Artigo criado.");
-      setNovoArtigo({
-        titulo: "",
-        categoria: "",
-        palavras_chave: "",
-        conteudo: "",
-      });
+      if (artigoEditandoId) await atualizarArtigoBase(artigoEditandoId, novoArtigo);
+      else await criarArtigoBase(novoArtigo);
+      toast.success(artigoEditandoId ? "Artigo atualizado." : "Artigo criado.");
+      cancelarEdicaoArtigo();
       await carregar();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao criar artigo.");
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar artigo.");
     }
   }
 
@@ -1051,6 +1075,7 @@ export function useAdminPanel({
     novoCatalogo,
     setNovoCatalogo,
     novoArtigo,
+    artigoEditandoId,
     setNovoArtigo,
     mostrarPerfil,
     setMostrarPerfil,
@@ -1091,7 +1116,9 @@ export function useAdminPanel({
     abrirEdicaoUsuario,
     salvarEdicaoUsuario,
     criarItemCatalogo,
-    criarArtigo,
+    salvarArtigo,
+    editarArtigo,
+    cancelarEdicaoArtigo,
     criarAvisoManutencao,
     alternarAvisoManutencao,
     removerAvisoManutencao,

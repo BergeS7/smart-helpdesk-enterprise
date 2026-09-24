@@ -29,9 +29,14 @@ export function atualizarCatalogo(
   });
 }
 
-export function listarBaseConhecimento(q?: string) {
+// "todos" traz também rascunhos e arquivados; o backend só atende quem gerencia a base.
+export function listarBaseConhecimento(q?: string, { todos = false } = {}) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (todos) params.set("todos", "true");
+  const query = params.toString();
   return request<ArtigoBase[]>(
-    `/catalogos/base-conhecimento${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+    `/catalogos/base-conhecimento${query ? `?${query}` : ""}`,
   );
 }
 

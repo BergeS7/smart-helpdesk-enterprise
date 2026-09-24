@@ -1,64 +1,73 @@
 /**
  * Responsabilidade: aba Base de Conhecimento: artigos da equipe.
  */
-import { BookOpen, RefreshCw } from "lucide-react";
-import { Button, Card, Field, Input, Textarea } from "../../../components/shared/FormPrimitives";
+import { BookOpen, Pencil, RefreshCw } from "lucide-react";
+import { Badge, Button, Card, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
+import type { StatusArtigo } from "../../../services/api";
 import type { PainelAdmin } from "../useAdminPanel";
 
+const STATUS_ARTIGO: Record<StatusArtigo, { label: string; className: string }> = {
+  rascunho: { label: "Rascunho", className: "border-zinc-200 bg-zinc-50 text-zinc-600" },
+  revisao: { label: "Em revisão", className: "border-amber-200 bg-amber-50 text-amber-700" },
+  publicado: { label: "Publicado", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  arquivado: { label: "Arquivado", className: "border-zinc-200 bg-zinc-100 text-zinc-500" },
+};
+
+const CAMPOS_LINHA = [
+  { campo: "titulo", label: "Título", required: true },
+  { campo: "categoria", label: "Categoria" },
+  { campo: "palavras_chave", label: "Palavras-chave" },
+  { campo: "resumo", label: "Resumo" },
+] as const;
+
+const CAMPOS_TEXTO = [
+  { campo: "problema", label: "Problema" },
+  { campo: "sintomas", label: "Sintomas" },
+  { campo: "solucao", label: "Solução" },
+  { campo: "conteudo", label: "Conteúdo completo", required: true },
+] as const;
+
+const formatarData = (valor?: string) => (valor ? new Date(valor).toLocaleDateString("pt-BR") : "—");
+
 export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
-  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, carregar, criarArtigo } = painel;
+  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, cancelarEdicaoArtigo } = painel;
   return (
     <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
       <Card>
-        <h3 className="mb-4 font-black">Novo artigo</h3>
-        <form onSubmit={criarArtigo} className="space-y-3">
-          <Field label="Título">
-            <Input
-              required
-              value={novoArtigo.titulo}
-              onChange={(e) =>
-                setNovoArtigo({
-                  ...novoArtigo,
-                  titulo: e.target.value,
-                })
-              }
-            />
+        <h3 className="mb-4 font-black">{artigoEditandoId ? "Editar artigo" : "Novo artigo"}</h3>
+        <form onSubmit={salvarArtigo} className="space-y-3">
+          {CAMPOS_LINHA.map(({ campo, label, ...rest }) => (
+            <Field key={campo} label={label}>
+              <Input
+                required={"required" in rest}
+                value={novoArtigo[campo]}
+                onChange={(e) => setNovoArtigo({ ...novoArtigo, [campo]: e.target.value })}
+              />
+            </Field>
+          ))}
+          {CAMPOS_TEXTO.map(({ campo, label, ...rest }) => (
+            <Field key={campo} label={label}>
+              <Textarea
+                required={"required" in rest}
+                value={novoArtigo[campo]}
+                onChange={(e) => setNovoArtigo({ ...novoArtigo, [campo]: e.target.value })}
+              />
+            </Field>
+          ))}
+          <Field label="Status">
+            <Select
+              value={novoArtigo.status}
+              onChange={(e) => setNovoArtigo({ ...novoArtigo, status: e.target.value as StatusArtigo })}
+            >
+              {Object.entries(STATUS_ARTIGO).map(([valor, { label }]) => (
+                <option key={valor} value={valor}>{label}</option>
+              ))}
+            </Select>
           </Field>
-          <Field label="Categoria">
-            <Input
-              value={novoArtigo.categoria}
-              onChange={(e) =>
-                setNovoArtigo({
-                  ...novoArtigo,
-                  categoria: e.target.value,
-                })
-              }
-            />
-          </Field>
-          <Field label="Palavras-chave">
-            <Input
-              value={novoArtigo.palavras_chave}
-              onChange={(e) =>
-                setNovoArtigo({
-                  ...novoArtigo,
-                  palavras_chave: e.target.value,
-                })
-              }
-            />
-          </Field>
-          <Field label="Conteúdo">
-            <Textarea
-              required
-              value={novoArtigo.conteudo}
-              onChange={(e) =>
-                setNovoArtigo({
-                  ...novoArtigo,
-                  conteudo: e.target.value,
-                })
-              }
-            />
-          </Field>
-          <Button>Criar artigo</Button>
+          <div className="flex gap-2">
+            <Button>{artigoEditandoId ? "Salvar alterações" : "Criar artigo"}</Button>
+            {artigoEditandoId && <Button type="button" variant="secondary" onClick={cancelarEdicaoArtigo}>Cancelar</Button>}
+          </div>
         </form>
       </Card>
       <Card>
@@ -87,15 +96,32 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
           </div>
         )}
         <div className="space-y-3">
-          {base.map((a) => (
-            <div key={a.id} className="rounded-2xl border p-4">
-              <p className="font-black">{a.titulo}</p>
-              <p className="text-sm text-zinc-500">
-                {a.categoria} • {a.palavras_chave}
-              </p>
-              <p className="mt-2 text-sm">{a.conteudo}</p>
-            </div>
-          ))}
+          {base.map((a) => {
+            const status = STATUS_ARTIGO[a.status || "publicado"];
+            return (
+              <div key={a.id} className={`rounded-2xl border p-4 ${artigoEditandoId === a.id ? "border-blue-300 bg-blue-50/40" : ""}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-black">{a.titulo}</p>
+                    <p className="text-sm text-zinc-500">
+                      {[a.categoria, a.palavras_chave].filter(Boolean).join(" • ")}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Badge className={status.className}>{status.label}</Badge>
+                    <button type="button" onClick={() => editarArtigo(a)} className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-blue-600" title="Editar artigo" aria-label={`Editar artigo ${a.titulo}`}>
+                      <Pencil size={14} />
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-2 line-clamp-3 text-sm">{a.resumo || a.conteudo}</p>
+                <p className="mt-2 text-xs text-zinc-400">
+                  Criado por {a.autor_nome || "—"} em {formatarData(a.criado_em)} · Atualizado em {formatarData(a.atualizado_em)}
+                  {a.atualizado_por_nome ? ` por ${a.atualizado_por_nome}` : ""}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </Card>
     </div>

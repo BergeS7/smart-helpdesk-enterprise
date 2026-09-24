@@ -23,6 +23,10 @@ export function UsuarioBaseConhecimento({
         artigo.titulo,
         artigo.categoria,
         artigo.palavras_chave,
+        artigo.resumo,
+        artigo.problema,
+        artigo.sintomas,
+        artigo.solucao,
         artigo.conteudo,
       ].some((valor) =>
         String(valor || "")
@@ -77,7 +81,7 @@ export function UsuarioBaseConhecimento({
               </div>
               <h4 className="font-black text-zinc-900">{artigo.titulo}</h4>
               <p className="mt-2 line-clamp-5 text-sm leading-6 text-zinc-500">
-                {artigo.conteudo}
+                {artigo.resumo || artigo.conteudo}
               </p>
             </div>
           ))

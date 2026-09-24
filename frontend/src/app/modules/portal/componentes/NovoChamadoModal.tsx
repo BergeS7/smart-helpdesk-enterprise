@@ -157,7 +157,7 @@ export function UsuarioNovoChamadoModal({
                       {artigo.titulo}
                     </p>
                     <p className="mt-1 line-clamp-3 text-xs leading-5 text-zinc-500">
-                      {artigo.conteudo}
+                      {artigo.resumo || artigo.conteudo}
                     </p>
                   </div>
                 ))}

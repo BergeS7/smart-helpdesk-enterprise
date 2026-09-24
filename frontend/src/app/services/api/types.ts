@@ -259,16 +259,25 @@ export type CatalogoItem = {
   criado_em?: string;
 };
 
+export type StatusArtigo = "rascunho" | "revisao" | "publicado" | "arquivado";
+
 export type ArtigoBase = {
   id: number;
   titulo: string;
   categoria?: string;
   palavras_chave?: string;
+  resumo?: string | null;
+  problema?: string | null;
+  sintomas?: string | null;
+  solucao?: string | null;
   conteudo: string;
+  status?: StatusArtigo;
   ativo?: boolean;
   visualizacoes?: number;
   util_total?: number;
   nao_util_total?: number;
+  autor_nome?: string | null;
+  atualizado_por_nome?: string | null;
   criado_em?: string;
   atualizado_em?: string;
 };
