@@ -236,6 +236,16 @@ export type DashboardResumo = {
   ativos?: { total: number; online: number; offline: number };
   comparativo?: { atual: number; anterior: number };
   periodoDias?: number;
+  // Recomendações seguem o período; visualizações são o total acumulado dos artigos.
+  baseConhecimento?: {
+    publicados: number;
+    em_revisao: number;
+    visualizacoes: number;
+    recomendacoes: number;
+    autoatendimentos: number;
+    taxa_sucesso: number | null;
+    artigos_revisar: number;
+  } | null;
 };
 
 export type ReportDistribution = { label: string; total: number };
@@ -287,6 +297,13 @@ export type ArtigoBase = {
   nao_util_total?: number;
   autor_nome?: string | null;
   atualizado_por_nome?: string | null;
+  // Efetividade: só vem na listagem de gestão (?todos=true). taxa_sucesso é null sem recomendações.
+  recomendacoes?: number;
+  cliques?: number;
+  autoatendimentos?: number;
+  nao_resolveu?: number;
+  taxa_sucesso?: number | null;
+  revisar?: boolean;
   criado_em?: string;
   atualizado_em?: string;
 };

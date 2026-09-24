@@ -3,7 +3,7 @@
  */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizarArtigo, erroPublicacao } = require("../src/domain/knowledgeBase");
+const { normalizarArtigo, erroPublicacao, efetividade } = require("../src/domain/knowledgeBase");
 
 const IMAGEM = "supabase://knowledge-base/artigos/123e4567-e89b-12d3-a456-426614174000.png";
 
@@ -239,4 +239,11 @@ test("resposta exige sim ou não e só vale para a própria recomendação", asy
   const alheia = response();
   await loadController(fakePool({ recomendacaoDoUsuario: false })).responderRecomendacao({ params: { id: "1" }, body: { resolveu: true }, user: { id: 7 } }, alheia);
   assert.equal(alheia.statusCode, 404);
+});
+
+test("efetividade: sem recomendação não há taxa; muito recomendado e pouco resolvido pede revisão", () => {
+  assert.deepEqual(efetividade({ recomendacoes: 0, autoatendimentos: 0 }), { taxa_sucesso: null, revisar: false });
+  assert.deepEqual(efetividade({ recomendacoes: 12, autoatendimentos: 1 }), { taxa_sucesso: 0.08, revisar: true });
+  assert.deepEqual(efetividade({ recomendacoes: 10, autoatendimentos: 5 }), { taxa_sucesso: 0.5, revisar: false });
+  assert.equal(efetividade({ recomendacoes: 3, autoatendimentos: 0 }).revisar, false, "poucos dados ainda não bastam");
 });

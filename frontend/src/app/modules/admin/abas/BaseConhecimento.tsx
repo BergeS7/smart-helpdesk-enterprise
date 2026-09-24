@@ -68,6 +68,8 @@ function EditorPassos({ passos, onChange, onImagem }: { passos: PassoArtigo[]; o
   );
 }
 
+const formatarTaxa = (taxa?: number | null) => (taxa == null ? "—" : `${Math.round(taxa * 100)}%`);
+
 const formatarData = (valor?: string) => (valor ? new Date(valor).toLocaleDateString("pt-BR") : "—");
 
 export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
@@ -172,6 +174,7 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {a.revisar && <Badge className="border-amber-300 bg-amber-50 text-amber-800"><span title="Muito recomendado, mas resolve poucos casos. Vale revisar o conteúdo.">Revisar</span></Badge>}
                     {a.visibilidade === "interno" && <Badge className="border-violet-200 bg-violet-50 text-violet-700">Interno</Badge>}
                     <Badge className={status.className}>{status.label}</Badge>
                     {podeEditar(a) && <button type="button" onClick={() => void editarArtigo(a)} className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-blue-600" title="Editar artigo" aria-label={`Editar artigo ${a.titulo}`}>
@@ -180,7 +183,11 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
                   </div>
                 </div>
                 <p className="mt-2 line-clamp-3 text-sm">{a.resumo || a.conteudo}</p>
-                <p className="mt-2 text-xs text-zinc-400">
+                <p className="mt-2 text-xs font-semibold text-zinc-500">
+                  {a.visualizacoes || 0} visualizações · {a.recomendacoes || 0} recomendações · {a.cliques || 0} cliques ·{" "}
+                  {a.autoatendimentos || 0} resolvidos por autoatendimento · sucesso {formatarTaxa(a.taxa_sucesso)}
+                </p>
+                <p className="mt-1 text-xs text-zinc-400">
                   Criado por {a.autor_nome || "—"} em {formatarData(a.criado_em)} · Atualizado em {formatarData(a.atualizado_em)}
                   {a.atualizado_por_nome ? ` por ${a.atualizado_por_nome}` : ""}
                 </p>

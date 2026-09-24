@@ -2,7 +2,7 @@
  * Responsabilidade: regras do artigo da base de conhecimento: status de publicação e campos editáveis.
  */
 const { normalizarPerfil, ehEquipe } = require("../utils/permissoes");
-const { CONFIANCA_ALTA } = require("../config/knowledgeSearch");
+const { CONFIANCA_ALTA, REVISAO_MIN_RECOMENDACOES, REVISAO_TAXA_SUCESSO_MAXIMA } = require("../config/knowledgeSearch");
 
 const STATUS_ARTIGO = Object.freeze(["rascunho", "revisao", "publicado", "arquivado"]);
 const VISIBILIDADES = Object.freeze(["publico", "interno"]);
@@ -127,4 +127,14 @@ function condicaoLeitura(user, alias) {
 // A busca já descarta o que fica abaixo da confiança mínima; o resto é alta ou moderada.
 const nivelConfianca = (confianca) => (confianca >= CONFIANCA_ALTA ? "alta" : "moderada");
 
-module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao, condicaoLeitura, nivelConfianca };
+// Sem recomendações não há taxa: devolve null em vez de inventar 0%.
+function efetividade({ recomendacoes = 0, autoatendimentos = 0 } = {}) {
+  const total = Number(recomendacoes);
+  const taxa = total > 0 ? Math.round((Number(autoatendimentos) / total) * 100) / 100 : null;
+  return {
+    taxa_sucesso: taxa,
+    revisar: total >= REVISAO_MIN_RECOMENDACOES && taxa < REVISAO_TAXA_SUCESSO_MAXIMA,
+  };
+}
+
+module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao, condicaoLeitura, nivelConfianca, efetividade };

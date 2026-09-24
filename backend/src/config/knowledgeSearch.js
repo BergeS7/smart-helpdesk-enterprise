@@ -20,4 +20,8 @@ module.exports = Object.freeze({
   TEXTO_MAX_CARACTERES: 2000,
   // Enquanto o usuário digita, o mesmo artigo exibido de novo nesta janela reaproveita a recomendação.
   JANELA_RECOMENDACAO_MINUTOS: 30,
+  // Efetividade: artigo muito recomendado que resolve pouco vira candidato a revisão.
+  // Taxa de sucesso = resoluções por autoatendimento / recomendações exibidas.
+  REVISAO_MIN_RECOMENDACOES: 10,
+  REVISAO_TAXA_SUCESSO_MAXIMA: 0.2,
 });

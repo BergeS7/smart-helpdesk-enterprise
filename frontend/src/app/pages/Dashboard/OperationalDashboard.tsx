@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type Keyboard
 import {
   AlertTriangle,
   ArrowUpRight,
+  BookOpen,
   CheckCircle2,
   Clock3,
   Download,
@@ -160,6 +161,8 @@ export function OperationalDashboard({ initial, dark, onNavigate, onOpenTicket }
       <Rank title="Por prioridade" icon={<AlertTriangle size={17}/>} rows={data.porPrioridade.map((item) => ({ label: item.prioridade, value: Number(item.total) }))} onClick={() => onNavigate("chamados")} dark={dark} color="bg-amber-500" delay={580} />
     </section>
 
+    {data.baseConhecimento && <KnowledgeBasePanel base={data.baseConhecimento} days={data.periodoDias || period} dark={dark} panel={panel} muted={muted} />}
+
     <section style={enter(640)} className={`motion-enter overflow-hidden rounded-3xl border shadow-sm ${panel}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-4 dark:border-white/10"><div><h3 className="font-black">Chamados recentes</h3><p className={`mt-1 text-xs ${muted}`}>Últimas movimentações registradas</p></div><button onClick={() => onNavigate("chamados")} className="flex items-center gap-1 text-xs font-extrabold text-blue-600 hover:text-blue-700">Ver todos <ArrowUpRight size={14}/></button></div>
       <div className="overflow-x-auto">
@@ -184,6 +187,22 @@ function ActionButton({ children, title, onClick, dark, wide = false }: { childr
 function Trend({ value }: { value: number }) {
   const positive = value >= 0;
   return <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${positive ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>{positive ? <TrendingUp size={14}/> : <TrendingDown size={14}/>} {Math.abs(value)}%</span>;
+}
+
+function KnowledgeBasePanel({ base, days, dark, panel, muted }: { base: NonNullable<DashboardResumo["baseConhecimento"]>; days: number; dark: boolean; panel: string; muted: string }) {
+  const taxa = base.taxa_sucesso == null ? "—" : `${Math.round(base.taxa_sucesso * 100)}%`;
+  return <section style={enter(620)} className={`motion-enter rounded-3xl border p-5 shadow-sm ${panel}`}>
+    <div className="flex items-center justify-between"><div><h3 className="font-black">Base de conhecimento</h3><p className={`mt-1 text-xs ${muted}`}>Recomendações e autoatendimento nos últimos {days} dias</p></div><BookOpen size={20} className="text-blue-500"/></div>
+    <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+      <MiniStat label="Publicados" value={String(base.publicados)}/>
+      <MiniStat label="Em revisão" value={String(base.em_revisao)}/>
+      <MiniStat label="Visualizações (total)" value={String(base.visualizacoes)}/>
+      <MiniStat label="Recomendações" value={String(base.recomendacoes)}/>
+      <MiniStat label="Resolvidos sem chamado" value={String(base.autoatendimentos)}/>
+      <MiniStat label="Taxa de sucesso" value={taxa}/>
+      <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">Artigos a revisar</span><b className={`mt-0.5 block text-sm ${base.artigos_revisar ? (dark ? "text-amber-300" : "text-amber-600") : ""}`}>{base.artigos_revisar}</b></div>
+    </div>
+  </section>;
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) { return <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</span><b className="mt-0.5 block text-sm">{value}</b></div>; }

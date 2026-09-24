@@ -2,6 +2,7 @@
  * Responsabilidade: Controlador HTTP de dashboard;   valida a requisição e coordena regras e persistência.
  */
 const pool = require("../config/database");
+const { resumoBase } = require("../services/knowledgeMetricsService");
 
 function whereEquipe(req) {
   const days = [1,7,30,90].includes(Number(req.query.periodo)) ? Number(req.query.periodo) : 30;
@@ -17,7 +18,7 @@ const obterDashboard = async (req, res) => {
     const wherePrefix = filtro.sql ? `${filtro.sql} AND` : "WHERE";
     const params = filtro.params;
 
-    const [total, porStatus, porPrioridade, porDepartamento, vencidos, usuarios, pendentes, semResponsavel, alta, tempoResposta, tempoResolucao, satisfacao, porTecnico, recentes, evolucao, riscoSla, ativos, comparativo] = await Promise.all([
+    const [total, porStatus, porPrioridade, porDepartamento, vencidos, usuarios, pendentes, semResponsavel, alta, tempoResposta, tempoResolucao, satisfacao, porTecnico, recentes, evolucao, riscoSla, ativos, comparativo, baseConhecimento] = await Promise.all([
       pool.query(`SELECT COUNT(*) FROM chamados c ${filtro.sql}`, params),
       pool.query(`SELECT c.status, COUNT(*)::int AS total FROM chamados c ${filtro.sql} GROUP BY c.status ORDER BY c.status`, params),
       pool.query(`SELECT c.prioridade, COUNT(*)::int AS total FROM chamados c ${filtro.sql} GROUP BY c.prioridade ORDER BY c.prioridade`, params),
@@ -54,6 +55,8 @@ const obterDashboard = async (req, res) => {
         COUNT(*) FILTER(WHERE criado_em >= NOW()-($1::text||' days')::interval)::int AS atual,
         COUNT(*) FILTER(WHERE criado_em < NOW()-($1::text||' days')::interval AND criado_em >= NOW()-((($1::int)*2)::text||' days')::interval)::int AS anterior
         FROM chamados`,[filtro.days]),
+      // Indicadores da base são complementares: se falharem, o dashboard continua sem eles.
+      resumoBase({ dias: filtro.days }).catch((error) => { console.error("Erro nos indicadores da base:", error.message); return null; }),
     ]);
 
     const statusMap = Object.fromEntries(porStatus.rows.map((r) => [r.status, Number(r.total)]));
@@ -88,6 +91,7 @@ const obterDashboard = async (req, res) => {
       ativos: ativos.rows[0],
       comparativo: comparativo.rows[0],
       periodoDias: filtro.days,
+      baseConhecimento,
     });
   } catch (error) {
     console.error(error);

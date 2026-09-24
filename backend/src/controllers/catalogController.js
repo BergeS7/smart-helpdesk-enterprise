@@ -2,13 +2,14 @@
  * Responsabilidade: Controlador HTTP de catalog; valida a requisição e coordena regras e persistência.
  */
 const pool = require("../config/database");
-const { normalizarArtigo, erroPublicacao, condicaoLeitura, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
+const { normalizarArtigo, erroPublicacao, condicaoLeitura, efetividade, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
 const { enviarArquivo, urlAssinada } = require("../utils/supabaseStorage");
 const { arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { userHasPermission } = require("../services/permissionService");
 const { registrarAuditoria } = require("./chamados/registro");
 const { buscarArtigosRelacionados } = require("../services/knowledgeSearchService");
 const { registrarExibicoes, registrarClique, registrarResposta } = require("../services/knowledgeRecommendationService");
+const { SQL_EFETIVIDADE_POR_ARTIGO } = require("../services/knowledgeMetricsService");
 
 function tabelaValida(tipo) {
   if (tipo === "departamentos") return "departamentos";
@@ -77,10 +78,21 @@ const COLUNAS_ARTIGO = [
   "criado_por", "atualizado_por", "criado_em", "atualizado_em",
 ].join(", ");
 
-const SELECT_ARTIGO = `SELECT ${COLUNAS_ARTIGO.split(", ").map((coluna) => `b.${coluna}`).join(", ")}, autor.nome AS autor_nome, editor.nome AS atualizado_por_nome
+// Artigo com nomes de autor e editor; "extra" acrescenta colunas e join (ex.: métricas da gestão).
+function selectArtigo(extra = { colunas: "", join: "" }) {
+  return `SELECT ${COLUNAS_ARTIGO.split(", ").map((coluna) => `b.${coluna}`).join(", ")},
+         autor.nome AS autor_nome, editor.nome AS atualizado_por_nome${extra.colunas}
        FROM base_conhecimento b
        LEFT JOIN usuarios autor ON autor.id = b.criado_por
-       LEFT JOIN usuarios editor ON editor.id = b.atualizado_por`;
+       LEFT JOIN usuarios editor ON editor.id = b.atualizado_por
+       ${extra.join}`;
+}
+
+const METRICAS_ARTIGO = {
+  colunas: `, COALESCE(m.recomendacoes, 0) AS recomendacoes, COALESCE(m.cliques, 0) AS cliques,
+    COALESCE(m.autoatendimentos, 0) AS autoatendimentos, COALESCE(m.nao_resolveu, 0) AS nao_resolveu`,
+  join: `LEFT JOIN (${SQL_EFETIVIDADE_POR_ARTIGO}) m ON m.artigo_id = b.id`,
+};
 
 // Quem gerencia a base pode pedir todos os status (?todos=true); os demais seguem a leitura comum.
 const listarBase = async (req, res) => {
@@ -92,13 +104,14 @@ const listarBase = async (req, res) => {
     if (!gestao) where.push(condicaoLeitura(req.user, "b"));
     if (categoria) { params.push(categoria); where.push(`LOWER(COALESCE(b.categoria,'')) = LOWER($${params.length})`); }
     if (q) { params.push(`%${q}%`); where.push(`CONCAT_WS(' ', b.titulo, b.palavras_chave, b.resumo, b.problema, b.sintomas, b.solucao, b.conteudo) ILIKE $${params.length}`); }
+    // Quem gerencia a base também recebe a efetividade de cada artigo.
     const result = await pool.query(
-      `${SELECT_ARTIGO}
+      `${gestao ? selectArtigo(METRICAS_ARTIGO) : selectArtigo()}
        ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
        ORDER BY COALESCE(b.visualizacoes, 0) DESC, b.atualizado_em DESC`,
       params
     );
-    return res.json(result.rows);
+    return res.json(gestao ? result.rows.map((artigo) => ({ ...artigo, ...efetividade(artigo) })) : result.rows);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao listar base de conhecimento", detalhe: error.message });
@@ -150,7 +163,7 @@ const responderRecomendacao = async (req, res) => {
 async function buscarArtigoVisivel(req, id) {
   const gestao = await userHasPermission(req.user, "gerenciar_base");
   const result = await pool.query(
-    `${SELECT_ARTIGO} WHERE b.id = $1${gestao ? "" : ` AND ${condicaoLeitura(req.user, "b")}`}`,
+    `${selectArtigo()} WHERE b.id = $1${gestao ? "" : ` AND ${condicaoLeitura(req.user, "b")}`}`,
     [id]
   );
   return result.rows[0] || null;
