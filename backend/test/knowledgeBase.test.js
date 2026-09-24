@@ -19,7 +19,8 @@ function loadController(fakePool) {
     async urlAssinada(ref) { return `https://projeto.supabase.co/assinada/${ref.split("/").pop()}`; },
   });
   for (const modulo of ["../src/controllers/catalogController", "../src/services/permissionService", "../src/controllers/chamados/registro", "../src/utils/profilePhoto",
-    "../src/services/knowledgeSearchService", "../src/services/knowledgeRecommendationService"]) {
+    "../src/services/knowledgeSearchService", "../src/services/knowledgeRecommendationService",
+    "../src/services/knowledgeMetricsService", "../src/services/knowledgeRecurrenceService"]) {
     delete require.cache[require.resolve(modulo)];
   }
   return require("../src/controllers/catalogController");
@@ -268,4 +269,34 @@ test("situação do problema recorrente", () => {
   assert.equal(situacaoRecorrencia({ visibilidade: "interno" }), "artigo_interno");
   assert.equal(situacaoRecorrencia({ visibilidade: "publico", recomendacoes: 12, autoatendimentos: 1 }), "artigo_pouco_efetivo");
   assert.equal(situacaoRecorrencia({ visibilidade: "publico", recomendacoes: 12, autoatendimentos: 6 }), "coberto");
+});
+
+test("análise de recorrência usa cache por visão e é descartada quando a base muda", async () => {
+  const cache = new Map();
+  stub("../src/services/redisCacheService", {
+    async getJson(chave) { return cache.get(chave) || null; },
+    async setJson(chave, valor) { cache.set(chave, valor); },
+    async remove(chave) { cache.delete(chave); },
+  });
+  let consultasChamados = 0;
+  const pool = fakePool();
+  const consultaOriginal = pool.query;
+  pool.query = async (sql, values) => {
+    if (String(sql).includes("FROM chamados c")) { consultasChamados += 1; return { rows: [] }; }
+    if (String(sql).includes("AS termos")) return { rows: [{ termos: [] }] };
+    return consultaOriginal(sql, values);
+  };
+  const controller = loadController(pool);
+  delete require.cache[require.resolve("../src/services/redisCacheService")];
+  const tecnico = { id: 4, nome: "Téc", perfil: "tecnico" };
+
+  await controller.listarRecorrencias({ user: tecnico }, response());
+  await controller.listarRecorrencias({ user: tecnico }, response());
+  assert.equal(consultasChamados, 1, "segunda consulta vem do cache");
+  await controller.listarRecorrencias({ user: { id: 7, perfil: "usuario" } }, response());
+  assert.equal(consultasChamados, 2, "quem não é da equipe tem análise própria (sem artigos internos)");
+
+  await controller.criarBase({ body: { titulo: "VPN", conteudo: "x", status: "revisao" }, user: tecnico }, response());
+  await controller.listarRecorrencias({ user: tecnico }, response());
+  assert.equal(consultasChamados, 3, "artigo novo invalida o cache");
 });

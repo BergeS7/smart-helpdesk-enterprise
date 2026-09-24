@@ -245,6 +245,9 @@ export type DashboardResumo = {
     autoatendimentos: number;
     taxa_sucesso: number | null;
     artigos_revisar: number;
+    // Janela própria da análise de recorrência (30 dias); null se a análise falhar.
+    problemas_recorrentes: number | null;
+    problemas_sem_artigo: number | null;
   } | null;
 };
 
@@ -306,6 +309,18 @@ export type ArtigoBase = {
   revisar?: boolean;
   criado_em?: string;
   atualizado_em?: string;
+};
+
+// Problema que se repete nos chamados recentes e a situação da base para ele.
+export type ProblemaRecorrente = {
+  quantidade: number;
+  dias: number;
+  primeiro_em: string;
+  ultimo_em: string;
+  titulo: string;
+  exemplos: { id: number; numero_chamado?: string; titulo: string }[];
+  artigo: (Pick<ArtigoBase, "id" | "titulo" | "visibilidade" | "recomendacoes" | "autoatendimentos" | "taxa_sucesso" | "revisar"> & { confianca: number }) | null;
+  situacao: "sem_artigo" | "artigo_interno" | "artigo_pouco_efetivo" | "coberto";
 };
 
 // Artigo recomendado pela busca da base (só confiança alta ou moderada chega ao cliente).

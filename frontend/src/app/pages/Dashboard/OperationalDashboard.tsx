@@ -200,9 +200,16 @@ function KnowledgeBasePanel({ base, days, dark, panel, muted }: { base: NonNulla
       <MiniStat label="Recomendações" value={String(base.recomendacoes)}/>
       <MiniStat label="Resolvidos sem chamado" value={String(base.autoatendimentos)}/>
       <MiniStat label="Taxa de sucesso" value={taxa}/>
-      <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">Artigos a revisar</span><b className={`mt-0.5 block text-sm ${base.artigos_revisar ? (dark ? "text-amber-300" : "text-amber-600") : ""}`}>{base.artigos_revisar}</b></div>
+      <Destaque label="Artigos a revisar" value={base.artigos_revisar} dark={dark}/>
     </div>
+    {base.problemas_recorrentes != null && <p className={`mt-4 border-t pt-3 text-xs ${dark ? "border-white/10" : "border-slate-100"} ${muted}`}>
+      <b>{base.problemas_recorrentes}</b> problema(s) recorrente(s) nos chamados dos últimos 30 dias, <b className={base.problemas_sem_artigo ? (dark ? "text-amber-300" : "text-amber-600") : ""}>{base.problemas_sem_artigo} sem artigo</b>. Veja as sugestões na Base de Conhecimento.
+    </p>}
   </section>;
+}
+
+function Destaque({ label, value, dark }: { label: string; value: number; dark: boolean }) {
+  return <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</span><b className={`mt-0.5 block text-sm ${value ? (dark ? "text-amber-300" : "text-amber-600") : ""}`}>{value}</b></div>;
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) { return <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</span><b className="mt-0.5 block text-sm">{value}</b></div>; }

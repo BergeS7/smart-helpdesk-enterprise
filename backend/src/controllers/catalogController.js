@@ -10,7 +10,7 @@ const { registrarAuditoria } = require("./chamados/registro");
 const { buscarArtigosRelacionados } = require("../services/knowledgeSearchService");
 const { registrarExibicoes, registrarClique, registrarResposta } = require("../services/knowledgeRecommendationService");
 const { SQL_EFETIVIDADE_POR_ARTIGO } = require("../services/knowledgeMetricsService");
-const { detectarRecorrencias } = require("../services/knowledgeRecurrenceService");
+const { detectarRecorrencias, limparCacheRecorrencias } = require("../services/knowledgeRecurrenceService");
 
 function tabelaValida(tipo) {
   if (tipo === "departamentos") return "departamentos";
@@ -234,6 +234,7 @@ const criarBase = async (req, res) => {
     );
     const artigo = result.rows[0];
     await registrarAuditoria(req, "base_conhecimento", artigo.id, "criado", `Artigo "${artigo.titulo}" criado como ${artigo.status}.`);
+    await limparCacheRecorrencias();
     return res.status(201).json(artigo);
   } catch (error) {
     console.error(error);
@@ -262,6 +263,7 @@ const atualizarBase = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ erro: "Artigo não encontrado" });
     const artigo = result.rows[0];
     await registrarAuditoria(req, "base_conhecimento", artigo.id, "atualizado", `Artigo "${artigo.titulo}" atualizado (${artigo.status}).`, { campos: colunas });
+    await limparCacheRecorrencias();
     return res.json(artigo);
   } catch (error) {
     console.error(error);

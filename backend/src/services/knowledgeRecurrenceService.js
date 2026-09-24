@@ -7,6 +7,8 @@ const cfg = require("../config/knowledgeSearch");
 const { agruparChamados, efetividade, situacaoRecorrencia } = require("../domain/knowledgeBase");
 const { buscarArtigosRelacionados } = require("./knowledgeSearchService");
 const { SQL_EFETIVIDADE_POR_ARTIGO } = require("./knowledgeMetricsService");
+const { getJson, setJson, remove } = require("./redisCacheService");
+const { ehEquipe } = require("../utils/permissoes");
 
 // Demandas de desenvolvimento seguem outro fluxo e não são "problemas" da base.
 const TIPOS_DESENVOLVIMENTO = ["bug", "melhoria", "automacao", "integracao", "dashboard / relatorio", "novo sistema"];
@@ -39,8 +41,23 @@ async function carregarEfetividade(artigoIds) {
   return new Map(rows.map((row) => [row.artigo_id, row]));
 }
 
-// "user" é quem consulta (equipe técnica): artigos internos contam como existentes, mas são sinalizados.
+// A equipe enxerga artigos internos; os demais não. Por isso há um cache para cada visão.
+const chaveCache = (user) => `cache:kb-recorrencias:${ehEquipe(user?.perfil) ? "equipe" : "publico"}`;
+
+async function limparCacheRecorrencias() {
+  await Promise.all([remove(chaveCache({ perfil: "tecnico" })), remove(chaveCache({ perfil: "usuario" }))]);
+}
+
 async function detectarRecorrencias({ user }) {
+  const emCache = await getJson(chaveCache(user));
+  if (emCache) return emCache;
+  const grupos = await calcularRecorrencias({ user });
+  await setJson(chaveCache(user), grupos, cfg.RECORRENCIA_CACHE_SEGUNDOS);
+  return grupos;
+}
+
+// "user" é quem consulta (equipe técnica): artigos internos contam como existentes, mas são sinalizados.
+async function calcularRecorrencias({ user }) {
   const { chamados, termosGenericos } = await carregarChamados();
   const grupos = agruparChamados(chamados, {
     sobreposicaoMinima: cfg.RECORRENCIA_SOBREPOSICAO,
@@ -73,4 +90,4 @@ async function detectarRecorrencias({ user }) {
   });
 }
 
-module.exports = { detectarRecorrencias };
+module.exports = { detectarRecorrencias, limparCacheRecorrencias };

@@ -5,6 +5,9 @@ import { ArrowDown, ArrowUp, BookOpen, ImagePlus, Pencil, Plus, RefreshCw, Trash
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
 import type { ArtigoBase, PassoArtigo, StatusArtigo, VisibilidadeArtigo } from "../../../services/api";
 import type { PainelAdmin } from "../useAdminPanel";
+import { ProblemasRecorrentes } from "./ProblemasRecorrentes";
+
+const irParaFormulario = () => document.getElementById("form-artigo")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 const STATUS_ARTIGO: Record<StatusArtigo, { label: string; className: string }> = {
   rascunho: { label: "Rascunho", className: "border-zinc-200 bg-zinc-50 text-zinc-600" },
@@ -73,13 +76,23 @@ const formatarTaxa = (taxa?: number | null) => (taxa == null ? "—" : `${Math.r
 const formatarData = (valor?: string) => (valor ? new Date(valor).toLocaleDateString("pt-BR") : "—");
 
 export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
-  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, enviarImagemPasso, cancelarEdicaoArtigo, podePublicarBase } = painel;
+  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, enviarImagemPasso, cancelarEdicaoArtigo, podePublicarBase, problemasRecorrentes, criarArtigoParaProblema } = painel;
   const podeEditar = (artigo: ArtigoBase) => podePublicarBase || STATUS_DO_AUTOR.includes(artigo.status || "publicado");
   return (
+    <>
+    <ProblemasRecorrentes
+      problemas={problemasRecorrentes}
+      podePublicar={podePublicarBase}
+      onCriarArtigo={(problema) => { criarArtigoParaProblema(problema); irParaFormulario(); }}
+      onRevisarArtigo={(id) => {
+        const artigo = base.find((a) => a.id === id);
+        if (artigo) { void editarArtigo(artigo); irParaFormulario(); }
+      }}
+    />
     <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
       <Card>
         <h3 className="mb-4 font-black">{artigoEditandoId ? "Editar artigo" : "Novo artigo"}</h3>
-        <form onSubmit={salvarArtigo} className="space-y-3">
+        <form id="form-artigo" onSubmit={salvarArtigo} className="scroll-mt-24 space-y-3">
           {CAMPOS_LINHA.map(({ campo, label, ...rest }) => (
             <Field key={campo} label={label}>
               <Input
@@ -197,5 +210,6 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
         </div>
       </Card>
     </div>
+    </>
   );
 }

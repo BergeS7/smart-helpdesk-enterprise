@@ -35,4 +35,7 @@ module.exports = Object.freeze({
   RECORRENCIA_PALAVRAS_GENERICAS: "erro problema consigo acesso ajuda urgente preciso favor bom dia tarde noite obrigado solicitação dúvida desde hoje ontem",
   RECORRENCIA_MAX_CHAMADOS: 2000,
   RECORRENCIA_MAX_GRUPOS: 10,
+  // O dashboard recarrega a cada minuto: a análise fica em cache (Redis, quando configurado)
+  // e é descartada sempre que um artigo é criado ou alterado.
+  RECORRENCIA_CACHE_SEGUNDOS: 300,
 });

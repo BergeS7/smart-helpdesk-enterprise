@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
-import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type StatusArtigo, type VisibilidadeArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
+import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, listarProblemasRecorrentes, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type ProblemaRecorrente, type StatusArtigo, type VisibilidadeArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
 import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDevApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, ticketFiltersFromUrl } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 
@@ -75,6 +75,7 @@ export function useAdminPanel({
   const [base, setBase] = useState<ArtigoBase[]>([]);
   const [baseCarregando, setBaseCarregando] = useState(false);
   const [erroBase, setErroBase] = useState("");
+  const [problemasRecorrentes, setProblemasRecorrentes] = useState<ProblemaRecorrente[]>([]);
   const [respostasRapidas, setRespostasRapidas] = useState<RespostaRapida[]>(
     [],
   );
@@ -286,7 +287,13 @@ export function useAdminPanel({
         setBaseCarregando(true);
         setErroBase("");
         try {
-          setBase(await listarBaseConhecimento(undefined, { todos: true }));
+          // A análise de recorrência é complementar: se falhar, a lista de artigos aparece mesmo assim.
+          const [artigos, problemas] = await Promise.all([
+            listarBaseConhecimento(undefined, { todos: true }),
+            listarProblemasRecorrentes().catch(() => []),
+          ]);
+          setBase(artigos);
+          setProblemasRecorrentes(problemas);
         } catch (error) {
           setBase([]);
           setErroBase(error instanceof Error ? error.message : "Não foi possível carregar os artigos.");
@@ -764,6 +771,19 @@ export function useAdminPanel({
     });
   }
 
+  // Começa um rascunho a partir do problema recorrente; o técnico completa a solução.
+  function criarArtigoParaProblema(problema: ProblemaRecorrente) {
+    setArtigoEditandoId(null);
+    setNovoArtigo({
+      ...ARTIGO_VAZIO,
+      titulo: problema.titulo,
+      problema: [
+        `Problema recorrente: ${problema.quantidade} chamados nos últimos ${problema.dias} dias, como:`,
+        ...problema.exemplos.map((exemplo) => `- ${exemplo.titulo}`),
+      ].join("\n"),
+    });
+  }
+
   async function enviarImagemPasso(indice: number, arquivo: File) {
     try {
       const { imagem, imagem_url } = await enviarImagemArtigo(arquivo);
@@ -1142,6 +1162,8 @@ export function useAdminPanel({
     salvarArtigo,
     editarArtigo,
     enviarImagemPasso,
+    problemasRecorrentes,
+    criarArtigoParaProblema,
     cancelarEdicaoArtigo,
     criarAvisoManutencao,
     alternarAvisoManutencao,
