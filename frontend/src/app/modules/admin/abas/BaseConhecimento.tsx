@@ -1,9 +1,9 @@
 /**
  * Responsabilidade: aba Base de Conhecimento: artigos da equipe.
  */
-import { BookOpen, Pencil, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, ImagePlus, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
-import type { StatusArtigo } from "../../../services/api";
+import type { PassoArtigo, StatusArtigo } from "../../../services/api";
 import type { PainelAdmin } from "../useAdminPanel";
 
 const STATUS_ARTIGO: Record<StatusArtigo, { label: string; className: string }> = {
@@ -27,10 +27,48 @@ const CAMPOS_TEXTO = [
   { campo: "conteudo", label: "Conteúdo completo", required: true },
 ] as const;
 
+const botaoIcone = "grid h-7 w-7 place-items-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-blue-600 disabled:opacity-40";
+
+function EditorPassos({ passos, onChange, onImagem }: { passos: PassoArtigo[]; onChange: (passos: PassoArtigo[]) => void; onImagem: (indice: number, arquivo: File) => void }) {
+  const atualizar = (indice: number, passo: PassoArtigo) => onChange(passos.map((atual, i) => (i === indice ? passo : atual)));
+  const mover = (indice: number, destino: number) => {
+    const novos = [...passos];
+    [novos[indice], novos[destino]] = [novos[destino], novos[indice]];
+    onChange(novos);
+  };
+  return (
+    <div className="space-y-2">
+      <span className="block text-[11px] font-extrabold uppercase tracking-[.055em] text-zinc-500">Passo a passo</span>
+      {passos.map((passo, i) => (
+        <div key={i} className="space-y-2 rounded-xl border border-zinc-200 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-zinc-500">Passo {i + 1}</span>
+            <div className="flex gap-1">
+              <button type="button" className={botaoIcone} disabled={i === 0} onClick={() => mover(i, i - 1)} aria-label={`Subir passo ${i + 1}`}><ArrowUp size={13} /></button>
+              <button type="button" className={botaoIcone} disabled={i === passos.length - 1} onClick={() => mover(i, i + 1)} aria-label={`Descer passo ${i + 1}`}><ArrowDown size={13} /></button>
+              <button type="button" className={botaoIcone} onClick={() => onChange(passos.filter((_, j) => j !== i))} aria-label={`Remover passo ${i + 1}`}><Trash2 size={13} /></button>
+            </div>
+          </div>
+          <Textarea required className="min-h-20" value={passo.texto} onChange={(e) => atualizar(i, { ...passo, texto: e.target.value })} />
+          {passo.imagem_url && <img src={passo.imagem_url} alt={`Imagem do passo ${i + 1}`} className="max-h-40 rounded-lg border border-zinc-200 object-contain" />}
+          <div className="flex items-center gap-3 text-xs font-bold">
+            <label className="inline-flex cursor-pointer items-center gap-1 text-blue-600 hover:text-blue-700">
+              <ImagePlus size={14} /> {passo.imagem ? "Trocar imagem" : "Adicionar imagem"}
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const arquivo = e.target.files?.[0]; if (arquivo) onImagem(i, arquivo); e.target.value = ""; }} />
+            </label>
+            {passo.imagem && <button type="button" className="text-red-600 hover:text-red-700" onClick={() => atualizar(i, { texto: passo.texto })}>Remover imagem</button>}
+          </div>
+        </div>
+      ))}
+      <Button type="button" variant="secondary" onClick={() => onChange([...passos, { texto: "" }])}><Plus size={16} /> Adicionar passo</Button>
+    </div>
+  );
+}
+
 const formatarData = (valor?: string) => (valor ? new Date(valor).toLocaleDateString("pt-BR") : "—");
 
 export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
-  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, cancelarEdicaoArtigo } = painel;
+  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, enviarImagemPasso, cancelarEdicaoArtigo } = painel;
   return (
     <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
       <Card>
@@ -54,6 +92,19 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
               />
             </Field>
           ))}
+          <EditorPassos
+            passos={novoArtigo.passos}
+            onChange={(passos) => setNovoArtigo({ ...novoArtigo, passos })}
+            onImagem={(indice, arquivo) => void enviarImagemPasso(indice, arquivo)}
+          />
+          <Field label="Vídeo explicativo (link)">
+            <Input
+              type="url"
+              placeholder="https://"
+              value={novoArtigo.video_url}
+              onChange={(e) => setNovoArtigo({ ...novoArtigo, video_url: e.target.value })}
+            />
+          </Field>
           <Field label="Status">
             <Select
               value={novoArtigo.status}
@@ -109,7 +160,7 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge className={status.className}>{status.label}</Badge>
-                    <button type="button" onClick={() => editarArtigo(a)} className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-blue-600" title="Editar artigo" aria-label={`Editar artigo ${a.titulo}`}>
+                    <button type="button" onClick={() => void editarArtigo(a)} className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-blue-600" title="Editar artigo" aria-label={`Editar artigo ${a.titulo}`}>
                       <Pencil size={14} />
                     </button>
                   </div>

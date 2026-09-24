@@ -83,4 +83,13 @@ function urlPublica(valor) {
   return obterSupabase().storage.from(ref.bucket).getPublicUrl(ref.caminho).data.publicUrl;
 }
 
-module.exports = { garantirBucket, enviarArquivo, removerArquivo, baixarArquivo, urlPublica, lerReferencia };
+// URL temporária para exibir um arquivo de bucket privado sem expô-lo permanentemente.
+async function urlAssinada(valor, segundos) {
+  const ref = lerReferencia(valor);
+  if (!ref) return "";
+  const { data, error } = await obterSupabase().storage.from(ref.bucket).createSignedUrl(ref.caminho, segundos);
+  if (error) throw error;
+  return data?.signedUrl || "";
+}
+
+module.exports = { garantirBucket, enviarArquivo, removerArquivo, baixarArquivo, urlPublica, urlAssinada, lerReferencia };

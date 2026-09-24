@@ -261,6 +261,9 @@ export type CatalogoItem = {
 
 export type StatusArtigo = "rascunho" | "revisao" | "publicado" | "arquivado";
 
+// "imagem" é a referência no storage; "imagem_url" é temporária e só vem ao abrir o artigo.
+export type PassoArtigo = { texto: string; imagem?: string | null; imagem_url?: string };
+
 export type ArtigoBase = {
   id: number;
   titulo: string;
@@ -270,6 +273,8 @@ export type ArtigoBase = {
   problema?: string | null;
   sintomas?: string | null;
   solucao?: string | null;
+  passos?: PassoArtigo[];
+  video_url?: string | null;
   conteudo: string;
   status?: StatusArtigo;
   ativo?: boolean;

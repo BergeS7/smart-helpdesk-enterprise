@@ -2,7 +2,9 @@
  * Responsabilidade: Controlador HTTP de catalog; valida a requisição e coordena regras e persistência.
  */
 const pool = require("../config/database");
-const { normalizarArtigo } = require("../domain/knowledgeBase");
+const { normalizarArtigo, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
+const { enviarArquivo, urlAssinada } = require("../utils/supabaseStorage");
+const { arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { userHasPermission } = require("../services/permissionService");
 const { registrarAuditoria } = require("./chamados/registro");
 
@@ -66,6 +68,11 @@ const atualizarCatalogo = async (req, res) => {
   }
 };
 
+const SELECT_ARTIGO = `SELECT b.*, autor.nome AS autor_nome, editor.nome AS atualizado_por_nome
+       FROM base_conhecimento b
+       LEFT JOIN usuarios autor ON autor.id = b.criado_por
+       LEFT JOIN usuarios editor ON editor.id = b.atualizado_por`;
+
 // Quem gerencia a base pode pedir todos os status (?todos=true); os demais veem só publicados.
 const listarBase = async (req, res) => {
   try {
@@ -77,10 +84,7 @@ const listarBase = async (req, res) => {
     if (categoria) { params.push(categoria); where.push(`LOWER(COALESCE(b.categoria,'')) = LOWER($${params.length})`); }
     if (q) { params.push(`%${q}%`); where.push(`CONCAT_WS(' ', b.titulo, b.palavras_chave, b.resumo, b.problema, b.sintomas, b.solucao, b.conteudo) ILIKE $${params.length}`); }
     const result = await pool.query(
-      `SELECT b.*, autor.nome AS autor_nome, editor.nome AS atualizado_por_nome
-       FROM base_conhecimento b
-       LEFT JOIN usuarios autor ON autor.id = b.criado_por
-       LEFT JOIN usuarios editor ON editor.id = b.atualizado_por
+      `${SELECT_ARTIGO}
        ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
        ORDER BY COALESCE(b.visualizacoes, 0) DESC, b.atualizado_em DESC`,
       params
@@ -89,6 +93,53 @@ const listarBase = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao listar base de conhecimento", detalhe: error.message });
+  }
+};
+
+// Rascunhos e arquivados só aparecem para quem gerencia a base.
+async function buscarArtigoVisivel(req, id) {
+  const result = await pool.query(`${SELECT_ARTIGO} WHERE b.id = $1`, [id]);
+  const artigo = result.rows[0];
+  if (!artigo) return null;
+  if (artigo.status !== "publicado" && !(await userHasPermission(req.user, "gerenciar_base"))) return null;
+  return artigo;
+}
+
+// Assina só as imagens do artigo aberto; a listagem não gera URLs.
+async function assinarImagensPassos(passos) {
+  return Promise.all((passos || []).map(async (passo) => {
+    if (!passo.imagem) return passo;
+    try {
+      return { ...passo, imagem_url: await urlAssinada(passo.imagem, DURACAO_URL_IMAGEM_SEGUNDOS) };
+    } catch (error) {
+      console.error("Erro ao assinar imagem do artigo:", error.message);
+      return passo;
+    }
+  }));
+}
+
+const obterBase = async (req, res) => {
+  try {
+    const artigo = await buscarArtigoVisivel(req, req.params.id);
+    if (!artigo) return res.status(404).json({ erro: "Artigo não encontrado" });
+    return res.json({ ...artigo, passos: await assinarImagensPassos(artigo.passos) });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao carregar artigo", detalhe: error.message });
+  }
+};
+
+const enviarImagemBase = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ erro: "Envie uma imagem." });
+    if (!arquivoTemAssinaturaValida(req.file)) {
+      return res.status(400).json({ erro: "O conteúdo do arquivo não corresponde a uma imagem PNG, JPG ou WEBP válida." });
+    }
+    const imagem = await enviarArquivo({ bucket: BUCKET_IMAGENS, pasta: PASTA_IMAGENS, arquivo: req.file });
+    return res.status(201).json({ imagem, imagem_url: await urlAssinada(imagem, DURACAO_URL_IMAGEM_SEGUNDOS) });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao enviar imagem", detalhe: error.message });
   }
 };
 
@@ -182,6 +233,8 @@ module.exports = {
    criarCatalogo,
    atualizarCatalogo, 
    listarBase, 
+   obterBase,
+   enviarImagemBase,
    criarBase, 
    atualizarBase, 
    registrarVisualizacaoBase, 

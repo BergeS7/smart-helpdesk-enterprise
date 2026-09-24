@@ -5,10 +5,20 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { normalizarArtigo } = require("../src/domain/knowledgeBase");
 
+const IMAGEM = "supabase://knowledge-base/artigos/123e4567-e89b-12d3-a456-426614174000.png";
+
+function stub(modulo, exports) {
+  const caminho = require.resolve(modulo);
+  require.cache[caminho] = { id: caminho, filename: caminho, loaded: true, exports };
+}
+
 function loadController(fakePool) {
-  const databasePath = require.resolve("../src/config/database");
-  require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded: true, exports: fakePool };
-  for (const modulo of ["../src/controllers/catalogController", "../src/services/permissionService", "../src/controllers/chamados/registro"]) {
+  stub("../src/config/database", fakePool);
+  stub("../src/utils/supabaseStorage", {
+    async enviarArquivo() { return IMAGEM; },
+    async urlAssinada(ref) { return `https://projeto.supabase.co/assinada/${ref.split("/").pop()}`; },
+  });
+  for (const modulo of ["../src/controllers/catalogController", "../src/services/permissionService", "../src/controllers/chamados/registro", "../src/utils/profilePhoto"]) {
     delete require.cache[require.resolve(modulo)];
   }
   return require("../src/controllers/catalogController");
@@ -23,12 +33,13 @@ function response() {
   };
 }
 
-function fakePool() {
+function fakePool({ artigo } = {}) {
   const queries = [];
   return {
     queries,
     async query(sql, values) {
       queries.push({ sql: String(sql), values });
+      if (String(sql).includes("WHERE b.id = $1")) return { rows: artigo ? [artigo] : [] };
       if (String(sql).includes("FROM usuario_permissoes")) return { rows: [], rowCount: 0 };
       if (String(sql).startsWith("INSERT INTO base_conhecimento")) return { rows: [{ id: 1, titulo: values[0], status: "rascunho" }] };
       if (String(sql).includes("UPDATE base_conhecimento")) return { rows: [{ id: 1, titulo: "Impressora", status: "publicado" }] };
@@ -85,4 +96,52 @@ test("atualização registra autor da alteração e auditoria", async () => {
   assert.match(update.sql, /solucao = \$1, status = \$2, ativo = \$3,\s+atualizado_por = \$4/);
   assert.deepEqual(update.values, ["Reiniciar spooler", "publicado", true, 3, "1"]);
   assert.ok(pool.queries.some((q) => q.sql.includes("INSERT INTO auditoria_sistema")));
+});
+
+test("passos aceitam só imagens enviadas pelo upload da base", () => {
+  const ok = normalizarArtigo({ passos: [{ texto: " Abra o painel ", imagem: IMAGEM }, { texto: "Reinicie" }] });
+  assert.deepEqual(ok.erros, []);
+  assert.deepEqual(JSON.parse(ok.dados.passos), [{ texto: "Abra o painel", imagem: IMAGEM }, { texto: "Reinicie" }]);
+  const outroBucket = "supabase://ticket-attachments/chamados/9/123e4567-e89b-12d3-a456-426614174000.png";
+  assert.deepEqual(normalizarArtigo({ passos: [{ texto: "x", imagem: outroBucket }] }).erros, ["Imagem do passo inválida"]);
+  assert.deepEqual(normalizarArtigo({ passos: [{ texto: " " }] }).erros, ["Todo passo precisa de uma descrição"]);
+  assert.deepEqual(normalizarArtigo({ passos: "passo 1" }).erros, ["O passo a passo deve ser uma lista"]);
+});
+
+test("vídeo é só um link https e pode ser removido", () => {
+  assert.equal(normalizarArtigo({ video_url: "https://www.youtube.com/watch?v=abc" }).dados.video_url, "https://www.youtube.com/watch?v=abc");
+  assert.equal(normalizarArtigo({ video_url: "" }).dados.video_url, null);
+  for (const invalido of ["http://site.com/v.mp4", "javascript:alert(1)", "não é url"]) {
+    assert.deepEqual(normalizarArtigo({ video_url: invalido }).erros, ["Informe um link de vídeo válido começando com https://"]);
+  }
+});
+
+test("rascunho não abre para usuário comum", async () => {
+  const { obterBase } = loadController(fakePool({ artigo: { id: 5, status: "rascunho", passos: [] } }));
+  const res = response();
+  await obterBase({ params: { id: "5" }, user: { id: 7, perfil: "usuario" } }, res);
+  assert.equal(res.statusCode, 404);
+});
+
+test("artigo publicado abre com URLs temporárias só para os passos com imagem", async () => {
+  const artigo = { id: 5, status: "publicado", passos: [{ texto: "Abra", imagem: IMAGEM }, { texto: "Feche" }] };
+  const { obterBase } = loadController(fakePool({ artigo }));
+  const res = response();
+  await obterBase({ params: { id: "5" }, user: { id: 7, perfil: "usuario" } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body.passos[0].imagem_url, /^https:\/\/projeto\.supabase\.co\//);
+  assert.equal("imagem_url" in res.body.passos[1], false);
+});
+
+test("upload recusa arquivo que só finge ser imagem", async () => {
+  const { enviarImagemBase } = loadController(fakePool());
+  const res = response();
+  await enviarImagemBase({ file: { mimetype: "image/png", buffer: Buffer.from("<script>") }, user: { id: 1, perfil: "admin" } }, res);
+  assert.equal(res.statusCode, 400);
+
+  const png = Buffer.from("89504e470d0a1a0a0000", "hex");
+  const ok = response();
+  await enviarImagemBase({ file: { mimetype: "image/png", buffer: png }, user: { id: 1, perfil: "admin" } }, ok);
+  assert.equal(ok.statusCode, 201);
+  assert.equal(ok.body.imagem, IMAGEM);
 });

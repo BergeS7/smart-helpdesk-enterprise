@@ -1,10 +1,11 @@
 /**
  * Responsabilidade: base de conhecimento do portal (busca e leitura de artigos).
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { BookOpen, Search } from "lucide-react";
 import { Badge } from "../../../components/shared/FormPrimitives";
 import { type ArtigoBase } from "../../../services/api";
+import { ArtigoDetalhe } from "./ArtigoDetalhe";
 
 export function UsuarioBaseConhecimento({
   artigos,
@@ -15,6 +16,7 @@ export function UsuarioBaseConhecimento({
   busca: string;
   setBusca: (value: string) => void;
 }) {
+  const [artigoAberto, setArtigoAberto] = useState<number | null>(null);
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     if (!q) return artigos;
@@ -67,9 +69,11 @@ export function UsuarioBaseConhecimento({
           </div>
         ) : (
           filtrados.map((artigo) => (
-            <div
+            <button
+              type="button"
               key={artigo.id}
-              className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+              onClick={() => setArtigoAberto(artigo.id)}
+              className="rounded-2xl border border-zinc-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md"
             >
               <div className="mb-3 flex items-center gap-2">
                 <div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-700">
@@ -83,10 +87,11 @@ export function UsuarioBaseConhecimento({
               <p className="mt-2 line-clamp-5 text-sm leading-6 text-zinc-500">
                 {artigo.resumo || artigo.conteudo}
               </p>
-            </div>
+            </button>
           ))
         )}
       </div>
+      {artigoAberto && <ArtigoDetalhe artigoId={artigoAberto} onClose={() => setArtigoAberto(null)} />}
     </div>
   );
 }

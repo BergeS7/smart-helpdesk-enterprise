@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
-import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type StatusArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
+import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type StatusArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
 import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDevApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, ticketFiltersFromUrl } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 
@@ -32,6 +32,8 @@ const ARTIGO_VAZIO = {
   sintomas: "",
   solucao: "",
   conteudo: "",
+  passos: [] as PassoArtigo[],
+  video_url: "",
   status: "rascunho" as StatusArtigo,
 };
 
@@ -739,7 +741,9 @@ export function useAdminPanel({
     }
   }
 
-  function editarArtigo(artigo: ArtigoBase) {
+  async function editarArtigo(resumo: ArtigoBase) {
+    // A listagem não traz as URLs das imagens; o artigo completo traz.
+    const artigo = await obterArtigoBase(resumo.id).catch(() => resumo);
     setArtigoEditandoId(artigo.id);
     setNovoArtigo({
       titulo: artigo.titulo,
@@ -750,8 +754,22 @@ export function useAdminPanel({
       sintomas: artigo.sintomas || "",
       solucao: artigo.solucao || "",
       conteudo: artigo.conteudo,
+      passos: artigo.passos || [],
+      video_url: artigo.video_url || "",
       status: artigo.status || "rascunho",
     });
+  }
+
+  async function enviarImagemPasso(indice: number, arquivo: File) {
+    try {
+      const { imagem, imagem_url } = await enviarImagemArtigo(arquivo);
+      setNovoArtigo((atual) => ({
+        ...atual,
+        passos: atual.passos.map((passo, i) => (i === indice ? { ...passo, imagem, imagem_url } : passo)),
+      }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao enviar imagem.");
+    }
   }
 
   function cancelarEdicaoArtigo() {
@@ -1118,6 +1136,7 @@ export function useAdminPanel({
     criarItemCatalogo,
     salvarArtigo,
     editarArtigo,
+    enviarImagemPasso,
     cancelarEdicaoArtigo,
     criarAvisoManutencao,
     alternarAvisoManutencao,

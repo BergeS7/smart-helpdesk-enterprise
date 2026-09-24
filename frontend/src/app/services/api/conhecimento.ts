@@ -40,6 +40,20 @@ export function listarBaseConhecimento(q?: string, { todos = false } = {}) {
   );
 }
 
+export function obterArtigoBase(id: number | string) {
+  return request<ArtigoBase>(`/catalogos/base-conhecimento/${id}`);
+}
+
+export function enviarImagemArtigo(arquivo: File) {
+  const formData = new FormData();
+  formData.append("imagem", arquivo);
+  return request<{ imagem: string; imagem_url: string }>("/catalogos/base-conhecimento/imagens", {
+    method: "POST",
+    body: formData,
+    isFormData: true,
+  });
+}
+
 export function criarArtigoBase(dados: Partial<ArtigoBase>) {
   return request<ArtigoBase>("/catalogos/base-conhecimento", {
     method: "POST",
