@@ -73,7 +73,7 @@ function notificationPayload(userId, notification) {
     title: String(notification.titulo || "Smart HelpDesk").slice(0, 100),
     body: String(notification.mensagem || "Você tem uma nova notificação.").slice(0, 300),
     tag: `helpdesk-${userId}-${notification.id || "test"}`,
-    url: `/suporte/?${query}`, userId: Number(userId),
+    url: `/?${query}`, userId: Number(userId),
   });
 }
 
