@@ -17,7 +17,7 @@ function applicationServerKey(publicKey: string) {
 }
 
 async function ensurePushSubscription(userId: number, publicKey: string) {
-  await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL });
   const registration = await navigator.serviceWorker.ready;
   let subscription = await registration.pushManager.getSubscription();
   if (subscription && localStorage.getItem(ownerKey) !== String(userId)) {
@@ -99,7 +99,7 @@ export function PushNotificationSettings({ userId }: { userId: number }) {
     let active = true;
     obterPushConfig().then(({ publicKey }) => { if (active) setPublicKey(publicKey); })
       .catch((error) => { if (active) setMessage(error.message); });
-    navigator.serviceWorker.getRegistration("/").then(async (registration) => {
+    navigator.serviceWorker.getRegistration(import.meta.env.BASE_URL).then(async (registration) => {
       const subscription = await registration?.pushManager.getSubscription();
       if (subscription && window.Notification.permission === "granted" && localStorage.getItem(ownerKey) === String(userId)) {
         const status = await obterPushStatus(subscription.endpoint);
@@ -120,7 +120,7 @@ export function PushNotificationSettings({ userId }: { userId: number }) {
         const permission = await window.Notification.requestPermission();
         if (permission !== "granted") throw new Error("Permita as notificações nas configurações do navegador ou do aplicativo para ativar os alertas.");
       }
-      await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL });
       let readyTimeout: ReturnType<typeof setTimeout> | undefined;
       const registration = await Promise.race([
         navigator.serviceWorker.ready,

@@ -112,7 +112,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: /api
+        VITE_API_URL: /suporte/api
 
     container_name: smart-helpdesk-frontend
     restart: unless-stopped

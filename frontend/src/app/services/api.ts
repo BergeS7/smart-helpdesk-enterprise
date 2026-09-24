@@ -3,7 +3,7 @@
  * Centraliza tipos, sessão, autenticação, erros e operações de cada recurso.
  */
 export const API_URL =
-  import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
+  import.meta.env.VITE_API_URL ?? "/suporte/api";
 
 export type PerfilUsuario =
   "usuario" | "tecnico" | "supervisor" | "admin" | "desenvolvedor" | "super_admin";
@@ -66,7 +66,7 @@ export function atualizarUsuarioLocal(usuario: UsuarioLogado) {
 export function limparSessao() {
   // Cancelar o endpoint também protege saídas offline e sessões expiradas.
   if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-    void navigator.serviceWorker.getRegistration("/").then(async (registration) => {
+    void navigator.serviceWorker.getRegistration(import.meta.env.BASE_URL).then(async (registration) => {
       if (!registration) return;
       const subscription = await registration.pushManager?.getSubscription();
       if (subscription) await subscription.unsubscribe();
