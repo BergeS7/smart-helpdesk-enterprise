@@ -6,7 +6,7 @@ const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
 const { exigirPerfis, exigirPermissao } = require("../middlewares/authMiddleware");
 const uploadImagem = require("../middlewares/profilePhotoUploadMiddleware");
-const { listarCatalogo, criarCatalogo, atualizarCatalogo, listarBase, obterBase, enviarImagemBase, criarBase, atualizarBase, registrarVisualizacaoBase, avaliarArtigoBase } = require("../controllers/catalogController");
+const { listarCatalogo, criarCatalogo, atualizarCatalogo, listarBase, obterBase, sugerirBase, enviarImagemBase, criarBase, atualizarBase, registrarVisualizacaoBase, avaliarArtigoBase } = require("../controllers/catalogController");
 
 // Reaproveita o upload da foto de perfil: só PNG, JPG ou WEBP, até 5 MB.
 function tratarUploadImagem(req, res, next) {
@@ -19,6 +19,7 @@ function tratarUploadImagem(req, res, next) {
 
 router.get("/base-conhecimento", authMiddleware, listarBase);
 router.post("/base-conhecimento/imagens", authMiddleware, exigirPermissao("gerenciar_base"), tratarUploadImagem, enviarImagemBase);
+router.get("/base-conhecimento/sugestoes", authMiddleware, sugerirBase);
 router.get("/base-conhecimento/:id", authMiddleware, obterBase);
 router.post("/base-conhecimento", authMiddleware, exigirPermissao("gerenciar_base"), criarBase);
 router.put("/base-conhecimento/:id", authMiddleware, exigirPermissao("gerenciar_base"), atualizarBase);

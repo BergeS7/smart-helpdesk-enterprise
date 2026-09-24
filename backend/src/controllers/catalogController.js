@@ -2,12 +2,12 @@
  * Responsabilidade: Controlador HTTP de catalog; valida a requisição e coordena regras e persistência.
  */
 const pool = require("../config/database");
-const { normalizarArtigo, erroPublicacao, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
+const { normalizarArtigo, erroPublicacao, condicaoLeitura, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
 const { enviarArquivo, urlAssinada } = require("../utils/supabaseStorage");
 const { arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { userHasPermission } = require("../services/permissionService");
 const { registrarAuditoria } = require("./chamados/registro");
-const { ehEquipe } = require("../utils/permissoes");
+const { buscarArtigosRelacionados } = require("../services/knowledgeSearchService");
 
 function tabelaValida(tipo) {
   if (tipo === "departamentos") return "departamentos";
@@ -69,16 +69,17 @@ const atualizarCatalogo = async (req, res) => {
   }
 };
 
-const SELECT_ARTIGO = `SELECT b.*, autor.nome AS autor_nome, editor.nome AS atualizado_por_nome
+// Lista explícita: deixa de fora a coluna "busca" (vetor de texto), que não interessa ao cliente.
+const COLUNAS_ARTIGO = [
+  "id", "titulo", "categoria", "palavras_chave", "resumo", "problema", "sintomas", "solucao", "passos",
+  "video_url", "conteudo", "status", "visibilidade", "ativo", "visualizacoes", "util_total", "nao_util_total",
+  "criado_por", "atualizado_por", "criado_em", "atualizado_em",
+].join(", ");
+
+const SELECT_ARTIGO = `SELECT ${COLUNAS_ARTIGO.split(", ").map((coluna) => `b.${coluna}`).join(", ")}, autor.nome AS autor_nome, editor.nome AS atualizado_por_nome
        FROM base_conhecimento b
        LEFT JOIN usuarios autor ON autor.id = b.criado_por
        LEFT JOIN usuarios editor ON editor.id = b.atualizado_por`;
-
-// Leitura comum: só publicados, e artigos internos apenas para a equipe técnica.
-function condicaoLeitura(user, alias) {
-  const publicado = `${alias}.status = 'publicado'`;
-  return ehEquipe(user?.perfil) ? publicado : `${publicado} AND ${alias}.visibilidade = 'publico'`;
-}
 
 // Quem gerencia a base pode pedir todos os status (?todos=true); os demais seguem a leitura comum.
 const listarBase = async (req, res) => {
@@ -100,6 +101,16 @@ const listarBase = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao listar base de conhecimento", detalhe: error.message });
+  }
+};
+
+// Artigos relacionados a um texto livre (ex.: descrição do chamado), já filtrados por confiança e visibilidade.
+const sugerirBase = async (req, res) => {
+  try {
+    return res.json(await buscarArtigosRelacionados({ texto: req.query.texto, user: req.user }));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao buscar artigos relacionados", detalhe: error.message });
   }
 };
 
@@ -162,7 +173,7 @@ const criarBase = async (req, res) => {
     const colunas = Object.keys(campos);
     const result = await pool.query(
       `INSERT INTO base_conhecimento (${colunas.join(", ")})
-       VALUES (${colunas.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING *`,
+       VALUES (${colunas.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING ${COLUNAS_ARTIGO}`,
       Object.values(campos)
     );
     const artigo = result.rows[0];
@@ -189,7 +200,7 @@ const atualizarBase = async (req, res) => {
       `UPDATE base_conhecimento
        SET ${colunas.map((coluna, i) => `${coluna} = $${i + 1}`).join(", ")},
            atualizado_por = $${valores.length - 1}, atualizado_em = CURRENT_TIMESTAMP
-       WHERE id = $${valores.length} RETURNING *`,
+       WHERE id = $${valores.length} RETURNING ${COLUNAS_ARTIGO}`,
       valores
     );
     if (result.rows.length === 0) return res.status(404).json({ erro: "Artigo não encontrado" });
@@ -211,7 +222,7 @@ const registrarVisualizacaoBase = async (req, res) => {
        SET visualizacoes = COALESCE(visualizacoes, 0) + 1,
            atualizado_em = atualizado_em
        WHERE id = $1 AND ${condicaoLeitura(req.user, "base_conhecimento")}
-       RETURNING *`,
+       RETURNING ${COLUNAS_ARTIGO}`,
       [req.params.id]
     ).catch(() => ({ rows: [] }));
     if (result.rows.length === 0) return res.status(404).json({ erro: "Artigo não encontrado" });
@@ -231,7 +242,7 @@ const avaliarArtigoBase = async (req, res) => {
        SET ${coluna} = COALESCE(${coluna}, 0) + 1,
            atualizado_em = atualizado_em
        WHERE id = $1 AND ${condicaoLeitura(req.user, "base_conhecimento")}
-       RETURNING *`,
+       RETURNING ${COLUNAS_ARTIGO}`,
       [req.params.id]
     ).catch(() => ({ rows: [] }));
     if (result.rows.length === 0) return res.status(404).json({ erro: "Artigo não encontrado" });
@@ -248,6 +259,7 @@ module.exports = {
    atualizarCatalogo, 
    listarBase, 
    obterBase,
+   sugerirBase,
    enviarImagemBase,
    criarBase, 
    atualizarBase, 

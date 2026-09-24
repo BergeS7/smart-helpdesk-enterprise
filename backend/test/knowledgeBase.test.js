@@ -197,7 +197,7 @@ test("usuário comum não vê artigos internos; a equipe técnica vê", async ()
 
   const tecnico = fakePool();
   await loadController(tecnico).listarBase({ query: {}, user: { id: 4, perfil: "tecnico" } }, response());
-  assert.doesNotMatch(tecnico.queries.at(-1).sql, /visibilidade/);
+  assert.doesNotMatch(tecnico.queries.at(-1).sql, /visibilidade = 'publico'/);
 
   const interno = { id: 9, status: "publicado", visibilidade: "interno", passos: [] };
   const paraUsuario = response();

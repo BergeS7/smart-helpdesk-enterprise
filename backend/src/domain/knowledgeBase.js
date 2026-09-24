@@ -1,7 +1,8 @@
 /**
  * Responsabilidade: regras do artigo da base de conhecimento: status de publicação e campos editáveis.
  */
-const { normalizarPerfil } = require("../utils/permissoes");
+const { normalizarPerfil, ehEquipe } = require("../utils/permissoes");
+const { CONFIANCA_ALTA } = require("../config/knowledgeSearch");
 
 const STATUS_ARTIGO = Object.freeze(["rascunho", "revisao", "publicado", "arquivado"]);
 const VISIBILIDADES = Object.freeze(["publico", "interno"]);
@@ -116,4 +117,14 @@ function erroPublicacao(perfil, { statusAtual, novoStatus } = {}) {
   return null;
 }
 
-module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao };
+// Leitura comum: só publicados, e artigos internos apenas para a equipe técnica.
+// Vale para listagem, leitura, métricas e recomendação, para que um interno nunca chegue ao usuário.
+function condicaoLeitura(user, alias) {
+  const publicado = `${alias}.status = 'publicado'`;
+  return ehEquipe(user?.perfil) ? publicado : `${publicado} AND ${alias}.visibilidade = 'publico'`;
+}
+
+// A busca já descarta o que fica abaixo da confiança mínima; o resto é alta ou moderada.
+const nivelConfianca = (confianca) => (confianca >= CONFIANCA_ALTA ? "alta" : "moderada");
+
+module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao, condicaoLeitura, nivelConfianca };

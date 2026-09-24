@@ -135,6 +135,7 @@ const openapiDocument = {
       get: op("Listar base de conhecimento", { tags: ["Catálogos"] }),
       post: op("Criar artigo da base de conhecimento", { tags: ["Catálogos"] }),
     },
+    "/catalogos/base-conhecimento/sugestoes": { get: op("Artigos relacionados a um texto (?texto=), com confiança alta ou moderada", { tags: ["Catálogos"] }) },
     "/catalogos/base-conhecimento/imagens": { post: op("Enviar imagem de passo do artigo (PNG, JPG ou WEBP)", { tags: ["Catálogos"] }) },
     "/catalogos/base-conhecimento/{id}": {
       get: op("Abrir artigo (rascunhos só para quem gerencia a base; internos só para a equipe)", { tags: ["Catálogos"], params: ["id"] }),
