@@ -1,7 +1,13 @@
 /**
  * Responsabilidade: regras do artigo da base de conhecimento: status de publicação e campos editáveis.
  */
+const { normalizarPerfil } = require("../utils/permissoes");
+
 const STATUS_ARTIGO = Object.freeze(["rascunho", "revisao", "publicado", "arquivado"]);
+const VISIBILIDADES = Object.freeze(["publico", "interno"]);
+// Sem engine de workflow: quem não publica só trabalha com rascunho e revisão.
+const STATUS_DO_AUTOR = Object.freeze(["rascunho", "revisao"]);
+const PERFIS_PUBLICACAO = Object.freeze(["supervisor", "admin", "desenvolvedor"]);
 
 // Campos de texto editáveis e o tamanho máximo aceito para cada um.
 const CAMPOS_TEXTO = Object.freeze({
@@ -77,6 +83,11 @@ function normalizarArtigo(body = {}, { criacao = false } = {}) {
   if ("passos" in body) dados.passos = JSON.stringify(normalizarPassos(body.passos, erros));
   if ("video_url" in body) dados.video_url = normalizarVideoUrl(body.video_url, erros);
 
+  if ("visibilidade" in body) {
+    if (VISIBILIDADES.includes(body.visibilidade)) dados.visibilidade = body.visibilidade;
+    else erros.add("Visibilidade do artigo inválida");
+  }
+
   if ("status" in body) {
     if (STATUS_ARTIGO.includes(body.status)) dados.status = body.status;
     else erros.add("Status do artigo inválido");
@@ -91,4 +102,18 @@ function normalizarArtigo(body = {}, { criacao = false } = {}) {
   return { dados, erros: [...erros] };
 }
 
-module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo };
+const podePublicar = (perfil) => PERFIS_PUBLICACAO.includes(normalizarPerfil(perfil));
+
+// Devolve o motivo do bloqueio, ou null quando o perfil pode fazer a mudança.
+function erroPublicacao(perfil, { statusAtual, novoStatus } = {}) {
+  if (podePublicar(perfil)) return null;
+  if (statusAtual && !STATUS_DO_AUTOR.includes(statusAtual)) {
+    return "Somente supervisores e administradores alteram artigos publicados ou arquivados.";
+  }
+  if (novoStatus && !STATUS_DO_AUTOR.includes(novoStatus)) {
+    return "Somente supervisores e administradores publicam ou arquivam artigos. Envie o artigo para revisão.";
+  }
+  return null;
+}
+
+module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao };

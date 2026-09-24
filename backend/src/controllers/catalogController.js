@@ -2,11 +2,12 @@
  * Responsabilidade: Controlador HTTP de catalog; valida a requisição e coordena regras e persistência.
  */
 const pool = require("../config/database");
-const { normalizarArtigo, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
+const { normalizarArtigo, erroPublicacao, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
 const { enviarArquivo, urlAssinada } = require("../utils/supabaseStorage");
 const { arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { userHasPermission } = require("../services/permissionService");
 const { registrarAuditoria } = require("./chamados/registro");
+const { ehEquipe } = require("../utils/permissoes");
 
 function tabelaValida(tipo) {
   if (tipo === "departamentos") return "departamentos";
@@ -73,14 +74,20 @@ const SELECT_ARTIGO = `SELECT b.*, autor.nome AS autor_nome, editor.nome AS atua
        LEFT JOIN usuarios autor ON autor.id = b.criado_por
        LEFT JOIN usuarios editor ON editor.id = b.atualizado_por`;
 
-// Quem gerencia a base pode pedir todos os status (?todos=true); os demais veem só publicados.
+// Leitura comum: só publicados, e artigos internos apenas para a equipe técnica.
+function condicaoLeitura(user, alias) {
+  const publicado = `${alias}.status = 'publicado'`;
+  return ehEquipe(user?.perfil) ? publicado : `${publicado} AND ${alias}.visibilidade = 'publico'`;
+}
+
+// Quem gerencia a base pode pedir todos os status (?todos=true); os demais seguem a leitura comum.
 const listarBase = async (req, res) => {
   try {
     const { q, categoria } = req.query;
     const params = [];
     const where = [];
     const gestao = req.query.todos === "true" && await userHasPermission(req.user, "gerenciar_base");
-    if (!gestao) where.push("b.status = 'publicado'");
+    if (!gestao) where.push(condicaoLeitura(req.user, "b"));
     if (categoria) { params.push(categoria); where.push(`LOWER(COALESCE(b.categoria,'')) = LOWER($${params.length})`); }
     if (q) { params.push(`%${q}%`); where.push(`CONCAT_WS(' ', b.titulo, b.palavras_chave, b.resumo, b.problema, b.sintomas, b.solucao, b.conteudo) ILIKE $${params.length}`); }
     const result = await pool.query(
@@ -98,11 +105,12 @@ const listarBase = async (req, res) => {
 
 // Rascunhos e arquivados só aparecem para quem gerencia a base.
 async function buscarArtigoVisivel(req, id) {
-  const result = await pool.query(`${SELECT_ARTIGO} WHERE b.id = $1`, [id]);
-  const artigo = result.rows[0];
-  if (!artigo) return null;
-  if (artigo.status !== "publicado" && !(await userHasPermission(req.user, "gerenciar_base"))) return null;
-  return artigo;
+  const gestao = await userHasPermission(req.user, "gerenciar_base");
+  const result = await pool.query(
+    `${SELECT_ARTIGO} WHERE b.id = $1${gestao ? "" : ` AND ${condicaoLeitura(req.user, "b")}`}`,
+    [id]
+  );
+  return result.rows[0] || null;
 }
 
 // Assina só as imagens do artigo aberto; a listagem não gera URLs.
@@ -147,6 +155,8 @@ const criarBase = async (req, res) => {
   try {
     const { dados, erros } = normalizarArtigo(req.body, { criacao: true });
     if (erros.length) return res.status(400).json({ erro: erros[0], detalhes: erros });
+    const bloqueio = erroPublicacao(req.user.perfil, { novoStatus: dados.status });
+    if (bloqueio) return res.status(403).json({ erro: bloqueio });
     // As colunas vêm da lista fixa do domínio, nunca do corpo da requisição.
     const campos = { ...dados, criado_por: req.user.id, atualizado_por: req.user.id };
     const colunas = Object.keys(campos);
@@ -168,6 +178,10 @@ const atualizarBase = async (req, res) => {
   try {
     const { dados, erros } = normalizarArtigo(req.body);
     if (erros.length) return res.status(400).json({ erro: erros[0], detalhes: erros });
+    const atual = await pool.query("SELECT status FROM base_conhecimento WHERE id = $1", [req.params.id]);
+    if (atual.rows.length === 0) return res.status(404).json({ erro: "Artigo não encontrado" });
+    const bloqueio = erroPublicacao(req.user.perfil, { statusAtual: atual.rows[0].status, novoStatus: dados.status });
+    if (bloqueio) return res.status(403).json({ erro: bloqueio });
     const colunas = Object.keys(dados);
     if (!colunas.length) return res.status(400).json({ erro: "Nenhum campo para atualizar" });
     const valores = [...Object.values(dados), req.user.id, req.params.id];
@@ -196,7 +210,7 @@ const registrarVisualizacaoBase = async (req, res) => {
       `UPDATE base_conhecimento
        SET visualizacoes = COALESCE(visualizacoes, 0) + 1,
            atualizado_em = atualizado_em
-       WHERE id = $1 AND status = 'publicado'
+       WHERE id = $1 AND ${condicaoLeitura(req.user, "base_conhecimento")}
        RETURNING *`,
       [req.params.id]
     ).catch(() => ({ rows: [] }));
@@ -216,7 +230,7 @@ const avaliarArtigoBase = async (req, res) => {
       `UPDATE base_conhecimento
        SET ${coluna} = COALESCE(${coluna}, 0) + 1,
            atualizado_em = atualizado_em
-       WHERE id = $1 AND status = 'publicado'
+       WHERE id = $1 AND ${condicaoLeitura(req.user, "base_conhecimento")}
        RETURNING *`,
       [req.params.id]
     ).catch(() => ({ rows: [] }));

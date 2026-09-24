@@ -3,7 +3,7 @@
  */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizarArtigo } = require("../src/domain/knowledgeBase");
+const { normalizarArtigo, erroPublicacao } = require("../src/domain/knowledgeBase");
 
 const IMAGEM = "supabase://knowledge-base/artigos/123e4567-e89b-12d3-a456-426614174000.png";
 
@@ -33,13 +33,19 @@ function response() {
   };
 }
 
-function fakePool({ artigo } = {}) {
+function fakePool({ artigo, statusAtual = "rascunho" } = {}) {
   const queries = [];
   return {
     queries,
     async query(sql, values) {
       queries.push({ sql: String(sql), values });
-      if (String(sql).includes("WHERE b.id = $1")) return { rows: artigo ? [artigo] : [] };
+      if (String(sql).includes("WHERE b.id = $1")) {
+        // Simula o filtro de leitura que o SQL aplica no banco real.
+        const oculto = artigo && ((String(sql).includes("b.status = 'publicado'") && artigo.status !== "publicado")
+          || (String(sql).includes("b.visibilidade = 'publico'") && artigo.visibilidade === "interno"));
+        return { rows: artigo && !oculto ? [artigo] : [] };
+      }
+      if (String(sql).startsWith("SELECT status FROM base_conhecimento")) return { rows: [{ status: statusAtual }] };
       if (String(sql).includes("FROM usuario_permissoes")) return { rows: [], rowCount: 0 };
       if (String(sql).startsWith("INSERT INTO base_conhecimento")) return { rows: [{ id: 1, titulo: values[0], status: "rascunho" }] };
       if (String(sql).includes("UPDATE base_conhecimento")) return { rows: [{ id: 1, titulo: "Impressora", status: "publicado" }] };
@@ -144,4 +150,60 @@ test("upload recusa arquivo que só finge ser imagem", async () => {
   await enviarImagemBase({ file: { mimetype: "image/png", buffer: png }, user: { id: 1, perfil: "admin" } }, ok);
   assert.equal(ok.statusCode, 201);
   assert.equal(ok.body.imagem, IMAGEM);
+});
+
+test("técnico trabalha com rascunho e revisão; supervisor publica e arquiva", () => {
+  assert.equal(erroPublicacao("tecnico", { novoStatus: "revisao" }), null);
+  assert.equal(erroPublicacao("tecnico", { statusAtual: "revisao", novoStatus: "rascunho" }), null);
+  assert.match(erroPublicacao("tecnico", { novoStatus: "publicado" }), /Envie o artigo para revisão/);
+  assert.match(erroPublicacao("tecnico", { statusAtual: "publicado" }), /alteram artigos publicados/);
+  for (const perfil of ["supervisor", "admin", "desenvolvedor", "super_admin"]) {
+    assert.equal(erroPublicacao(perfil, { statusAtual: "publicado", novoStatus: "arquivado" }), null);
+  }
+});
+
+test("visibilidade aceita apenas público ou interno", () => {
+  assert.equal(normalizarArtigo({ visibilidade: "interno" }).dados.visibilidade, "interno");
+  assert.deepEqual(normalizarArtigo({ visibilidade: "secreto" }).erros, ["Visibilidade do artigo inválida"]);
+});
+
+test("técnico não publica ao criar, mas envia para revisão", async () => {
+  const { criarBase } = loadController(fakePool());
+  const tecnico = { id: 4, nome: "Téc", perfil: "tecnico" };
+  const bloqueado = response();
+  await criarBase({ body: { titulo: "Wi-Fi", conteudo: "x", status: "publicado" }, user: tecnico }, bloqueado);
+  assert.equal(bloqueado.statusCode, 403);
+  const legado = response();
+  await criarBase({ body: { titulo: "Wi-Fi", conteudo: "x", ativo: true }, user: tecnico }, legado);
+  assert.equal(legado.statusCode, 403);
+  const revisao = response();
+  await criarBase({ body: { titulo: "Wi-Fi", conteudo: "x", status: "revisao" }, user: tecnico }, revisao);
+  assert.equal(revisao.statusCode, 201);
+});
+
+test("técnico não altera artigo já publicado", async () => {
+  const pool = fakePool({ statusAtual: "publicado" });
+  const { atualizarBase } = loadController(pool);
+  const res = response();
+  await atualizarBase({ params: { id: "1" }, body: { solucao: "nova" }, user: { id: 4, perfil: "tecnico" } }, res);
+  assert.equal(res.statusCode, 403);
+  assert.equal(pool.queries.some((q) => q.sql.includes("UPDATE base_conhecimento")), false);
+});
+
+test("usuário comum não vê artigos internos; a equipe técnica vê", async () => {
+  const usuario = fakePool();
+  await loadController(usuario).listarBase({ query: {}, user: { id: 7, perfil: "usuario" } }, response());
+  assert.match(usuario.queries.at(-1).sql, /b\.status = 'publicado' AND b\.visibilidade = 'publico'/);
+
+  const tecnico = fakePool();
+  await loadController(tecnico).listarBase({ query: {}, user: { id: 4, perfil: "tecnico" } }, response());
+  assert.doesNotMatch(tecnico.queries.at(-1).sql, /visibilidade/);
+
+  const interno = { id: 9, status: "publicado", visibilidade: "interno", passos: [] };
+  const paraUsuario = response();
+  await loadController(fakePool({ artigo: interno })).obterBase({ params: { id: "9" }, user: { id: 7, perfil: "usuario" } }, paraUsuario);
+  assert.equal(paraUsuario.statusCode, 404);
+  const paraTecnico = response();
+  await loadController(fakePool({ artigo: interno })).obterBase({ params: { id: "9" }, user: { id: 4, perfil: "tecnico" } }, paraTecnico);
+  assert.equal(paraTecnico.statusCode, 200);
 });

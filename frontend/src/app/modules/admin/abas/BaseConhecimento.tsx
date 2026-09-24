@@ -3,7 +3,7 @@
  */
 import { ArrowDown, ArrowUp, BookOpen, ImagePlus, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
-import type { PassoArtigo, StatusArtigo } from "../../../services/api";
+import type { ArtigoBase, PassoArtigo, StatusArtigo, VisibilidadeArtigo } from "../../../services/api";
 import type { PainelAdmin } from "../useAdminPanel";
 
 const STATUS_ARTIGO: Record<StatusArtigo, { label: string; className: string }> = {
@@ -12,6 +12,9 @@ const STATUS_ARTIGO: Record<StatusArtigo, { label: string; className: string }> 
   publicado: { label: "Publicado", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
   arquivado: { label: "Arquivado", className: "border-zinc-200 bg-zinc-100 text-zinc-500" },
 };
+
+// Quem não publica só trabalha com rascunho e revisão (a API aplica a mesma regra).
+const STATUS_DO_AUTOR: StatusArtigo[] = ["rascunho", "revisao"];
 
 const CAMPOS_LINHA = [
   { campo: "titulo", label: "Título", required: true },
@@ -68,7 +71,8 @@ function EditorPassos({ passos, onChange, onImagem }: { passos: PassoArtigo[]; o
 const formatarData = (valor?: string) => (valor ? new Date(valor).toLocaleDateString("pt-BR") : "—");
 
 export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
-  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, enviarImagemPasso, cancelarEdicaoArtigo } = painel;
+  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, enviarImagemPasso, cancelarEdicaoArtigo, podePublicarBase } = painel;
+  const podeEditar = (artigo: ArtigoBase) => podePublicarBase || STATUS_DO_AUTOR.includes(artigo.status || "publicado");
   return (
     <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
       <Card>
@@ -105,13 +109,22 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
               onChange={(e) => setNovoArtigo({ ...novoArtigo, video_url: e.target.value })}
             />
           </Field>
+          <Field label="Visibilidade">
+            <Select
+              value={novoArtigo.visibilidade}
+              onChange={(e) => setNovoArtigo({ ...novoArtigo, visibilidade: e.target.value as VisibilidadeArtigo })}
+            >
+              <option value="publico">Público — usuários e equipe</option>
+              <option value="interno">Interno — somente equipe técnica</option>
+            </Select>
+          </Field>
           <Field label="Status">
             <Select
               value={novoArtigo.status}
               onChange={(e) => setNovoArtigo({ ...novoArtigo, status: e.target.value as StatusArtigo })}
             >
               {Object.entries(STATUS_ARTIGO).map(([valor, { label }]) => (
-                <option key={valor} value={valor}>{label}</option>
+                <option key={valor} value={valor} disabled={!podePublicarBase && !STATUS_DO_AUTOR.includes(valor as StatusArtigo)}>{label}</option>
               ))}
             </Select>
           </Field>
@@ -159,10 +172,11 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {a.visibilidade === "interno" && <Badge className="border-violet-200 bg-violet-50 text-violet-700">Interno</Badge>}
                     <Badge className={status.className}>{status.label}</Badge>
-                    <button type="button" onClick={() => void editarArtigo(a)} className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-blue-600" title="Editar artigo" aria-label={`Editar artigo ${a.titulo}`}>
+                    {podeEditar(a) && <button type="button" onClick={() => void editarArtigo(a)} className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-blue-600" title="Editar artigo" aria-label={`Editar artigo ${a.titulo}`}>
                       <Pencil size={14} />
-                    </button>
+                    </button>}
                   </div>
                 </div>
                 <p className="mt-2 line-clamp-3 text-sm">{a.resumo || a.conteudo}</p>

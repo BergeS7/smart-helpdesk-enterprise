@@ -137,7 +137,7 @@ const openapiDocument = {
     },
     "/catalogos/base-conhecimento/imagens": { post: op("Enviar imagem de passo do artigo (PNG, JPG ou WEBP)", { tags: ["Catálogos"] }) },
     "/catalogos/base-conhecimento/{id}": {
-      get: op("Abrir artigo com URLs temporárias das imagens", { tags: ["Catálogos"], params: ["id"] }),
+      get: op("Abrir artigo (rascunhos só para quem gerencia a base; internos só para a equipe)", { tags: ["Catálogos"], params: ["id"] }),
       put: op("Atualizar artigo", { tags: ["Catálogos"], params: ["id"] }),
     },
     "/catalogos/base-conhecimento/{id}/visualizar": { post: op("Registrar visualização do artigo", { tags: ["Catálogos"], params: ["id"] }) },

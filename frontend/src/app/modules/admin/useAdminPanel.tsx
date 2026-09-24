@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
-import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type StatusArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
+import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type StatusArtigo, type VisibilidadeArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
 import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDevApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, ticketFiltersFromUrl } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 
@@ -35,6 +35,7 @@ const ARTIGO_VAZIO = {
   passos: [] as PassoArtigo[],
   video_url: "",
   status: "rascunho" as StatusArtigo,
+  visibilidade: "publico" as VisibilidadeArtigo,
 };
 
 // Estado, carregamentos e ações do painel da equipe. O AdminPanel e as abas recebem tudo daqui.
@@ -154,6 +155,8 @@ export function useAdminPanel({
   const desenvolvedor = isDevApp(usuario.perfil);
   const administrador = isAdminApp(usuario.perfil);
   const tecnico = perfilAtual === "tecnico";
+  // Mesma regra do backend. normalizarPerfilApp não reconhece "supervisor", por isso o perfil bruto.
+  const podePublicarBase = desenvolvedor || ["supervisor", "admin"].includes(String(usuario.perfil).toLowerCase());
 
   const equipe = useMemo(
     () => usuarios.filter((u) => isEquipeApp(u.perfil) && u.status === "ativo"),
@@ -757,6 +760,7 @@ export function useAdminPanel({
       passos: artigo.passos || [],
       video_url: artigo.video_url || "",
       status: artigo.status || "rascunho",
+      visibilidade: artigo.visibilidade || "publico",
     });
   }
 
@@ -1038,6 +1042,7 @@ export function useAdminPanel({
     .toUpperCase();
 
   return {
+    podePublicarBase,
     usuario,
     onLogout,
     avisosSistema,

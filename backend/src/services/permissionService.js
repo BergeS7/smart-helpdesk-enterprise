@@ -47,8 +47,8 @@ function hasFullAccess(user) {
 
 const PROFILE_DEFAULTS = Object.freeze({
   usuario: [],
-  tecnico: ["assumir_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados"],
-  supervisor: ["visualizar_dashboard", "visualizar_relatorios", "assumir_chamados", "delegar_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados", "desenvolvimento_visualizar"],
+  tecnico: ["assumir_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados", "gerenciar_base"],
+  supervisor: ["visualizar_dashboard", "visualizar_relatorios", "assumir_chamados", "delegar_chamados", "alterar_prioridade", "encerrar_chamados", "gerenciar_chamados", "gerenciar_base", "desenvolvimento_visualizar"],
 });
 
 async function listUserPermissions(userId, user) {
