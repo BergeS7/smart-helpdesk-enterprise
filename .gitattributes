@@ -1,0 +1,2 @@
+# Hooks do git precisam de LF para rodar no sh (inclusive no Windows).
+.githooks/* text eol=lf

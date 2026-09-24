@@ -1,0 +1,44 @@
+#!/bin/sh
+# Verificações antes de cada commit: todo push no main vai direto para produção
+# (Vercel e Render), então o commit só passa se o que ele altera estiver verde.
+# Ativar neste clone:  git config core.hooksPath .githooks
+# Pular numa emergência:  git commit --no-verify
+
+staged=$(git diff --cached --name-only)
+[ -z "$staged" ] && exit 0
+
+root=$(git rev-parse --show-toplevel)
+falhou=0
+
+rodar() {
+  pasta=$1; shift
+  echo ""
+  echo "▶ $pasta: npm run $*"
+  if ! (cd "$root/$pasta" && npm run "$@" --silent); then
+    echo "✖ falhou: $pasta → npm run $*"
+    falhou=1
+  fi
+}
+
+if echo "$staged" | grep -q '^frontend/'; then
+  echo "== Frontend =="
+  rodar frontend typecheck
+  rodar frontend test
+  rodar frontend build
+fi
+
+if echo "$staged" | grep -q '^backend/'; then
+  echo "== Backend =="
+  rodar backend check
+  rodar backend test
+fi
+
+if [ "$falhou" -ne 0 ]; then
+  echo ""
+  echo "Commit bloqueado: corrija os erros acima (ou use --no-verify por sua conta)."
+  exit 1
+fi
+
+echo ""
+echo "✔ Verificações ok"
+exit 0
