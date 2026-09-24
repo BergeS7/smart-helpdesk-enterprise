@@ -1,7 +1,9 @@
 /**
  * Responsabilidade: Módulo de sw; implementa esta responsabilidade dentro do Smart HelpDesk.
  */
-const CACHE = "smart-helpdesk-shell-v7";
+// __SW_VERSION__ é trocado no build (vite.config.ts) por um valor único a cada deploy:
+// o cache antigo é descartado sozinho, sem precisar lembrar de trocar a versão.
+const CACHE = "smart-helpdesk-shell-__SW_VERSION__";
 const SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/pwa-192-v2.png", "/pwa-512-v2.png"];
 
 self.addEventListener("push", (event) => {
