@@ -2,7 +2,7 @@
  * Responsabilidade: catálogo de serviços e base de conhecimento.
  */
 import { request } from "./http";
-import type { ArtigoBase, CatalogoItem } from "./types";
+import type { ArtigoBase, ArtigoSugerido, CatalogoItem } from "./types";
 
 export function listarCatalogo(tipo: "departamentos" | "tipos" | "cargos") {
   return request<CatalogoItem[]>(`/catalogos/${tipo}`);
@@ -37,6 +37,12 @@ export function listarBaseConhecimento(q?: string, { todos = false } = {}) {
   const query = params.toString();
   return request<ArtigoBase[]>(
     `/catalogos/base-conhecimento${query ? `?${query}` : ""}`,
+  );
+}
+
+export function sugerirArtigosBase(texto: string) {
+  return request<ArtigoSugerido[]>(
+    `/catalogos/base-conhecimento/sugestoes?texto=${encodeURIComponent(texto)}`,
   );
 }
 

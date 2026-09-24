@@ -8,9 +8,13 @@ import { BarChart3, Bell, BookOpen, Download, LayoutDashboard, MapPinned, Shield
 import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { PORTAL_ROUTES, useModuleRoute } from "../../routes/useModuleRoute";
-import { atualizarChamado, atualizarMeuPerfil, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, baixarRelatorio, buscarChamado, criarChamado, criarDemandaDesenvolvimento, listarBaseConhecimento, listarCatalogo, listarChamadosDoUsuario, listarNotificacoes, marcarNotificacoesLidas, obterDashboard, obterMeuPerfil, obterMinhasPermissoes, reportFrontendError, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type CatalogoItem, type DashboardResumo, type Notificacao, type ConfiguracoesSistema, type UsuarioLogado, type PermissionKey } from "../../services/api";
+import { atualizarChamado, atualizarMeuPerfil, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, baixarRelatorio, buscarChamado, criarChamado, criarDemandaDesenvolvimento, listarBaseConhecimento, listarCatalogo, listarChamadosDoUsuario, listarNotificacoes, marcarNotificacoesLidas, obterDashboard, obterMeuPerfil, obterMinhasPermissoes, reportFrontendError, removerMinhaFotoPerfil, sugerirArtigosBase, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type ArtigoSugerido, type CatalogoItem, type DashboardResumo, type Notificacao, type ConfiguracoesSistema, type UsuarioLogado, type PermissionKey } from "../../services/api";
 import { STATUS_COLUNAS, chamadoIdFromNotification, emailSuporteSistema, logoSistema1, nomeSistema, normalizeStatus } from "../comum/appShared";
 import type { UsuarioTab } from "../comum/appShared";
+
+// Espera o usuário parar de digitar antes de consultar; abaixo do mínimo a API nem é chamada.
+const ATRASO_SUGESTOES_MS = 600;
+const TEXTO_MIN_SUGESTOES = 10;
 
 export type UserPortalProps = {
   usuario: UsuarioLogado;
@@ -32,7 +36,7 @@ export function useUserPortal({
   const [chamados, setChamados] = useState<ApiChamado[]>([]);
   const [perfil, setPerfil] = useState<ApiUsuario | null>(null);
   const [tipos, setTipos] = useState<CatalogoItem[]>([]);
-  const [base, setBase] = useState<ArtigoBase[]>([]);
+  const [sugestoesBase, setSugestoesBase] = useState<ArtigoSugerido[]>([]);
   const [artigosBase, setArtigosBase] = useState<ArtigoBase[]>([]);
   const [novo, setNovo] = useState({
     titulo: "",
@@ -409,12 +413,15 @@ export function useUserPortal({
   }, []);
 
   useEffect(() => {
-    const q = `${novo.titulo} ${novo.descricao}`.trim();
-    if (q.length > 4)
-      listarBaseConhecimento(q)
-        .then(setBase)
+    const texto = `${novo.titulo} ${novo.descricao}`.trim();
+    if (texto.length < TEXTO_MIN_SUGESTOES) { setSugestoesBase([]); return; }
+    let cancelado = false;
+    const timer = window.setTimeout(() => {
+      sugerirArtigosBase(texto)
+        .then((sugestoes) => { if (!cancelado) setSugestoesBase(sugestoes); })
         .catch(() => {});
-    else setBase([]);
+    }, ATRASO_SUGESTOES_MS);
+    return () => { cancelado = true; window.clearTimeout(timer); };
   }, [novo.titulo, novo.descricao]);
 
   async function salvarPerfil(event: FormEvent) {
@@ -545,7 +552,7 @@ export function useUserPortal({
       }
       setChamados((atuais) => [criado, ...atuais.filter((item) => Number(item.id) !== Number(criado.id))]);
       setNovo({ titulo: "", descricao: "", tipo_chamado: "Incidente", processo_atual:"", problema:"", resultado_esperado:"", frequencia:"", pessoas:"", tempo_minutos:"", sistemas:"", impacto_nao_execucao:"", beneficios:"" });
-      setBase([]);
+      setSugestoesBase([]);
       setModalChamadoAberto(false);
       setTab("chamados");
       if (complementoPendente) toast.warning("Chamado criado. Os dados complementares serão revisados pela equipe de TI.");
@@ -631,8 +638,7 @@ export function useUserPortal({
     setPerfil,
     tipos,
     setTipos,
-    base,
-    setBase,
+    sugestoesBase,
     artigosBase,
     setArtigosBase,
     novo,

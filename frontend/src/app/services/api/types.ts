@@ -289,6 +289,12 @@ export type ArtigoBase = {
   atualizado_em?: string;
 };
 
+// Artigo recomendado pela busca da base (só confiança alta ou moderada chega ao cliente).
+export type ArtigoSugerido = Pick<ArtigoBase, "id" | "titulo" | "resumo" | "categoria" | "video_url"> & {
+  confianca: number;
+  nivel: "alta" | "moderada";
+};
+
 export type RespostaRapida = {
   id: number;
   titulo: string;

@@ -1,17 +1,23 @@
 /**
  * Responsabilidade: modal de abertura de chamado pelo solicitante.
  */
-import type { Dispatch, FormEvent, SetStateAction } from "react";
-import { ArrowRight, BookOpen, FileText, X } from "lucide-react";
+import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { ArrowRight, BookOpen, FileText, PlayCircle, X } from "lucide-react";
 import { Button, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
-import { type ApiUsuario, type ArtigoBase, type CatalogoItem, type UsuarioLogado } from "../../../services/api";
+import { type ApiUsuario, type ArtigoSugerido, type CatalogoItem, type UsuarioLogado } from "../../../services/api";
+import { ArtigoDetalhe } from "./ArtigoDetalhe";
+
+const NIVEL_SUGESTAO = {
+  alta: { label: "Alta relevância", className: "bg-emerald-50 text-emerald-700" },
+  moderada: { label: "Possível ajuda", className: "bg-amber-50 text-amber-700" },
+};
 
 export function UsuarioNovoChamadoModal({
   perfil,
   tipos,
   novo,
   setNovo,
-  base,
+  sugestoes,
   loading,
   onClose,
   onSubmit,
@@ -22,7 +28,7 @@ export function UsuarioNovoChamadoModal({
   setNovo: Dispatch<
     SetStateAction<{ titulo: string; descricao: string; tipo_chamado: string; processo_atual:string; problema:string; resultado_esperado:string; frequencia:string; pessoas:string; tempo_minutos:string; sistemas:string; impacto_nao_execucao:string; beneficios:string }>
   >;
-  base: ArtigoBase[];
+  sugestoes: ArtigoSugerido[];
   loading: boolean;
   onClose: () => void;
   onSubmit: (event: FormEvent) => void;
@@ -39,6 +45,7 @@ export function UsuarioNovoChamadoModal({
           "Equipamento",
         ];
   const allTypes=Array.from(new Set([...tiposDisponiveis,"Bug","Melhoria","Automação","Integração","Dashboard / Relatório","Novo Sistema"]));
+  const [artigoAberto, setArtigoAberto] = useState<number | null>(null);
   const developmentType=["Bug","Melhoria","Automação","Integração","Dashboard / Relatório","Novo Sistema"].includes(novo.tipo_chamado);
 
   return (
@@ -141,24 +148,28 @@ export function UsuarioNovoChamadoModal({
             </div>}
           </div>
 
-          {base.length > 0 && (
-            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <div className="mb-3 flex items-center gap-2 text-blue-800">
+          {/* Só sugere: o chamado pode ser aberto normalmente a qualquer momento. */}
+          {!developmentType && sugestoes.length > 0 && (
+            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4" aria-live="polite">
+              <div className="mb-1 flex items-center gap-2 text-blue-800">
                 <BookOpen size={18} />
-                <p className="font-black">Sugestões da base de conhecimento</p>
+                <p className="font-black">
+                  {sugestoes.length === 1 ? "Encontramos uma possível solução para o seu problema" : "Encontramos possíveis soluções para o seu problema"}
+                </p>
               </div>
+              <p className="mb-3 text-xs text-blue-700">Veja se resolve antes de enviar. Se não resolver, basta criar o chamado normalmente.</p>
               <div className="grid gap-3 md:grid-cols-3">
-                {base.slice(0, 3).map((artigo) => (
-                  <div
-                    key={artigo.id}
-                    className="rounded-2xl bg-white p-3 shadow-sm"
-                  >
-                    <p className="text-sm font-black text-zinc-800">
-                      {artigo.titulo}
-                    </p>
-                    <p className="mt-1 line-clamp-3 text-xs leading-5 text-zinc-500">
-                      {artigo.resumo || artigo.conteudo}
-                    </p>
+                {sugestoes.map((artigo) => (
+                  <div key={artigo.id} className="flex flex-col rounded-2xl bg-white p-3 shadow-sm">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${NIVEL_SUGESTAO[artigo.nivel].className}`}>{NIVEL_SUGESTAO[artigo.nivel].label}</span>
+                      {artigo.video_url && <PlayCircle size={14} className="text-blue-600" aria-label="Tem vídeo" />}
+                    </div>
+                    <p className="text-sm font-black text-zinc-800">{artigo.titulo}</p>
+                    {artigo.resumo && <p className="mt-1 line-clamp-3 text-xs leading-5 text-zinc-500">{artigo.resumo}</p>}
+                    <button type="button" onClick={() => setArtigoAberto(artigo.id)} className="mt-auto pt-3 text-left text-xs font-black text-blue-700 hover:text-blue-800">
+                      Ver solução passo a passo →
+                    </button>
                   </div>
                 ))}
               </div>
@@ -176,6 +187,7 @@ export function UsuarioNovoChamadoModal({
           </div>
         </form>
       </div>
+      {artigoAberto && <ArtigoDetalhe artigoId={artigoAberto} onClose={() => setArtigoAberto(null)} />}
     </div>
   );
 }

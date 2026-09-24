@@ -33,7 +33,7 @@ export function UserPortal(props: UserPortalProps) {
     perfil,
     setPerfil,
     tipos,
-    base,
+    sugestoesBase,
     artigosBase,
     novo,
     setNovo,
@@ -453,7 +453,7 @@ export function UserPortal(props: UserPortalProps) {
           tipos={tipos}
           novo={novo}
           setNovo={setNovo}
-          base={base}
+          sugestoes={sugestoesBase}
           loading={loading}
           onClose={() => setModalChamadoAberto(false)}
           onSubmit={abrirChamado}
