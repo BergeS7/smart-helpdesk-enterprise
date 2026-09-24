@@ -12,6 +12,7 @@ const { STATUS, canonicalize: canonicalizeStatus, label: statusLabel, isFinal: s
 const { criarNotificacao, notificarStatus, notificarAvaliacao, notificarInteracao } = require("../../services/ticketNotificationService");
 const { registrarAuditoria, registrarMovimentacao } = require("./registro");
 const { vincularChamado } = require("../../services/knowledgeRecommendationService");
+const { notificarNovoChamadoNaFila } = require("../../services/queueNotificationService");
 const { calcularSLAConfiguravel, sincronizarSlaChamadosAtivosUmaVez, verificarAlertasSla } = require("./sla");
 const { adicionarFotosParticipantes, bloquearMutacaoNaoAutorizada, buscarChamadoAutorizado, carregarDetalhesChamado, consultarChamados, detectarDuplicidade, escolherResponsavelAutomatico, gerarNumeroChamado, normalizarEmail, normalizarTexto, notificarUsuarioVinculadoAoAtivo, obterUsuarioAtual, usuarioEhAdmin, usuarioEhEquipe, validarCamposCriacao } = require("./comum");
 
@@ -158,7 +159,7 @@ const criarChamado = async (req, res) => {
     await vincularChamado({ chamadoId: chamado.id, usuarioId: usuario.id, ids: req.body.recomendacoes_ids })
       .catch((error) => console.error("Erro ao vincular recomendações ao chamado:", error.message));
     if (!tipoDesenvolvimento && chamado.responsavel_id == null) {
-      await require("../services/queueNotificationService").notificarNovoChamadoNaFila(chamado, criarNotificacao);
+      await notificarNovoChamadoNaFila(chamado, criarNotificacao);
     }
     enviarEmail({ para: usuario.email, assunto: `Chamado criado ${chamado.numero_chamado}`, texto: `Seu chamado foi criado. Prioridade: ${chamado.prioridade}` }).catch(() => {});
 
