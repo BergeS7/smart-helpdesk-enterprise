@@ -6,17 +6,8 @@
   import App from "./app/App.tsx";
   import { AppErrorBoundary } from "./app/components/AppErrorBoundary.tsx";
   import { reportFrontendError } from "./app/services/api.ts";
+  import { recoverFromStaleChunk } from "./app/utils/chunkRecovery.ts";
   import "./styles/index.css";
-
-  const CHUNK_RECOVERY_KEY = "smart-helpdesk:chunk-recovery";
-  const recoverFromStaleChunk = () => {
-    const lastRecovery = Number(sessionStorage.getItem(CHUNK_RECOVERY_KEY) || 0);
-    if (Date.now() - lastRecovery < 30_000) return;
-    sessionStorage.setItem(CHUNK_RECOVERY_KEY, String(Date.now()));
-    const url = new URL(window.location.href);
-    url.searchParams.set("app-update", String(Date.now()));
-    window.location.replace(url.toString());
-  };
 
   window.addEventListener("vite:preloadError", (event) => {
     event.preventDefault();

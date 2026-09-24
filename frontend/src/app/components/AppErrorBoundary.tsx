@@ -4,11 +4,9 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw, RotateCcw } from "lucide-react";
 import { reportFrontendError } from "../services/api";
+import { isStaleChunkError, recoverFromStaleChunk } from "../utils/chunkRecovery";
 
 type State = { error: Error | null };
-
-const isStaleChunkError = (error: Error) =>
-  /dynamically imported module|failed to fetch.*module|importing a module script|loading chunk/i.test(error.message);
 
 export class AppErrorBoundary extends Component<{ children: ReactNode }, State> {
   state: State = { error: null };
@@ -17,16 +15,7 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, State> 
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     void reportFrontendError(error, info.componentStack || undefined);
-    if (isStaleChunkError(error)) {
-      const key = "smart-helpdesk:chunk-recovery";
-      const lastRecovery = Number(sessionStorage.getItem(key) || 0);
-      if (Date.now() - lastRecovery >= 30_000) {
-        sessionStorage.setItem(key, String(Date.now()));
-        const url = new URL(window.location.href);
-        url.searchParams.set("app-update", String(Date.now()));
-        window.location.replace(url.toString());
-      }
-    }
+    if (isStaleChunkError(error)) recoverFromStaleChunk();
   }
 
   reset = () => this.setState({ error: null });

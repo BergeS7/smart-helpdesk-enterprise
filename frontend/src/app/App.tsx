@@ -4,7 +4,7 @@ import { usePushNavigation } from "./hooks/usePushNavigation";
  * Mantém o shell e as jornadas históricas de login, portal do solicitante,
  * painel da equipe e detalhe; módulos recentes são carregados sob demanda.
  */
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CSSProperties,
   Dispatch,
@@ -91,6 +91,7 @@ import { TicketWorkspaceToolbar } from "./components/TicketWorkspaceToolbar";
 import { Badge, Button, Card, Field, Input, Modal, Select, Textarea } from "./components/shared/FormPrimitives";
 import { UserAssetsField } from "./components/patrimonio/UserAssetsField";
 import { ReopenTicketCard } from "./components/chamados/ReopenTicketCard";
+import { ModuleBoundary } from "./components/ModuleBoundary";
 
 const PatrimonioMapPage = lazy(() =>
   import("./pages/PatrimonioMap/PatrimonioMapPage").then((module) => ({
@@ -1845,10 +1846,10 @@ function UserPortal({
 
   const renderConteudo = () => {
     if (tab === "patrimonio" && permissoesUsuario.includes("visualizar_patrimonio")) {
-      return <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando patrimônio…</strong></div>}><PatrimonioMapPage dark={temaEscuroUsuario}/></Suspense>;
+      return <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando patrimônio…</strong></div>}><PatrimonioMapPage dark={temaEscuroUsuario}/></ModuleBoundary>;
     }
     if (tab === "ranking" && permissoesUsuario.includes("visualizar_ranking_satisfacao")) {
-      return <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando ranking…</strong></div>}><SatisfactionRankingPage dark={temaEscuroUsuario}/></Suspense>;
+      return <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando ranking…</strong></div>}><SatisfactionRankingPage dark={temaEscuroUsuario}/></ModuleBoundary>;
     }
     if (tab === "acessos") {
       return <section className="space-y-4">
@@ -1862,12 +1863,12 @@ function UserPortal({
       permissoesUsuario.includes("visualizar_dashboard")
     ) {
       return dashboardPermitido ? (
-        <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando dashboard…</strong></div>}><OperationalDashboard
+        <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando dashboard…</strong></div>}><OperationalDashboard
           initial={dashboardPermitido}
           dark={temaEscuroUsuario}
           onNavigate={() => {}}
           onOpenTicket={(id) => abrirDetalhe(id)}
-        /></Suspense>
+        /></ModuleBoundary>
       ) : (
         <Card>
           <p className="p-8 text-center text-sm text-zinc-500">
@@ -4958,16 +4959,16 @@ function AdminPanel({
               )}
 
             {tab === "dashboard" && dashboard && (
-              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando dashboard…</strong></div>}><OperationalDashboard
+              <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando dashboard…</strong></div>}><OperationalDashboard
                 initial={dashboard}
                 dark={dark}
                 onNavigate={setTab}
                 onOpenTicket={abrirDetalhe}
-              /></Suspense>
+              /></ModuleBoundary>
             )}
 
             {tab === "satisfacao" && (
-              <Suspense
+              <ModuleBoundary
                 fallback={
                   <div className="grid min-h-[420px] place-items-center">
                     <RefreshCw className="animate-spin text-blue-600" />
@@ -4985,21 +4986,21 @@ function AdminPanel({
                     onBack={() => setTab("dashboard")}
                   />
                 )}
-              </Suspense>
+              </ModuleBoundary>
             )}
 
             {["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos"].includes(tab) && (
-              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando indicadores…</strong></div>}>
+              <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando indicadores…</strong></div>}>
                 <IndicatorsWorkspace
                   section={tab==="indicadores_sla"?"sla":tab==="indicadores_tecnicos"?"technicians":tab==="indicadores_ativos"?"assets":"operation"}
                   chamados={dadosRelatorio}
                   onOpen={abrirDetalhe}
                 />
-              </Suspense>
+              </ModuleBoundary>
             )}
 
             {tab === "patrimonio" && (
-              <Suspense
+              <ModuleBoundary
                 fallback={
                   <div className="grid min-h-[520px] place-items-center rounded-2xl border border-zinc-200 bg-white">
                     <div className="text-center">
@@ -5012,7 +5013,7 @@ function AdminPanel({
                 }
               >
                 <PatrimonioMapPage dark={dark} />
-              </Suspense>
+              </ModuleBoundary>
             )}
 
             {desenvolvedor &&
@@ -5104,7 +5105,7 @@ function AdminPanel({
             )}
 
             {tab === "fila" && (
-              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando fila…</strong></div>}><FilaChamadosView
+              <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando fila…</strong></div>}><FilaChamadosView
                 chamados={filaChamados}
                 carteira={carteiraEquipe}
                 equipe={equipe}
@@ -5114,7 +5115,7 @@ function AdminPanel({
                 onAbrir={abrirDetalhe}
                 onAssumir={assumirChamadoAdmin}
                 onAtualizar={() => carregar()}
-              /></Suspense>
+              /></ModuleBoundary>
             )}
 
             {tab === "carteira" && administrador && (
@@ -5242,18 +5243,18 @@ function AdminPanel({
             )}
 
             {tab === "kanban" && (
-              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando Kanban…</strong></div>}><KanbanWorkspace
+              <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando Kanban…</strong></div>}><KanbanWorkspace
                 chamados={chamados}
                 dark={dark}
                 dragId={dragId}
                 setDragId={setDragId}
                 onMover={moverChamado}
                 onAbrir={abrirDetalhe}
-              /></Suspense>
+              /></ModuleBoundary>
             )}
 
-            {tab === "chamados" && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando chamados…</strong></div>}><ChamadosListModule chamados={chamados} onOpen={abrirDetalhe} dark={dark}/></Suspense>}
-            {["desenvolvimento","projetos"].includes(tab) && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando desenvolvimento…</strong></div>}><DevelopmentWorkspace dark={dark} initialMode={tab==="projetos"?"projects":"kanban"}/></Suspense>}
+            {tab === "chamados" && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando chamados…</strong></div>}><ChamadosListModule chamados={chamados} onOpen={abrirDetalhe} dark={dark}/></ModuleBoundary>}
+            {["desenvolvimento","projetos"].includes(tab) && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando desenvolvimento…</strong></div>}><DevelopmentWorkspace dark={dark} initialMode={tab==="projetos"?"projects":"kanban"}/></ModuleBoundary>}
             {tab === "historico" && (
               <HistoricoEquipeView
                 chamados={historicoEquipe}
@@ -5264,7 +5265,7 @@ function AdminPanel({
               />
             )}
 
-            {["usuarios","acessos"].includes(tab) && administrador && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando usuários…</strong></div>}><UsersModule users={usuarios} currentUser={usuario} developer={desenvolvedor} initialMode={tab==="acessos"?"access":"list"} onModeChange={mode=>setTab(mode==="access"?"acessos":"usuarios")} onRefresh={carregar} onEdit={abrirEdicaoUsuario} onPermissions={setUsuarioPermissoes} onApprove={async id=>{await aprovarUsuario(id);await carregar()}} onReject={async id=>{await rejeitarUsuario(id);await carregar()}} onDelete={async id=>{await excluirUsuarioAdmin(id);await carregar();toast.success("Usuário apagado.")}}/></Suspense>}
+            {["usuarios","acessos"].includes(tab) && administrador && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando usuários…</strong></div>}><UsersModule users={usuarios} currentUser={usuario} developer={desenvolvedor} initialMode={tab==="acessos"?"access":"list"} onModeChange={mode=>setTab(mode==="access"?"acessos":"usuarios")} onRefresh={carregar} onEdit={abrirEdicaoUsuario} onPermissions={setUsuarioPermissoes} onApprove={async id=>{await aprovarUsuario(id);await carregar()}} onReject={async id=>{await rejeitarUsuario(id);await carregar()}} onDelete={async id=>{await excluirUsuarioAdmin(id);await carregar();toast.success("Usuário apagado.")}}/></ModuleBoundary>}
             {tab === "catalogos" && (
               <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
                 <Card>
@@ -5760,7 +5761,7 @@ function AdminPanel({
             )}
 
             {["configuracoes","config_sla"].includes(tab) && (
-              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando configurações…</strong></div>}><SettingsWorkspace
+              <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando configurações…</strong></div>}><SettingsWorkspace
                 config={configSistema}
                 setConfig={setConfigSistema}
                 initialSection={tab==="config_sla"?"sla":"identidade"}
@@ -5773,7 +5774,7 @@ function AdminPanel({
                 onCreateQuick={criarRespostaRapidaAdmin}
                 responses={respostasRapidas}
                 onNavigate={setTab}
-              /></Suspense>
+              /></ModuleBoundary>
             )}
 
             {tab === "config_integracoes" && desenvolvedor && (
@@ -5938,15 +5939,15 @@ function AdminPanel({
             )}
 
             {tab === "relatorios" && (
-              <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando relatórios…</strong></div>}><ReportsWorkspace
+              <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando relatórios…</strong></div>}><ReportsWorkspace
                 chamados={dadosRelatorio}
                 dark={dark}
                 onDownload={(format, filtrosRelatorio) =>
                   baixarRelatorio(format, filtrosRelatorio)
                 }
-              /></Suspense>
+              /></ModuleBoundary>
             )}
-            {tab === "diagnostico" && <Suspense fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando diagnóstico…</strong></div>}><SystemDiagnosticsPage dark={dark} /></Suspense>}
+            {tab === "diagnostico" && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando diagnóstico…</strong></div>}><SystemDiagnosticsPage dark={dark} /></ModuleBoundary>}
           </main>
         </div>
       </div>
