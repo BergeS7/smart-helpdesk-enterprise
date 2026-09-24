@@ -9,6 +9,7 @@ import { PerformanceRatingCard } from "../../components/PerformanceRatingCard";
 import { isFinalTicketStatus, ticketStatusLabel } from "../../domain/ticketStatus";
 import { Badge, Button, Card, Field, Input, Modal, Select, Textarea } from "../../components/shared/FormPrimitives";
 import { ReopenTicketCard } from "../../components/chamados/ReopenTicketCard";
+import { SugestaoArtigoCard } from "../../components/chamados/SugestaoArtigoCard";
 import { adicionarComentario, anexarArquivos, atualizarChamado, baixarAnexoChamado, baixarHistoricoChamadoPdf, encerrarChamado, enviarAvaliacaoPerformance, obterBlobAnexoChamado, reabrirChamado, type ApiChamado, type ApiComentario, type ApiUsuario, type RespostaRapida, type UsuarioLogado } from "../../services/api";
 import { PRIORIDADES, ResponsavelAvatar, STATUS_OPCOES, formatDate, formatarMinutos, iniciaisPessoa, isAdminApp, isDevApp, isEquipeApp, nomeResponsavelChamado, prioridadeClass, statusClass } from "../comum/appShared";
 
@@ -608,6 +609,7 @@ export function ChamadoDetalhe({
               <div className="flex items-center gap-3 text-emerald-700"><CheckCircle2 size={20} /><div><b className="block text-sm">Atendimento avaliado</b><span className="text-xs">Obrigado por compartilhar sua experiência.</span></div></div>
             </Card>
           )}
+          {concluido && isEquipeApp(usuario.perfil) && <SugestaoArtigoCard chamadoId={Number(chamado.id)} />}
           {concluido && (
             <ReopenTicketCard
               finalizadoEm={chamado.finalizado_em || chamado.atualizado_em}

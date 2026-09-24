@@ -323,6 +323,15 @@ export type ProblemaRecorrente = {
   situacao: "sem_artigo" | "artigo_interno" | "artigo_pouco_efetivo" | "coberto";
 };
 
+// Resposta de "este chamado resolvido deve virar artigo?". Só "problema_recorrente" sugere.
+export type SugestaoArtigoChamado = {
+  sugerir: boolean;
+  motivo: "chamado_em_aberto" | "rascunho_existente" | "artigo_existente" | "sem_recorrencia" | "problema_recorrente";
+  recorrencia?: { quantidade: number; dias: number };
+  artigo?: { id: number; titulo: string } | null;
+  rascunho?: { id: number; titulo: string; status: StatusArtigo };
+};
+
 // Artigo recomendado pela busca da base (só confiança alta ou moderada chega ao cliente).
 export type ArtigoSugerido = Pick<ArtigoBase, "id" | "titulo" | "resumo" | "categoria" | "video_url"> & {
   confianca: number;

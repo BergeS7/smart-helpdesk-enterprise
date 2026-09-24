@@ -2,7 +2,7 @@
  * Responsabilidade: catálogo de serviços e base de conhecimento.
  */
 import { request } from "./http";
-import type { ArtigoBase, ArtigoSugerido, CatalogoItem, ProblemaRecorrente } from "./types";
+import type { ArtigoBase, ArtigoSugerido, CatalogoItem, ProblemaRecorrente, SugestaoArtigoChamado } from "./types";
 
 export function listarCatalogo(tipo: "departamentos" | "tipos" | "cargos") {
   return request<CatalogoItem[]>(`/catalogos/${tipo}`);
@@ -48,6 +48,14 @@ export function sugerirArtigosBase(texto: string) {
 
 export function listarProblemasRecorrentes() {
   return request<ProblemaRecorrente[]>("/catalogos/base-conhecimento/recorrentes");
+}
+
+export function obterSugestaoArtigoDoChamado(chamadoId: number) {
+  return request<SugestaoArtigoChamado>(`/catalogos/base-conhecimento/chamados/${chamadoId}/sugestao`);
+}
+
+export function criarRascunhoDoChamado(chamadoId: number) {
+  return request<ArtigoBase>(`/catalogos/base-conhecimento/chamados/${chamadoId}/rascunho`, { method: "POST" });
 }
 
 export function registrarCliqueRecomendacao(id: number) {

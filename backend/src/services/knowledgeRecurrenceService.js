@@ -83,6 +83,7 @@ async function calcularRecorrencias({ user }) {
       primeiro_em: new Date(Math.min(...datas)).toISOString(),
       ultimo_em: new Date(Math.max(...datas)).toISOString(),
       titulo: representante.titulo,
+      chamados_ids: chamados.map((c) => c.id),
       exemplos: chamados.slice(0, EXEMPLOS_POR_GRUPO).map(({ id, numero_chamado, titulo }) => ({ id, numero_chamado, titulo })),
       artigo: artigo ? { ...artigo, ...efetividade(artigo) } : null,
       situacao: situacaoRecorrencia(artigo),

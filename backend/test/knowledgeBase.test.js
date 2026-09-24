@@ -3,7 +3,7 @@
  */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizarArtigo, erroPublicacao, efetividade, agruparChamados, situacaoRecorrencia } = require("../src/domain/knowledgeBase");
+const { normalizarArtigo, erroPublicacao, efetividade, agruparChamados, situacaoRecorrencia, montarRascunhoDeChamado } = require("../src/domain/knowledgeBase");
 
 const IMAGEM = "supabase://knowledge-base/artigos/123e4567-e89b-12d3-a456-426614174000.png";
 
@@ -299,4 +299,17 @@ test("análise de recorrência usa cache por visão e é descartada quando a bas
   await controller.criarBase({ body: { titulo: "VPN", conteudo: "x", status: "revisao" }, user: tecnico }, response());
   await controller.listarRecorrencias({ user: tecnico }, response());
   assert.equal(consultasChamados, 3, "artigo novo invalida o cache");
+});
+
+test("rascunho do chamado: interno, em rascunho e com a última mensagem da equipe como solução", () => {
+  const chamado = { id: 9, numero_chamado: "#HD-9", titulo: "VPN caiu", descricao: "A VPN cai toda hora.", categoria_ia: "Não classificado" };
+  const rascunho = montarRascunhoDeChamado(chamado, [{ mensagem: "Verifiquei o FortiClient." }, { mensagem: "Reinstalei o FortiClient e refiz o perfil." }]);
+  assert.equal(rascunho.status, "rascunho");
+  assert.equal(rascunho.visibilidade, "interno");
+  assert.equal(rascunho.categoria, "", "categoria genérica da IA não vai para o artigo");
+  assert.equal(rascunho.problema, "A VPN cai toda hora.");
+  assert.equal(rascunho.solucao, "Reinstalei o FortiClient e refiz o perfil.");
+  assert.match(rascunho.conteudo, /chamado #HD-9[\s\S]*retire dados pessoais[\s\S]*- Verifiquei o FortiClient\./);
+  assert.deepEqual(normalizarArtigo(rascunho, { criacao: true }).erros, [], "rascunho passa na validação do artigo");
+  assert.equal(montarRascunhoDeChamado({ ...chamado, descricao: "x".repeat(9000) }, []).problema.length, 5000);
 });

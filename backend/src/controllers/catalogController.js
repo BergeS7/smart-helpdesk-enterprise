@@ -2,7 +2,7 @@
  * Responsabilidade: Controlador HTTP de catalog; valida a requisição e coordena regras e persistência.
  */
 const pool = require("../config/database");
-const { normalizarArtigo, erroPublicacao, condicaoLeitura, efetividade, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
+const { normalizarArtigo, erroPublicacao, condicaoLeitura, efetividade, montarRascunhoDeChamado, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS } = require("../domain/knowledgeBase");
 const { enviarArquivo, urlAssinada } = require("../utils/supabaseStorage");
 const { arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { userHasPermission } = require("../services/permissionService");
@@ -11,6 +11,9 @@ const { buscarArtigosRelacionados } = require("../services/knowledgeSearchServic
 const { registrarExibicoes, registrarClique, registrarResposta } = require("../services/knowledgeRecommendationService");
 const { SQL_EFETIVIDADE_POR_ARTIGO } = require("../services/knowledgeMetricsService");
 const { detectarRecorrencias, limparCacheRecorrencias } = require("../services/knowledgeRecurrenceService");
+const { ACAO_RASCUNHO, analisarChamado, comentariosDaEquipe, rascunhoDoChamado } = require("../services/knowledgeDraftService");
+const { buscarChamadoAutorizado } = require("./chamados/comum");
+const { isFinal } = require("../domain/ticketStatus");
 
 function tabelaValida(tipo) {
   if (tipo === "departamentos") return "departamentos";
@@ -140,7 +143,9 @@ const sugerirBase = async (req, res) => {
 // Problemas que se repetem nos chamados recentes e se a base já tem artigo adequado para eles.
 const listarRecorrencias = async (req, res) => {
   try {
-    return res.json(await detectarRecorrencias({ user: req.user }));
+    // A lista completa de chamados de cada grupo só serve à análise interna.
+    const grupos = await detectarRecorrencias({ user: req.user });
+    return res.json(grupos.map(({ chamados_ids, ...grupo }) => grupo));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao analisar problemas recorrentes", detalhe: error.message });
@@ -218,27 +223,65 @@ const enviarImagemBase = async (req, res) => {
   }
 };
 
+// Grava um artigo já normalizado; as colunas vêm da lista fixa do domínio, nunca do corpo da requisição.
+async function inserirArtigo(dados, usuarioId) {
+  const campos = { ...dados, criado_por: usuarioId, atualizado_por: usuarioId };
+  const colunas = Object.keys(campos);
+  const result = await pool.query(
+    `INSERT INTO base_conhecimento (${colunas.join(", ")})
+     VALUES (${colunas.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING ${COLUNAS_ARTIGO}`,
+    Object.values(campos)
+  );
+  await limparCacheRecorrencias();
+  return result.rows[0];
+}
+
 const criarBase = async (req, res) => {
   try {
     const { dados, erros } = normalizarArtigo(req.body, { criacao: true });
     if (erros.length) return res.status(400).json({ erro: erros[0], detalhes: erros });
     const bloqueio = erroPublicacao(req.user.perfil, { novoStatus: dados.status });
     if (bloqueio) return res.status(403).json({ erro: bloqueio });
-    // As colunas vêm da lista fixa do domínio, nunca do corpo da requisição.
-    const campos = { ...dados, criado_por: req.user.id, atualizado_por: req.user.id };
-    const colunas = Object.keys(campos);
-    const result = await pool.query(
-      `INSERT INTO base_conhecimento (${colunas.join(", ")})
-       VALUES (${colunas.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING ${COLUNAS_ARTIGO}`,
-      Object.values(campos)
-    );
-    const artigo = result.rows[0];
+    const artigo = await inserirArtigo(dados, req.user.id);
     await registrarAuditoria(req, "base_conhecimento", artigo.id, "criado", `Artigo "${artigo.titulo}" criado como ${artigo.status}.`);
-    await limparCacheRecorrencias();
     return res.status(201).json(artigo);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ erro: "Erro ao criar artigo", detalhe: error.message });
+  }
+};
+
+// Os dois endpoints abaixo respeitam o acesso ao chamado (mesma regra da tela do chamado).
+const sugestaoArtigoDoChamado = async (req, res) => {
+  try {
+    const acesso = await buscarChamadoAutorizado(req, req.params.chamadoId);
+    if (acesso.erro) return res.status(acesso.status).json({ erro: acesso.erro });
+    return res.json(await analisarChamado({ chamado: acesso.chamado, user: req.user }));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao analisar o chamado", detalhe: error.message });
+  }
+};
+
+// Cria apenas um rascunho interno; publicar continua sendo decisão de quem revisa.
+const criarRascunhoDoChamado = async (req, res) => {
+  try {
+    const acesso = await buscarChamadoAutorizado(req, req.params.chamadoId);
+    if (acesso.erro) return res.status(acesso.status).json({ erro: acesso.erro });
+    const { chamado } = acesso;
+    if (!isFinal(chamado.status)) return res.status(409).json({ erro: "O chamado ainda não foi resolvido" });
+    const existente = await rascunhoDoChamado(chamado.id);
+    if (existente) return res.status(409).json({ erro: "Este chamado já gerou um artigo", artigo: existente });
+
+    const { dados, erros } = normalizarArtigo(montarRascunhoDeChamado(chamado, await comentariosDaEquipe(chamado.id)), { criacao: true });
+    if (erros.length) return res.status(400).json({ erro: erros[0], detalhes: erros });
+    const artigo = await inserirArtigo(dados, req.user.id);
+    await registrarAuditoria(req, "base_conhecimento", artigo.id, ACAO_RASCUNHO,
+      `Rascunho "${artigo.titulo}" criado a partir do chamado ${chamado.numero_chamado || chamado.id}.`, { chamado_id: chamado.id });
+    return res.status(201).json(artigo);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao criar rascunho", detalhe: error.message });
   }
 };
 
@@ -319,6 +362,8 @@ module.exports = {
    obterBase,
    sugerirBase,
    listarRecorrencias,
+   sugestaoArtigoDoChamado,
+   criarRascunhoDoChamado,
    registrarCliqueRecomendacao,
    responderRecomendacao,
    enviarImagemBase,

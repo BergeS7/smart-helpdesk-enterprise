@@ -189,4 +189,27 @@ function situacaoRecorrencia(artigo) {
   return "coberto";
 }
 
-module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao, condicaoLeitura, nivelConfianca, efetividade, agruparChamados, situacaoRecorrencia };
+// Rascunho a partir de um chamado resolvido, sem IA generativa: reaproveita o que o atendimento registrou.
+// Sai interno e em rascunho: o texto vem de um chamado real e pode ter dados pessoais; o técnico revisa.
+function montarRascunhoDeChamado(chamado, comentariosEquipe) {
+  const referencia = chamado.numero_chamado || `#${chamado.id}`;
+  const ultimo = comentariosEquipe.at(-1);
+  const registro = comentariosEquipe.map((c) => `- ${c.mensagem}`);
+  const conteudo = [
+    `Rascunho gerado a partir do chamado ${referencia}.`,
+    "Antes de publicar: revise o texto, retire dados pessoais e complete o passo a passo.",
+    ...(registro.length ? ["", "Registro técnico do atendimento:", ...registro] : []),
+  ].join("\n");
+  const categoria = chamado.categoria_ia && chamado.categoria_ia !== "Não classificado" ? chamado.categoria_ia : "";
+  return {
+    titulo: String(chamado.titulo || "").slice(0, CAMPOS_TEXTO.titulo),
+    categoria: categoria.slice(0, CAMPOS_TEXTO.categoria),
+    problema: String(chamado.descricao || "").slice(0, CAMPOS_TEXTO.problema),
+    solucao: ultimo ? String(ultimo.mensagem).slice(0, CAMPOS_TEXTO.solucao) : "",
+    conteudo: conteudo.slice(0, CAMPOS_TEXTO.conteudo),
+    status: "rascunho",
+    visibilidade: "interno",
+  };
+}
+
+module.exports = { STATUS_ARTIGO, CAMPOS_TEXTO, VISIBILIDADES, BUCKET_IMAGENS, PASTA_IMAGENS, DURACAO_URL_IMAGEM_SEGUNDOS, referenciaImagemValida, normalizarArtigo, podePublicar, erroPublicacao, condicaoLeitura, nivelConfianca, efetividade, agruparChamados, situacaoRecorrencia, montarRascunhoDeChamado };
