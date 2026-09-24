@@ -5,17 +5,14 @@ import { GlobalCommandPalette } from "../../components/GlobalCommandPalette";
 import { ProfileCenter } from "../../components/ProfileCenter";
 import { PushNotificationOnboarding } from "../../components/PushNotificationSettings";
 import { PermissionDialog } from "../../components/PermissionDialog";
-import { BarChart3, Bell, BookOpen, Camera, Filter, Headphones, LayoutDashboard, ListChecks, LogOut, MapPinned, Menu, Moon, RefreshCw, Search, Settings, Star, Sun, Trash2, User, UserCheck, UserCog, Users, X } from "lucide-react";
+import { BarChart3, Bell, BookOpen, Filter, Headphones, LayoutDashboard, ListChecks, LogOut, MapPinned, Menu, Moon, RefreshCw, Search, Settings, Star, Sun, User, Users, X } from "lucide-react";
 import { Toaster, toast } from "sonner";
-import { municipiosMaranhao } from "../../data/municipiosMaranhao";
-import { TICKET_STATUS, ticketStatusLabel } from "../../domain/ticketStatus";
+import { TICKET_STATUS } from "../../domain/ticketStatus";
 import { WorkspaceNavigation } from "../../components/WorkspaceNavigation";
 import { TicketWorkspaceToolbar } from "../../components/TicketWorkspaceToolbar";
-import { Badge, Button, Field, Input, Modal, Select } from "../../components/shared/FormPrimitives";
-import { UserAssetsField } from "../../components/patrimonio/UserAssetsField";
 import { ModuleBoundary } from "../../components/ModuleBoundary";
 import { aprovarUsuario, atualizarChamado, baixarRelatorio, buscarChamado, excluirUsuarioAdmin, rejeitarUsuario, type ApiUsuario } from "../../services/api";
-import { AvisosSistemaBanner, ChamadosListModule, DevelopmentWorkspace, FilaChamadosView, IndicatorsWorkspace, KanbanWorkspace, MySatisfactionPage, OperationalDashboard, PERFIS, PRIORIDADES, PatrimonioMapPage, ReportsWorkspace, STATUS_OPCOES, SatisfactionAnalyticsPage, SettingsWorkspace, SystemDiagnosticsPage, SystemThemeStyle, UsersModule, UsuarioSistemaAvatar, chamadoIdFromNotification, formatDate, normalizeStatus, notificacaoClass, notificacaoIcone, perfilLabel, variaveisTemaSistema } from "../comum/appShared";
+import { AvisosSistemaBanner, ChamadosListModule, DevelopmentWorkspace, FilaChamadosView, IndicatorsWorkspace, KanbanWorkspace, MySatisfactionPage, OperationalDashboard, PatrimonioMapPage, ReportsWorkspace, SatisfactionAnalyticsPage, SettingsWorkspace, SystemDiagnosticsPage, SystemThemeStyle, UsersModule, chamadoIdFromNotification, formatDate, normalizeStatus, notificacaoClass, notificacaoIcone, variaveisTemaSistema } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 import { MobileMoreAction, MobileMoreSheet, MobileNavButton } from "../portal/PortalComponents";
 import { CarteiraEquipeView, HistoricoEquipeView } from "./EquipeViews";
@@ -27,6 +24,8 @@ import { AbaCatalogos } from "./abas/Catalogos";
 import { AbaBaseConhecimento } from "./abas/BaseConhecimento";
 import { AbaConfiguracoesGerais } from "./abas/ConfiguracoesGerais";
 import { AbaManutencao } from "./abas/Manutencao";
+import { ModalFiltros } from "./modais/Filtros";
+import { ModalEdicaoUsuario } from "./modais/EdicaoUsuario";
 
 // Shell autenticado da equipe, responsável por navegação e dados operacionais.
 export function AdminPanel(props: AdminPanelProps) {
@@ -48,11 +47,8 @@ export function AdminPanel(props: AdminPanelProps) {
     historicoEquipe,
     usuarios,
     teams,
-    departamentos,
-    tipos,
     base,
     respostasRapidas,
-    filtrosSalvos,
     novaResposta,
     setNovaResposta,
     configSistema,
@@ -73,10 +69,6 @@ export function AdminPanel(props: AdminPanelProps) {
     dragId,
     setDragId,
     usuarioEditando,
-    setUsuarioEditando,
-    usuarioForm,
-    setUsuarioForm,
-    salvandoUsuarioAdmin,
     mostrarPerfil,
     setMostrarPerfil,
     menuMaisAdmin,
@@ -98,8 +90,6 @@ export function AdminPanel(props: AdminPanelProps) {
     carregar,
     aplicarFiltros,
     limparPesquisa,
-    limparFiltros,
-    aplicarFiltroSalvo,
     assumirChamadoAdmin,
     criarRespostaRapidaAdmin,
     salvarConfiguracoesAdmin,
@@ -113,7 +103,6 @@ export function AdminPanel(props: AdminPanelProps) {
     marcarTodasComoLidas,
     abrirNotificacao,
     abrirEdicaoUsuario,
-    salvarEdicaoUsuario,
     navigationAreas,
     activeArea,
     activeTab,
@@ -842,218 +831,7 @@ export function AdminPanel(props: AdminPanelProps) {
         </MobileMoreSheet>
       )}
 
-      {mostrarFiltros && (
-        <div className="fixed inset-x-0 bottom-0 top-14 z-50 flex justify-end">
-          <button
-            type="button"
-            aria-label="Fechar filtros"
-            className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]"
-            onClick={() => setMostrarFiltros(false)}
-          />
-
-          <aside
-            className={`relative z-10 flex h-full w-full max-w-[420px] flex-col border-l shadow-2xl ${dark ? "border-white/10 bg-[#101827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`}
-          >
-            <div
-              className={`flex items-start justify-between gap-3 border-b px-5 py-4 ${dark ? "border-white/10" : "border-zinc-100"}`}
-            >
-              <div>
-                <p className="flex items-center gap-2 text-base font-black">
-                  <Filter size={18} />
-                  Filtros de chamados
-                </p>
-                <p className={`mt-1 text-xs ${mutedText}`}>
-                  Refine o Kanban sem ocupar espaço da tela.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMostrarFiltros(false)}
-                className={`rounded-xl p-2 transition ${dark ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"}`}
-                title="Fechar filtros"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form
-              onSubmit={aplicarFiltros}
-              className="flex min-h-0 flex-1 flex-col"
-            >
-              <div className="min-h-0 flex-1 space-y-4 overflow-auto px-5 py-5">
-                <Field label="Pesquisa">
-                  <div className="relative">
-                    <Search
-                      className="absolute left-3 top-3 text-zinc-400"
-                      size={16}
-                    />
-                    <Input
-                      placeholder="Número, título ou descrição"
-                      value={filtros.q || ""}
-                      onChange={(e) =>
-                        setFiltros({ ...filtros, q: e.target.value })
-                      }
-                      className="pl-9"
-                    />
-                  </div>
-                </Field>
-
-                {filtrosSalvos.length > 0 && (
-                  <Field label="Filtros salvos">
-                    <div className="grid gap-2">
-                      {filtrosSalvos.slice(0, 5).map((filtro) => (
-                        <button
-                          key={filtro.id}
-                          type="button"
-                          onClick={() => aplicarFiltroSalvo(filtro)}
-                          className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-bold text-zinc-700 hover:bg-blue-50 hover:text-blue-700"
-                        >
-                          {filtro.nome}
-                        </button>
-                      ))}
-                    </div>
-                  </Field>
-                )}
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Status">
-                    <Select
-                      value={filtros.status || ""}
-                      onChange={(e) =>
-                        setFiltros({ ...filtros, status: e.target.value })
-                      }
-                    >
-                      <option value="">Todos</option>
-                      {STATUS_OPCOES.map((s) => (
-                        <option key={s} value={s}>{ticketStatusLabel(s)}</option>
-                      ))}
-                    </Select>
-                  </Field>
-
-                  <Field label="Prioridade">
-                    <Select
-                      value={filtros.prioridade || ""}
-                      onChange={(e) =>
-                        setFiltros({ ...filtros, prioridade: e.target.value })
-                      }
-                    >
-                      <option value="">Todas</option>
-                      {PRIORIDADES.map((p) => (
-                        <option key={p}>{p}</option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-
-                <Field label="Departamento">
-                  <Select
-                    value={filtros.departamento || ""}
-                    onChange={(e) =>
-                      setFiltros({ ...filtros, departamento: e.target.value })
-                    }
-                  >
-                    <option value="">Todos os departamentos</option>
-                    {departamentos.map((d) => (
-                      <option key={d.id}>{d.nome}</option>
-                    ))}
-                  </Select>
-                </Field>
-
-                <Field label="Técnico responsável">
-                  <Select
-                    value={String(filtros.responsavel_id || "")}
-                    onChange={(e) =>
-                      setFiltros({ ...filtros, responsavel_id: e.target.value })
-                    }
-                  >
-                    <option value="">Todos os técnicos</option>
-                    {equipe.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-
-                <Field label="Tipo de chamado">
-                  <Select
-                    value={filtros.tipo_chamado || ""}
-                    onChange={(e) =>
-                      setFiltros({ ...filtros, tipo_chamado: e.target.value })
-                    }
-                  >
-                    <option value="">Todos os tipos</option>
-                    {tipos.map((t) => (
-                      <option key={t.id}>{t.nome}</option>
-                    ))}
-                  </Select>
-                </Field>
-
-                <Field label="Solicitante">
-                  <Input
-                    placeholder="Nome ou e-mail do solicitante"
-                    value={filtros.usuario || ""}
-                    onChange={(e) =>
-                      setFiltros({ ...filtros, usuario: e.target.value })
-                    }
-                  />
-                </Field>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Data inicial">
-                    <Input
-                      type="date"
-                      value={filtros.data_inicio || ""}
-                      onChange={(e) =>
-                        setFiltros({ ...filtros, data_inicio: e.target.value })
-                      }
-                    />
-                  </Field>
-                  <Field label="Data final">
-                    <Input
-                      type="date"
-                      value={filtros.data_fim || ""}
-                      onChange={(e) =>
-                        setFiltros({ ...filtros, data_fim: e.target.value })
-                      }
-                    />
-                  </Field>
-                </div>
-
-                <label
-                  className={`flex items-center gap-3 rounded-2xl border p-4 text-sm font-bold ${dark ? "border-white/10 bg-white/5 text-white/75" : "border-zinc-200 bg-zinc-50 text-zinc-700"}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={Boolean(filtros.vencidos)}
-                    onChange={(e) =>
-                      setFiltros({ ...filtros, vencidos: e.target.checked })
-                    }
-                  />
-                  Mostrar somente chamados vencidos
-                </label>
-              </div>
-
-              <div
-                className={`flex gap-3 border-t p-5 ${dark ? "border-white/10" : "border-zinc-100"}`}
-              >
-                <Button className="flex-1">
-                  <Search size={16} />
-                  Aplicar
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={limparFiltros}
-                >
-                  Limpar
-                </Button>
-              </div>
-            </form>
-          </aside>
-        </div>
-      )}
+      {mostrarFiltros && <ModalFiltros painel={painel} />}
 
       {mostrarPerfil && (
         <ProfileCenter
@@ -1087,183 +865,6 @@ export function AdminPanel(props: AdminPanelProps) {
 
       <PushNotificationOnboarding userId={usuario.id} />
 
-      {false && mostrarPerfil && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <button
-            type="button"
-            aria-label="Fechar perfil"
-            className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]"
-            onClick={() => setMostrarPerfil(false)}
-          />
-
-          <aside
-            className={`relative z-10 flex h-full w-full max-w-[430px] flex-col border-l shadow-2xl ${dark ? "border-white/10 bg-[#101827] text-white" : "border-zinc-200 bg-white text-zinc-900"}`}
-          >
-            <div
-              className={`flex items-start justify-between gap-3 border-b px-5 py-4 ${dark ? "border-white/10" : "border-zinc-100"}`}
-            >
-              <div>
-                <p className="flex items-center gap-2 text-base font-black">
-                  <UserCog size={18} />
-                  Perfil do administrador
-                </p>
-                <p className={`mt-1 text-xs ${mutedText}`}>
-                  Foto, dados pessoais e acesso da conta.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMostrarPerfil(false)}
-                className={`rounded-xl p-2 transition ${dark ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"}`}
-                title="Fechar perfil"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-auto px-5 py-5">
-              <div
-                className={`rounded-3xl border p-5 text-center ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-zinc-50"}`}
-              >
-                <div className="mx-auto mb-3 grid h-28 w-28 place-items-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-blue-500 to-sky-400 text-4xl font-black text-white shadow-xl">
-                  {fotoPerfil ? (
-                    <img
-                      src={fotoPerfil}
-                      alt={usuario.nome}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    inicialPerfil
-                  )}
-                </div>
-                <h3 className="text-lg font-black">{usuario.nome}</h3>
-                <p className={`text-sm ${mutedText}`}>{usuario.email}</p>
-                <div className="mt-3 flex flex-wrap justify-center gap-2">
-                  <Badge className="border-blue-200 bg-blue-50 text-blue-700">
-                    {perfilLabel(usuario.perfil)}
-                  </Badge>
-                  {usuario.departamento && (
-                    <Badge className="border-zinc-200 bg-white text-zinc-600">
-                      {usuario.departamento}
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                  <label
-                    className={`inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition ${enviandoFoto ? "pointer-events-none opacity-60" : ""} ${dark ? "bg-white text-zinc-900 hover:bg-white/90" : "bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700"}`}
-                  >
-                    <Camera size={16} />
-                    {enviandoFoto
-                      ? "Enviando..."
-                      : fotoPerfil
-                        ? "Trocar foto"
-                        : "Adicionar foto"}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/jpg,image/webp"
-                      className="hidden"
-                      onChange={trocarFotoPerfil}
-                    />
-                  </label>
-                  {fotoPerfil && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="flex-1"
-                      disabled={enviandoFoto}
-                      onClick={removerFotoPerfil}
-                    >
-                      <Trash2 size={16} />
-                      Remover
-                    </Button>
-                  )}
-                </div>
-                <p className={`mt-3 text-xs ${mutedText}`}>
-                  Use PNG, JPG, JPEG ou WEBP até 3 MB.
-                </p>
-              </div>
-
-              <form onSubmit={salvarPerfilAdmin} className="mt-5 space-y-4">
-                <Field label="Nome">
-                  <Input
-                    required
-                    value={perfilForm.nome}
-                    onChange={(e) =>
-                      setPerfilForm({ ...perfilForm, nome: e.target.value })
-                    }
-                  />
-                </Field>
-
-                <Field label="E-mail">
-                  <Input
-                    value={usuario.email}
-                    disabled
-                    className="cursor-not-allowed bg-zinc-100 text-zinc-500"
-                  />
-                </Field>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Telefone">
-                    <Input
-                      value={perfilForm.telefone}
-                      onChange={(e) =>
-                        setPerfilForm({
-                          ...perfilForm,
-                          telefone: e.target.value,
-                        })
-                      }
-                      placeholder="(00) 00000-0000"
-                    />
-                  </Field>
-                  <Field label="Cargo">
-                    <Input
-                      value={perfilForm.cargo}
-                      onChange={(e) =>
-                        setPerfilForm({ ...perfilForm, cargo: e.target.value })
-                      }
-                      placeholder="Administrador"
-                    />
-                  </Field>
-                </div>
-
-                <Field label="Departamento">
-                  <Input
-                    value={perfilForm.departamento}
-                    onChange={(e) =>
-                      setPerfilForm({
-                        ...perfilForm,
-                        departamento: e.target.value,
-                      })
-                    }
-                    placeholder="TI, Suporte, Operações..."
-                  />
-                </Field>
-
-                <Button className="w-full" disabled={salvandoPerfil}>
-                  <UserCheck size={16} />
-                  {salvandoPerfil ? "Salvando..." : "Salvar perfil"}
-                </Button>
-              </form>
-            </div>
-
-            <div
-              className={`border-t p-5 ${dark ? "border-white/10" : "border-zinc-100"}`}
-            >
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                onClick={onLogout}
-              >
-                <LogOut size={16} />
-                Sair da conta
-              </Button>
-            </div>
-          </aside>
-        </div>
-      )}
-
       {usuarioPermissoes && (
         <PermissionDialog
           user={usuarioPermissoes}
@@ -1273,156 +874,7 @@ export function AdminPanel(props: AdminPanelProps) {
         />
       )}
 
-      {usuarioEditando && desenvolvedor && (
-        <Modal
-          title={`Editar usuário - ${usuarioEditando.nome}`}
-          onClose={() => setUsuarioEditando(null)}
-        >
-          <form onSubmit={salvarEdicaoUsuario} className="space-y-4">
-            <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <UsuarioSistemaAvatar usuario={usuarioEditando} size="lg" />
-              <div className="min-w-0">
-                <p className="font-black text-zinc-900">
-                  {usuarioEditando.nome}
-                </p>
-                <p className="truncate text-sm text-zinc-500">
-                  {usuarioEditando.email}
-                </p>
-                <p className="mt-1 text-xs font-bold text-blue-600">
-                  Perfil atual: {perfilLabel(usuarioEditando.perfil)}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nome">
-                <Input
-                  required
-                  value={usuarioForm.nome}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, nome: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="E-mail">
-                <Input
-                  required
-                  type="email"
-                  value={usuarioForm.email}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, email: e.target.value })
-                  }
-                />
-              </Field>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Tipo de usuário">
-                <Select
-                  value={usuarioForm.perfil}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, perfil: e.target.value })
-                  }
-                >
-                  {PERFIS.map((p) => (
-                    <option key={p} value={p}>
-                      {perfilLabel(p)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Status">
-                <Select
-                  value={usuarioForm.status}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, status: e.target.value })
-                  }
-                >
-                  <option value="ativo">Ativo</option>
-                  <option value="pendente">Pendente</option>
-                  <option value="inativo">Inativo</option>
-                  <option value="rejeitado">Rejeitado</option>
-                </Select>
-              </Field>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Telefone">
-                <Input
-                  value={usuarioForm.telefone}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, telefone: e.target.value })
-                  }
-                  placeholder="(00) 00000-0000"
-                />
-              </Field>
-              <Field label="Cargo">
-                <Input
-                  value={usuarioForm.cargo}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, cargo: e.target.value })
-                  }
-                  placeholder="Cargo do usuário"
-                />
-              </Field>
-            </div>
-
-            <Field label="Departamento">
-              <Input
-                value={usuarioForm.departamento}
-                onChange={(e) =>
-                  setUsuarioForm({
-                    ...usuarioForm,
-                    departamento: e.target.value,
-                  })
-                }
-                placeholder="Departamento"
-              />
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Cidade / área de atuação">
-                <Select required value={usuarioForm.municipio} onChange={(e)=>{const municipio=e.target.value;setUsuarioForm({...usuarioForm,municipio,unidade:municipio?`Maranhão Motos - ${municipio}`:""})}}>
-                  <option value="">Selecione</option>
-                  {municipiosMaranhao.map((item)=><option key={item.nome} value={item.nome}>{item.nome}</option>)}
-                </Select>
-              </Field>
-              <Field label="Unidade / local padrão">
-                <Input readOnly value={usuarioForm.unidade} placeholder="Definida pela cidade" />
-              </Field>
-            </div>
-
-            <Field label="Nova senha opcional">
-              <Input
-                type="password"
-                minLength={8}
-                title="Use no mínimo 8 caracteres."
-                value={usuarioForm.senha}
-                onChange={(e) =>
-                  setUsuarioForm({ ...usuarioForm, senha: e.target.value })
-                }
-                placeholder="Deixe em branco para manter a senha atual"
-              />
-            </Field>
-
-            <UserAssetsField userId={usuarioEditando.id} userName={usuarioEditando.nome} />
-
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setUsuarioEditando(null)}
-              >
-                Cancelar
-              </Button>
-              <Button disabled={salvandoUsuarioAdmin}>
-                <UserCheck size={16} />
-                {salvandoUsuarioAdmin ? "Salvando..." : "Salvar alterações"}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      {usuarioEditando && desenvolvedor && <ModalEdicaoUsuario painel={painel} />}
 
       {selecionado && (
         <ChamadoDetalhe
