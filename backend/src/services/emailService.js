@@ -19,7 +19,7 @@ function obterTransporter() {
   return transporter;
 }
 
-async function enviarEmail({ para, assunto, texto, html }) {
+async function enviarEmail({ para, assunto, texto, html, anexos }) {
   if (!para) return { enviado: false, motivo: "Destinatário não informado" };
 
   if (!emailConfigurado()) {
@@ -32,6 +32,7 @@ async function enviarEmail({ para, assunto, texto, html }) {
     subject: assunto,
     text: texto,
     html,
+    attachments: anexos,
   });
 
   return { enviado: true };

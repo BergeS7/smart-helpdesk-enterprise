@@ -75,6 +75,7 @@ services:
       SMTP_USER: "${SMTP_USER:-}"
       SMTP_PASS: "${SMTP_PASS:-}"
       SMTP_FROM: "${SMTP_FROM:-}"
+      APP_URL: "${APP_URL:-}"
 
       REDIS_URL: "${REDIS_URL:-redis://redis:6379}"
       ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"

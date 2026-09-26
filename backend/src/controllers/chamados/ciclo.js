@@ -4,6 +4,7 @@
 const pool = require("../../config/database");
 const { decidirPrioridadeChamado } = require("../../services/prioridadeIAService");
 const { enviarEmail } = require("../../services/emailService");
+const { enviarEmailAvaliacao } = require("../../services/ticketRatingEmailService");
 const { usuarioPodeAvaliarChamado } = require("../../services/ticketEvaluationAccessService");
 const { normalizarPerfil, ehAdmin, ehEquipe, ehDesenvolvedor } = require("../../utils/permissoes");
 const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../../services/distributionService");
@@ -370,8 +371,13 @@ const atualizarChamado = async (req, res) => {
       const statusResultante = canonicalizeStatus(atualizado.status);
       await registrarMovimentacao(id, req, "alteracao_status", `Status alterado de ${canonicalizeStatus(anterior.status)} para ${statusResultante}.`);
       await notificarStatus(atualizado, statusResultante, anterior.status);
-      enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusResultante)}.` }).catch(() => {});
-      if (["RESOLVED", "CLOSED"].includes(statusResultante) && !["RESOLVED", "CLOSED"].includes(canonicalizeStatus(anterior.status))) await notificarUsuarioVinculadoAoAtivo(atualizado);
+      const concluiuAgora = ["RESOLVED", "CLOSED"].includes(statusResultante) && !["RESOLVED", "CLOSED"].includes(canonicalizeStatus(anterior.status));
+      if (concluiuAgora) {
+        void enviarEmailAvaliacao(atualizado);
+        await notificarUsuarioVinculadoAoAtivo(atualizado);
+      } else {
+        enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusResultante)}.` }).catch(() => {});
+      }
     }
     if (prioridadeAlterada) {
       await registrarMovimentacao(id, req, "alteracao_prioridade", `Prioridade final alterada de ${anterior.prioridade} para ${prioridade}. Motivo: ${prioridade_manual_motivo || "não informado"}`);
@@ -405,8 +411,10 @@ const encerrarChamado = async (req, res) => {
     );
     await registrarMovimentacao(id, req, "conclusao", "Chamado finalizado.");
     await notificarStatus(result.rows[0], "CLOSED", acesso.chamado.status);
-    if (!["RESOLVED", "CLOSED"].includes(canonicalizeStatus(acesso.chamado.status))) await notificarUsuarioVinculadoAoAtivo(result.rows[0]);
-    enviarEmail({ para: result.rows[0].email_solicitante, assunto: `Chamado concluído ${result.rows[0].numero_chamado}`, texto: "Seu chamado foi concluído. Acesse o portal para avaliar." }).catch(() => {});
+    if (!["RESOLVED", "CLOSED"].includes(canonicalizeStatus(acesso.chamado.status))) {
+      await notificarUsuarioVinculadoAoAtivo(result.rows[0]);
+      void enviarEmailAvaliacao(result.rows[0]);
+    }
     return res.json(await carregarDetalhesChamado(req, result.rows[0]));
   } catch (error) {
     console.error(error);
