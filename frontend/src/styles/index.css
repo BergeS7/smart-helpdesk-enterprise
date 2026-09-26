@@ -124,9 +124,6 @@
   border-color: #334155 !important;
   box-shadow: 0 14px 34px rgba(0, 0, 0, .2) !important;
 }
-.usuario-theme-dark .user-kanban-column:nth-child(1) { border-top-color: #3b82f6 !important; }
-.usuario-theme-dark .user-kanban-column:nth-child(2) { border-top-color: #f59e0b !important; }
-.usuario-theme-dark .user-kanban-column:nth-child(3) { border-top-color: #10b981 !important; }
 .usuario-theme-dark .user-ticket-card,
 .usuario-theme-dark .user-summary-card {
   background-color: #0f1929 !important;

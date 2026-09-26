@@ -81,9 +81,7 @@ export type UsuarioBoardColuna = {
   id: string;
   titulo: string;
   resumo: string;
-  topBorder: string;
   accent: string;
-  badge: string;
   chamados: ApiChamado[];
 };
 
@@ -101,66 +99,57 @@ export function UsuarioKanbanLeitura({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
-        <h2 className="text-xl font-black tracking-tight text-zinc-900">
-          Meus chamados
-        </h2>
+        <h3 className="text-sm font-black text-zinc-900">Meus chamados</h3>
         {onVerTodos && (
           <button
             type="button"
             onClick={onVerTodos}
-            className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-black text-blue-700 shadow-sm transition hover:bg-blue-50 sm:flex"
+            className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 transition hover:text-blue-900"
           >
-            Ver todos <ArrowRight size={16} />
+            Ver todos <ArrowRight size={14} />
           </button>
         )}
       </div>
       <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-3">
         {colunas.map((coluna) => (
-          <div
+          <section
             key={coluna.id}
-            className={`user-kanban-column flex min-h-[260px] flex-col overflow-hidden rounded-[18px] border border-zinc-200 border-t-[5px] ${coluna.topBorder} bg-white/90 p-3 shadow-sm shadow-slate-200/50 lg:min-h-0`}
+            aria-label={coluna.titulo}
+            className="user-kanban-column flex min-h-[260px] flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white lg:min-h-0"
           >
-            <div className="mb-2 flex shrink-0 items-center justify-between gap-2 px-1 py-1">
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <h4 className="truncate text-sm font-black text-zinc-900">
-                  {coluna.titulo}
-                </h4>
-                <p className="mt-0.5 text-[11px] font-medium text-zinc-500">
-                  {coluna.resumo}
-                </p>
-              </div>
-              <span
-                className={`grid h-7 min-w-7 place-items-center rounded-full px-2 text-xs font-black ${coluna.badge}`}
-              >
+            <div className="flex shrink-0 items-center gap-2 border-b border-zinc-100 px-4 py-3">
+              <span className={`h-2 w-2 shrink-0 rounded-full ${coluna.accent}`} />
+              <h4 className="truncate text-sm font-bold text-zinc-900">{coluna.titulo}</h4>
+              <span className="ml-auto rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-bold text-zinc-500">
                 {coluna.chamados.length}
               </span>
             </div>
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
-              {coluna.chamados.slice(0, 3).map((chamado) => (
-                <UsuarioMiniChamadoCard
-                  key={chamado.id}
-                  chamado={chamado}
-                  onAbrir={onAbrir}
-                  onAvaliar={onAvaliar}
-                  resolvido={coluna.id === "resolvidos"}
-                />
-              ))}
-              {onVerTodos && coluna.chamados.length > 3 && (
-                <button
-                  type="button"
-                  onClick={onVerTodos}
-                  className="w-full rounded-xl border border-dashed border-blue-200 bg-blue-50/70 px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-100"
-                >
-                  +{coluna.chamados.length - 3} chamado(s)
-                </button>
-              )}
-              {coluna.chamados.length === 0 && (
-                <div className="user-kanban-empty rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/70 p-6 text-center text-xs font-semibold text-zinc-400">
-                  Nenhum chamado aqui
-                </div>
-              )}
-            </div>
-          </div>
+            <p className="shrink-0 px-4 pt-2 text-xs text-zinc-400">{coluna.resumo}</p>
+            {coluna.chamados.length === 0 ? (
+              <p className="grid flex-1 place-items-center p-6 text-xs text-zinc-400">Nenhum chamado aqui.</p>
+            ) : (
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3">
+                {coluna.chamados.slice(0, 3).map((chamado) => (
+                  <UsuarioMiniChamadoCard
+                    key={chamado.id}
+                    chamado={chamado}
+                    onAbrir={onAbrir}
+                    onAvaliar={onAvaliar}
+                    resolvido={coluna.id === "resolvidos"}
+                  />
+                ))}
+                {onVerTodos && coluna.chamados.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={onVerTodos}
+                    className="w-full rounded-lg border border-dashed border-zinc-200 px-3 py-2 text-xs font-bold text-indigo-600 transition hover:bg-zinc-50"
+                  >
+                    +{coluna.chamados.length - 3} chamado(s)
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
         ))}
       </div>
     </div>
