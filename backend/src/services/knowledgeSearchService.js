@@ -8,7 +8,8 @@ const { condicaoLeitura, nivelConfianca } = require("../domain/knowledgeBase");
 
 // Cada termo do texto vale 1 se aparece nos campos principais (pesos A e B) e menos nos demais.
 // A cobertura é limitada por TERMOS_REFERENCIA para que descrições longas não diluam a nota.
-async function buscarArtigosRelacionados({ texto, user }) {
+// confiancaMinima permite a quem filtra depois (o assistente) receber candidatos mais fracos.
+async function buscarArtigosRelacionados({ texto, user, confiancaMinima = busca.CONFIANCA_MINIMA }) {
   const consulta = String(texto || "").trim().slice(0, busca.TEXTO_MAX_CARACTERES);
   if (consulta.length < busca.TEXTO_MIN_CARACTERES) return [];
 
@@ -40,7 +41,7 @@ async function buscarArtigosRelacionados({ texto, user }) {
       busca.PESO_TERMOS,
       busca.TERMOS_REFERENCIA,
       busca.PESO_TITULO,
-      busca.CONFIANCA_MINIMA,
+      confiancaMinima,
       busca.MAX_RESULTADOS,
     ]
   );

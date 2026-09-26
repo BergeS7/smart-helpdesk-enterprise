@@ -6,6 +6,7 @@ import { Badge, Button, Card, Field, Input, Select, Textarea } from "../../../co
 import type { ArtigoBase, PassoArtigo, StatusArtigo, VisibilidadeArtigo } from "../../../services/api";
 import type { PainelAdmin } from "../useAdminPanel";
 import { ProblemasRecorrentes } from "./ProblemasRecorrentes";
+import { PerguntasSemResposta } from "./PerguntasSemResposta";
 
 const irParaFormulario = () => document.getElementById("form-artigo")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -76,7 +77,7 @@ const formatarTaxa = (taxa?: number | null) => (taxa == null ? "—" : `${Math.r
 const formatarData = (valor?: string) => (valor ? new Date(valor).toLocaleDateString("pt-BR") : "—");
 
 export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
-  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, enviarImagemPasso, cancelarEdicaoArtigo, podePublicarBase, problemasRecorrentes, criarArtigoParaProblema } = painel;
+  const { base, baseCarregando, erroBase, novoArtigo, setNovoArtigo, artigoEditandoId, carregar, salvarArtigo, editarArtigo, enviarImagemPasso, cancelarEdicaoArtigo, podePublicarBase, problemasRecorrentes, criarArtigoParaProblema, lacunasAssistente, criarArtigoParaLacuna } = painel;
   const podeEditar = (artigo: ArtigoBase) => podePublicarBase || STATUS_DO_AUTOR.includes(artigo.status || "publicado");
   return (
     <>
@@ -88,6 +89,10 @@ export function AbaBaseConhecimento({ painel }: { painel: PainelAdmin }) {
         const artigo = base.find((a) => a.id === id);
         if (artigo) { void editarArtigo(artigo); irParaFormulario(); }
       }}
+    />
+    <PerguntasSemResposta
+      lacunas={lacunasAssistente}
+      onCriarArtigo={(lacuna) => { criarArtigoParaLacuna(lacuna); irParaFormulario(); }}
     />
     <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
       <Card>

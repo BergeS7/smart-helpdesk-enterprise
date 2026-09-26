@@ -82,6 +82,9 @@ services:
       REDIS_URL: "${REDIS_URL:-redis://redis:6379}"
       ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
 
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      ASSISTENTE_MODELO: "${ASSISTENTE_MODELO:-gemini-3.5-flash-lite}"
+
     volumes:
       - backend_uploads:/app/uploads
 

@@ -1,6 +1,7 @@
 /**
  * Responsabilidade: portal do solicitante: início, chamados, base de conhecimento, avisos e perfil.
  */
+import { useCallback, useState } from "react";
 import { ProfileCenter } from "../../components/ProfileCenter";
 import { PushNotificationOnboarding } from "../../components/PushNotificationSettings";
 import { Bell, Plus, RefreshCw, Search, Star, X } from "lucide-react";
@@ -12,6 +13,7 @@ import { buscarChamado, enviarAvaliacaoPerformance } from "../../services/api";
 import { AvisosSistemaBanner, OperationalDashboard, PatrimonioMapPage, SatisfactionRankingPage, SystemThemeStyle, chamadoIdFromNotification, formatDate, notificacaoClass, notificacaoIcone, variaveisTemaSistema } from "../comum/appShared";
 import { UsuarioAvisosPanel, UsuarioBaseConhecimento, UsuarioChamadoLista, UsuarioNovoChamadoModal } from "./PortalComponents";
 import { ChamadoDetalhe } from "../chamados/ChamadoDetalhe";
+import { AssistenteChat, BotaoAssistente } from "./componentes/AssistenteChat";
 import { useUserPortal, type UserPortalProps } from "./useUserPortal";
 import { AbaAcessos } from "./abas/Acessos";
 import { AbaRelatorios } from "./abas/Relatorios";
@@ -23,6 +25,8 @@ import { MenuMaisUsuario } from "./layout/MenuMais";
 // Área do solicitante: abertura, consulta, comentários e acompanhamento.
 export function UserPortal(props: UserPortalProps) {
   const portal = useUserPortal(props);
+  const [assistenteAberto, setAssistenteAberto] = useState(false);
+  const fecharAssistente = useCallback(() => setAssistenteAberto(false), []);
   const {
     usuario,
     onLogout,
@@ -244,6 +248,7 @@ export function UserPortal(props: UserPortalProps) {
               </form>
 
               <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+                <BotaoAssistente aberto={assistenteAberto} onClick={() => setAssistenteAberto((valor) => !valor)} />
                 <button
                   type="button"
                   onClick={() => setModalChamadoAberto(true)}
@@ -423,6 +428,14 @@ export function UserPortal(props: UserPortalProps) {
             {renderConteudo()}
           </main>
         </div>
+
+        <AssistenteChat
+          aberto={assistenteAberto}
+          onFechar={fecharAssistente}
+          nomeUsuario={usuario?.nome}
+          artigos={artigosBase}
+          onAbrirChamado={({ titulo, descricao }) => { setNovo((atual) => ({ ...atual, titulo, descricao })); setModalChamadoAberto(true); }}
+        />
       </div>
 
       <NavegacaoMobileUsuario portal={portal} />
