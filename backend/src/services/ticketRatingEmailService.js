@@ -9,9 +9,10 @@ const NOME_PADRAO = "Smart HelpDesk";
 // Tons fixos do tema do portal (--shd-deep e --shd-ink em appShared.tsx).
 const COR_PROFUNDA = "#073b66";
 const COR_TINTA = "#091923";
-// A logo padrão vai embutida no e-mail (anexo inline via CID): aparece sem depender de URL pública.
-const LOGO_PADRAO_CID = "logo@smart-helpdesk";
-const LOGO_PADRAO_ARQUIVO = path.join(__dirname, "..", "assets", "email-logo.png");
+// A logo vai embutida no e-mail (anexo inline via CID). Uma URL não serve: o Gmail busca as imagens
+// pelos servidores do Google, que não alcançam uploads locais nem ambientes internos.
+const LOGO_CID = "logo@smart-helpdesk";
+const LOGO_ARQUIVO = path.join(__dirname, "..", "assets", "email-logo.png");
 
 function escaparHtml(valor) {
   return String(valor ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -42,18 +43,10 @@ function formatarData(valor) {
   return data.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-// Mesma prioridade do portal: logo_1_url, depois logo_url, depois a logo padrão embutida.
-function logoSistema(config, base) {
-  const configurada = [config.logo_1_url, config.logo_url].map((valor) => String(valor || "").trim()).find(Boolean) || "";
-  if (/^https?:\/\//i.test(configurada)) return { src: configurada, anexos: [] };
-  if (configurada.startsWith("/") && base) return { src: `${base}${configurada}`, anexos: [] };
-  return { src: `cid:${LOGO_PADRAO_CID}`, anexos: [{ filename: "logo.png", path: LOGO_PADRAO_ARQUIVO, cid: LOGO_PADRAO_CID }] };
-}
-
-function marcaSistema(config = {}, base = null) {
+function marcaSistema(config = {}) {
   const cor = /^#[0-9a-fA-F]{6}$/.test(String(config.cor_principal || "").trim()) ? config.cor_principal.trim() : COR_PADRAO;
-  const { src: logo, anexos } = logoSistema(config, base);
-  return { nome: String(config.nome_sistema || "").trim() || NOME_PADRAO, cor, logo, anexos, suporte: String(config.email_suporte || "").trim() };
+  const anexos = [{ filename: "logo.png", path: LOGO_ARQUIVO, cid: LOGO_CID }];
+  return { nome: String(config.nome_sistema || "").trim() || NOME_PADRAO, cor, logo: `cid:${LOGO_CID}`, anexos, suporte: String(config.email_suporte || "").trim() };
 }
 
 function linhaDetalhe(rotulo, valor) {
@@ -65,7 +58,7 @@ function linhaDetalhe(rotulo, valor) {
 }
 
 function montarEmailAvaliacao({ chamado, config, base }) {
-  const marca = marcaSistema(config, base);
+  const marca = marcaSistema(config);
   const links = linksChamado(chamado, base);
   const primeiroNome = String(chamado.solicitante || "").trim().split(/\s+/)[0];
   const saudacao = primeiroNome ? `Olá, ${primeiroNome},` : "Olá,";

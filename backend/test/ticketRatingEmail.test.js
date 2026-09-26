@@ -33,12 +33,11 @@ test("sem endereço público do portal, o e-mail sai sem botões e cor inválida
   assert.match(texto, /Acesse o portal/);
 });
 
-test("logo: usa a configurada e, sem ela, embute a padrão no e-mail", () => {
-  const base = "https://help.empresa.com";
-  const padrao = montarEmailAvaliacao({ chamado, config: {}, base: null });
-  assert.ok(padrao.html.includes(`src="cid:${padrao.anexos[0].cid}"`));
-  assert.ok(require("fs").existsSync(padrao.anexos[0].path), "arquivo da logo padrão existe");
-  assert.deepEqual(montarEmailAvaliacao({ chamado, config: { logo_url: "https://cdn.x.com/a.png" }, base }).anexos, []);
-  assert.ok(montarEmailAvaliacao({ chamado, config: { logo_url: "https://cdn.x.com/a.png", logo_1_url: "https://cdn.x.com/b.png" }, base }).html.includes("https://cdn.x.com/b.png"));
-  assert.ok(montarEmailAvaliacao({ chamado, config: { logo_url: "/uploads/logo.png" }, base }).html.includes(`${base}/uploads/logo.png`));
+test("logo vai embutida no e-mail, mesmo com logo configurada no sistema", () => {
+  for (const config of [{}, { logo_url: "/uploads/sistema/logo.png" }, { logo_1_url: "https://cdn.x.com/b.png" }]) {
+    const { html, anexos } = montarEmailAvaliacao({ chamado, config, base: "https://help.empresa.com" });
+    assert.equal(anexos.length, 1);
+    assert.ok(html.includes(`src="cid:${anexos[0].cid}"`));
+    assert.ok(require("fs").existsSync(anexos[0].path), "arquivo da logo existe");
+  }
 });
