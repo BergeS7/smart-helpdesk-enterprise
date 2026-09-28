@@ -8,7 +8,7 @@ const STATUS_ARTIGO = Object.freeze(["rascunho", "revisao", "publicado", "arquiv
 const VISIBILIDADES = Object.freeze(["publico", "interno"]);
 // Sem engine de workflow: quem não publica só trabalha com rascunho e revisão.
 const STATUS_DO_AUTOR = Object.freeze(["rascunho", "revisao"]);
-const PERFIS_PUBLICACAO = Object.freeze(["supervisor", "admin", "desenvolvedor"]);
+const PERFIS_PUBLICACAO = Object.freeze(["supervisor", "admin"]);
 
 // Campos de texto editáveis e o tamanho máximo aceito para cada um.
 const CAMPOS_TEXTO = Object.freeze({

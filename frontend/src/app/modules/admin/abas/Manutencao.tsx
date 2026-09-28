@@ -1,5 +1,5 @@
 /**
- * Responsabilidade: aba Manutenção (desenvolvedor): rotinas e limpeza do sistema.
+ * Responsabilidade: aba Manutenção (dono da plataforma): rotinas e limpeza do sistema.
  */
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";

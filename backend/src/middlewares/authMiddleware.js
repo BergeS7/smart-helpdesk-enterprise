@@ -3,7 +3,7 @@
  */
 const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
-const { normalizarPerfil, temPerfil } = require("../utils/permissoes");
+const { normalizarPerfil, temPerfil, ehDonoPlataforma } = require("../utils/permissoes");
 
 const authMiddleware = async (req, res, next) => {
   const header = req.headers.authorization;
@@ -12,12 +12,19 @@ const authMiddleware = async (req, res, next) => {
   const token = header.replace("Bearer ", "");
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const result = await pool.query("SELECT id,nome,email,perfil,status,COALESCE(token_version,1) AS token_version FROM usuarios WHERE id=$1", [decoded.id]);
+    const result = await pool.query("SELECT id,nome,email,perfil,status,email_verificado_em,COALESCE(token_version,1) AS token_version FROM usuarios WHERE id=$1", [decoded.id]);
     const current = result.rows[0];
     if (!current || current.status !== "ativo" || Number(decoded.tokenVersion || 1) !== Number(current.token_version)) {
       return res.status(401).json({ erro: "Sessão revogada ou usuário inativo", requestId: req.id });
     }
-    req.user = { id: current.id, nome: current.nome, email: current.email, perfil: normalizarPerfil(current.perfil), tokenVersion: current.token_version };
+    req.user = {
+      id: current.id,
+      nome: current.nome,
+      email: current.email,
+      perfil: normalizarPerfil(current.perfil),
+      plataforma: ehDonoPlataforma(current),
+      tokenVersion: current.token_version,
+    };
     next();
   } catch (error) {
     return res.status(401).json({ erro: "Token inválido ou sessão expirada", requestId: req.id });
@@ -37,6 +44,12 @@ function exigirPerfis(perfis) {
   };
 }
 
+// Recursos da plataforma SaaS (diagnóstico, manutenção, versões do agente): só o dono, nunca um perfil.
+function exigirDonoPlataforma(req, res, next) {
+  if (!req.user?.plataforma) return res.status(403).json({ erro: "Acesso exclusivo da administração da plataforma." });
+  next();
+}
+
 function exigirPermissao(permissao) {
   return async (req, res, next) => {
     try {
@@ -51,3 +64,4 @@ module.exports = authMiddleware;
 module.exports.exigirPerfil = exigirPerfil;
 module.exports.exigirPerfis = exigirPerfis;
 module.exports.exigirPermissao = exigirPermissao;
+module.exports.exigirDonoPlataforma = exigirDonoPlataforma;

@@ -42,7 +42,7 @@ async function ensurePermissionSchema() {
 }
 
 function hasFullAccess(user) {
-  return ["admin", "desenvolvedor"].includes(normalizarPerfil(user?.perfil));
+  return ["admin"].includes(normalizarPerfil(user?.perfil));
 }
 
 const PROFILE_DEFAULTS = Object.freeze({

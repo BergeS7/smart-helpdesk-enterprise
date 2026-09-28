@@ -4,11 +4,11 @@
 const pool = require("../config/database");
 
 const MODES = new Set(["manual", "round_robin", "least_load"]);
-const TEAM_PROFILES = new Set(["tecnico", "admin", "desenvolvedor", "super_admin"]);
+const TEAM_PROFILES = new Set(["tecnico", "admin"]);
 
 function text(value, max = 255) { return String(value || "").trim().slice(0, max); }
 function id(value) { const number = Number(value); return Number.isInteger(number) && number > 0 ? number : null; }
-function isAdmin(req) { return ["admin", "desenvolvedor", "super_admin"].includes(req.user?.perfil); }
+function isAdmin(req) { return ["admin"].includes(req.user?.perfil); }
 
 async function isManager(req, teamId) {
   if (isAdmin(req)) return true;

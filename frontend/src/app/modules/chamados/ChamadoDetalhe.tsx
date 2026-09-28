@@ -11,7 +11,7 @@ import { Badge, Button, Card, Field, Input, Modal, Select, Textarea } from "../.
 import { ReopenTicketCard } from "../../components/chamados/ReopenTicketCard";
 import { SugestaoArtigoCard } from "../../components/chamados/SugestaoArtigoCard";
 import { adicionarComentario, anexarArquivos, atualizarChamado, baixarAnexoChamado, baixarHistoricoChamadoPdf, encerrarChamado, enviarAvaliacaoPerformance, obterBlobAnexoChamado, reabrirChamado, type ApiChamado, type ApiComentario, type ApiUsuario, type RespostaRapida, type UsuarioLogado } from "../../services/api";
-import { PRIORIDADES, ResponsavelAvatar, STATUS_OPCOES, formatDate, formatarMinutos, iniciaisPessoa, isAdminApp, isDevApp, isEquipeApp, nomeResponsavelChamado, prioridadeClass, statusClass } from "../comum/appShared";
+import { PRIORIDADES, ResponsavelAvatar, STATUS_OPCOES, formatDate, formatarMinutos, iniciaisPessoa, isAdminApp, isEquipeApp, nomeResponsavelChamado, prioridadeClass, statusClass } from "../comum/appShared";
 
 // Visão consolidada do chamado com histórico, anexos e ações autorizadas.
 export function ChamadoDetalhe({
@@ -83,7 +83,6 @@ export function ChamadoDetalhe({
     prioridade_manual_motivo: "",
   });
   const isEquipe = !somenteLeitura && isEquipeApp(usuario.perfil);
-  const isDev = isDevApp(usuario.perfil);
   const isAdmin = isAdminApp(usuario.perfil);
   const podeGerenciar =
     !somenteLeitura &&

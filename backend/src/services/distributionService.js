@@ -20,7 +20,7 @@ async function selectAssignee(teamId, mode) {
       WHERE tu.team_id = $1
         AND COALESCE(u.status, 'ativo') = 'ativo'
         AND COALESCE(u.disponivel_atendimento, TRUE) = TRUE
-        AND COALESCE(u.perfil, 'usuario') IN ('tecnico','admin','desenvolvedor','super_admin')
+        AND COALESCE(u.perfil, 'usuario') IN ('tecnico','admin')
       GROUP BY u.id, u.nome, tu.last_assigned_at
       HAVING COUNT(c.id) FILTER (WHERE c.status = ANY($2::text[])) < ${TECHNICIAN_CAPACITY}
       ORDER BY ${orderBy}

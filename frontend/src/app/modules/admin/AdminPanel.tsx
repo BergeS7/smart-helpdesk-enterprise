@@ -81,7 +81,7 @@ export function AdminPanel(props: AdminPanelProps) {
     setPerfilForm,
     usuarioPermissoes,
     setUsuarioPermissoes,
-    desenvolvedor,
+    plataforma,
     administrador,
     tecnico,
     equipe,
@@ -439,7 +439,7 @@ export function AdminPanel(props: AdminPanelProps) {
                 current={tab}
                 onNavigate={setTab}
                 onRefresh={activeArea.id === "service" ? ()=>void carregar() : undefined}
-                tools={activeArea.id === "service" ? <TicketWorkspaceToolbar filters={filtros} onChange={setFiltros} onApply={next=>void aplicarFiltros(undefined,next)} dark={dark} embedded/> : activeArea.id === "assets" ? <div className="flex items-center justify-end gap-2"><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-invite"))} className="ds-button ds-button--primary whitespace-nowrap">Gerar convite do agente</button><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-agent-updates"))} className="ds-button ds-button--secondary whitespace-nowrap">Atualizações do agente</button><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-filters"))} className="ds-button ds-button--secondary inline-flex items-center gap-2 whitespace-nowrap"><Filter size={16}/>Filtros</button><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-refresh"))} className="ds-button ds-button--secondary grid !w-10 place-items-center !px-0" title="Atualizar ativos" aria-label="Atualizar ativos"><RefreshCw size={16}/></button></div> : undefined}
+                tools={activeArea.id === "service" ? <TicketWorkspaceToolbar filters={filtros} onChange={setFiltros} onApply={next=>void aplicarFiltros(undefined,next)} dark={dark} embedded/> : activeArea.id === "assets" ? <div className="flex items-center justify-end gap-2"><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-invite"))} className="ds-button ds-button--primary whitespace-nowrap">Gerar convite do agente</button>{plataforma && <button type="button" onClick={()=>window.dispatchEvent(new Event("assets-agent-updates"))} className="ds-button ds-button--secondary whitespace-nowrap">Atualizações do agente</button>}<button type="button" onClick={()=>window.dispatchEvent(new Event("assets-filters"))} className="ds-button ds-button--secondary inline-flex items-center gap-2 whitespace-nowrap"><Filter size={16}/>Filtros</button><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-refresh"))} className="ds-button ds-button--secondary grid !w-10 place-items-center !px-0" title="Atualizar ativos" aria-label="Atualizar ativos"><RefreshCw size={16}/></button></div> : undefined}
                 dark={dark}
               />
             )}
@@ -546,7 +546,7 @@ export function AdminPanel(props: AdminPanelProps) {
               </ModuleBoundary>
             )}
 
-            {desenvolvedor &&
+            {administrador &&
               ["teams", "catalogos", "manutencao"].includes(tab) && (
                 <div
                   className={`mb-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
@@ -623,7 +623,7 @@ export function AdminPanel(props: AdminPanelProps) {
               />
             )}
 
-            {["usuarios","acessos"].includes(tab) && administrador && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando usuários…</strong></div>}><UsersModule users={usuarios} currentUser={usuario} developer={desenvolvedor} initialMode={tab==="acessos"?"access":"list"} onModeChange={mode=>setTab(mode==="access"?"acessos":"usuarios")} onRefresh={carregar} onEdit={abrirEdicaoUsuario} onPermissions={setUsuarioPermissoes} onApprove={async id=>{await aprovarUsuario(id);await carregar()}} onReject={async id=>{await rejeitarUsuario(id);await carregar()}} onDelete={async id=>{await excluirUsuarioAdmin(id);await carregar();toast.success("Usuário apagado.")}}/></ModuleBoundary>}
+            {["usuarios","acessos"].includes(tab) && administrador && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando usuários…</strong></div>}><UsersModule users={usuarios} currentUser={usuario} admin={administrador} platformOwner={plataforma} initialMode={tab==="acessos"?"access":"list"} onModeChange={mode=>setTab(mode==="access"?"acessos":"usuarios")} onRefresh={carregar} onEdit={abrirEdicaoUsuario} onPermissions={setUsuarioPermissoes} onApprove={async id=>{await aprovarUsuario(id);await carregar()}} onReject={async id=>{await rejeitarUsuario(id);await carregar()}} onDelete={async id=>{await excluirUsuarioAdmin(id);await carregar();toast.success("Usuário apagado.")}}/></ModuleBoundary>}
             {tab === "catalogos" && <AbaCatalogos painel={painel} />}
 
             {tab === "base" && <AbaBaseConhecimento painel={painel} />}
@@ -647,11 +647,11 @@ export function AdminPanel(props: AdminPanelProps) {
               /></ModuleBoundary>
             )}
 
-            {tab === "config_integracoes" && desenvolvedor && (
+            {tab === "config_integracoes" && plataforma && (
               <section className="ds-card p-6"><h3 className="font-black">Integrações</h3><p className="mt-2 text-sm text-slate-500">Nenhuma integração externa está configurada. Esta área permanece reservada para conexões autenticadas e auditáveis.</p></section>
             )}
 
-            {tab === "manutencao" && desenvolvedor && <AbaManutencao painel={painel} />}
+            {tab === "manutencao" && plataforma && <AbaManutencao painel={painel} />}
 
             {tab === "relatorios" && (
               <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando relatórios…</strong></div>}><ReportsWorkspace
@@ -791,12 +791,12 @@ export function AdminPanel(props: AdminPanelProps) {
               setMenuMaisAdmin(false);
             }}
           />
-          {(administrador||desenvolvedor) && (
+          {(administrador||plataforma) && (
             <MobileMoreAction
               icon={<Settings size={18} />}
               label="Ajustes"
               onClick={() => {
-                setTab(desenvolvedor?"configuracoes":"catalogos");
+                setTab(administrador?"configuracoes":"config_integracoes");
                 setMenuMaisAdmin(false);
               }}
             />
@@ -874,7 +874,7 @@ export function AdminPanel(props: AdminPanelProps) {
         />
       )}
 
-      {usuarioEditando && desenvolvedor && <ModalEdicaoUsuario painel={painel} />}
+      {usuarioEditando && administrador && <ModalEdicaoUsuario painel={painel} />}
 
       {selecionado && (
         <ChamadoDetalhe

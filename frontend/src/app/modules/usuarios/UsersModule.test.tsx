@@ -20,7 +20,7 @@ beforeEach(async () => {
   await act(async () => root.render(<UsersModule
     users={[{ id: 2, nome: "Usuário pendente", email: "user@example.com", perfil: "usuario", status: "pendente" }]}
     currentUser={{ id: 1, nome: "Admin", email: "admin@example.com", perfil: "admin" }}
-    developer={false} onRefresh={vi.fn()} onEdit={vi.fn()} onPermissions={vi.fn()}
+    admin={false} onRefresh={vi.fn()} onEdit={vi.fn()} onPermissions={vi.fn()}
     onApprove={onApprove} onReject={onReject} onDelete={vi.fn()}
   />));
 });
@@ -61,4 +61,21 @@ it("também exibe erros ao rejeitar", async () => {
   expect(onReject).toHaveBeenCalledWith(2);
   expect(toast.error).toHaveBeenCalledWith("Você não tem permissão para executar esta ação.");
   expect(button("Rejeitar").disabled).toBe(false);
+});
+
+it("admin edita e apaga usuários da empresa, mas não a conta da plataforma", async () => {
+  await act(async () => root.render(<UsersModule
+    users={[
+      { id: 2, nome: "Técnico", email: "tec@example.com", perfil: "tecnico", status: "ativo" },
+      { id: 3, nome: "Dono", email: "dono@example.com", perfil: "admin", status: "ativo", plataforma: true },
+    ]}
+    currentUser={{ id: 1, nome: "Admin", email: "admin@example.com", perfil: "admin" }}
+    admin onRefresh={vi.fn()} onEdit={vi.fn()} onPermissions={vi.fn()}
+    onApprove={onApprove} onReject={onReject} onDelete={vi.fn()}
+  />));
+  const [tecnico, dono] = Array.from(container.querySelectorAll("article"));
+  expect(tecnico.textContent).toContain("Editar");
+  expect(tecnico.querySelector(".ds-button--danger")).not.toBeNull();
+  expect(dono.textContent).not.toContain("Editar");
+  expect(dono.querySelector(".ds-button--danger")).toBeNull();
 });

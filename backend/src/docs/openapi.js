@@ -62,7 +62,7 @@ const openapiDocument = {
   paths: {
     "/health": { get: op("Health check", { auth: false, tags: ["Sistema"] }) },
     "/system/health": { get: op("Health check (namespace system)", { auth: false, tags: ["Sistema"] }) },
-    "/system/diagnostics": { get: op("Diagnóstico administrativo (perfil desenvolvedor)", { tags: ["Sistema"] }) },
+    "/system/diagnostics": { get: op("Diagnóstico administrativo (dono da plataforma)", { tags: ["Sistema"] }) },
     "/system/errors/frontend": { post: op("Registrar erro reportado pelo frontend", { tags: ["Sistema"] }) },
 
     "/auth/login": { post: op("Login genérico", { auth: false, tags: ["Auth"] }) },
@@ -84,11 +84,11 @@ const openapiDocument = {
       delete: op("Remover minha foto de perfil", { tags: ["Usuários"] }),
     },
     "/usuarios": {
-      get: op("Listar usuários (técnico/admin/desenvolvedor)", { tags: ["Usuários"] }),
-      post: op("Criar usuário (admin/desenvolvedor)", { tags: ["Usuários"] }),
+      get: op("Listar usuários (técnico/admin)", { tags: ["Usuários"] }),
+      post: op("Criar usuário (admin)", { tags: ["Usuários"] }),
     },
     "/usuarios/{id}": {
-      put: op("Atualizar usuário (desenvolvedor)", { tags: ["Usuários"], params: ["id"] }),
+      put: op("Atualizar usuário (admin)", { tags: ["Usuários"], params: ["id"] }),
       delete: op("Remover usuário", { tags: ["Usuários"], params: ["id"] }),
     },
     "/usuarios/{id}/aprovar": { patch: op("Aprovar usuário", { tags: ["Usuários"], params: ["id"] }) },
@@ -110,7 +110,7 @@ const openapiDocument = {
     "/chamados/{id}": {
       get: op("Buscar chamado por id", { tags: ["Chamados"], params: ["id"] }),
       patch: op("Atualizar chamado", { tags: ["Chamados"], params: ["id"] }),
-      delete: op("Excluir chamado (desenvolvedor)", { tags: ["Chamados"], params: ["id"] }),
+      delete: op("Excluir chamado (admin)", { tags: ["Chamados"], params: ["id"] }),
     },
     "/chamados/{id}/assumir": { patch: op("Assumir chamado", { tags: ["Chamados"], params: ["id"] }) },
     "/chamados/{id}/encerrar": { patch: op("Encerrar chamado", { tags: ["Chamados"], params: ["id"] }) },
@@ -150,7 +150,7 @@ const openapiDocument = {
     "/catalogos/base-conhecimento/{id}/avaliar": { post: op("Avaliar artigo", { tags: ["Catálogos"], params: ["id"] }) },
     "/catalogos/{tipo}": {
       get: op("Listar catálogo por tipo", { tags: ["Catálogos"], params: ["tipo"] }),
-      post: op("Criar item de catálogo (admin/desenvolvedor)", { tags: ["Catálogos"], params: ["tipo"] }),
+      post: op("Criar item de catálogo (admin)", { tags: ["Catálogos"], params: ["tipo"] }),
     },
     "/catalogos/{tipo}/{id}": { put: op("Atualizar item de catálogo", { tags: ["Catálogos"], params: ["tipo", "id"] }) },
 
@@ -160,14 +160,14 @@ const openapiDocument = {
 
     "/configuracoes": {
       get: op("Obter configurações do sistema", { auth: false, tags: ["Configurações"] }),
-      put: op("Salvar configurações (desenvolvedor)", { tags: ["Configurações"] }),
+      put: op("Salvar configurações (admin)", { tags: ["Configurações"] }),
     },
     "/configuracoes/logo": { patch: op("Atualizar logo do sistema", { tags: ["Configurações"] }) },
     "/configuracoes/logo1": { patch: op("Atualizar logo alternativa", { tags: ["Configurações"] }) },
 
     "/avisos/ativos": { get: op("Listar avisos ativos", { auth: false, tags: ["Avisos"] }) },
     "/avisos/admin": { get: op("Listar avisos (equipe)", { tags: ["Avisos"] }) },
-    "/avisos": { post: op("Criar aviso de manutenção (desenvolvedor)", { tags: ["Avisos"] }) },
+    "/avisos": { post: op("Criar aviso de manutenção (dono da plataforma)", { tags: ["Avisos"] }) },
     "/avisos/{id}": {
       put: op("Atualizar aviso", { tags: ["Avisos"], params: ["id"] }),
       delete: op("Excluir aviso", { tags: ["Avisos"], params: ["id"] }),
@@ -176,7 +176,7 @@ const openapiDocument = {
     "/teams/users/search": { get: op("Buscar usuários para times", { tags: ["Times"] }) },
     "/teams": {
       get: op("Listar times", { tags: ["Times"] }),
-      post: op("Criar time (admin/desenvolvedor/super_admin)", { tags: ["Times"] }),
+      post: op("Criar time (admin)", { tags: ["Times"] }),
     },
     "/teams/{id}": {
       get: op("Detalhar time", { tags: ["Times"], params: ["id"] }),
@@ -207,11 +207,11 @@ const openapiDocument = {
     "/assets/agent/update": { get: op("Versão vigente do agente (token de agente)", { auth: false, tags: ["Ativos"] }) },
     "/assets/agent/update/package": { get: op("Pacote assinado da versão vigente (token de agente)", { auth: false, tags: ["Ativos"] }) },
     "/assets/admin/agent-releases": {
-      get: op("Listar versões do agente e distribuição (admin/desenvolvedor)", { tags: ["Ativos"] }),
-      post: op("Publicar versão assinada do agente (admin/desenvolvedor)", { tags: ["Ativos"] }),
+      get: op("Listar versões do agente e distribuição (dono da plataforma)", { tags: ["Ativos"] }),
+      post: op("Publicar versão assinada do agente (dono da plataforma)", { tags: ["Ativos"] }),
     },
     "/assets/admin/agent-releases/{id}/revoke": { patch: op("Revogar versão do agente", { tags: ["Ativos"], params: ["id"] }) },
-    "/assets/admin/invites": { post: op("Criar convite de agente (admin/desenvolvedor)", { tags: ["Ativos"] }) },
+    "/assets/admin/invites": { post: op("Criar convite de agente (admin)", { tags: ["Ativos"] }) },
     "/assets/admin/locations": {
       get: op("Listar localidades administráveis", { tags: ["Ativos"] }),
       post: op("Salvar localidade", { tags: ["Ativos"] }),
@@ -229,7 +229,7 @@ const openapiDocument = {
     "/assets/{id}/status": { patch: op("Atualizar status do ativo", { tags: ["Ativos"], params: ["id"] }) },
 
     "/permissoes/me": { get: op("Minhas permissões", { tags: ["Permissões"] }) },
-    "/permissoes/catalog": { get: op("Catálogo de permissões (admin/desenvolvedor)", { tags: ["Permissões"] }) },
+    "/permissoes/catalog": { get: op("Catálogo de permissões (admin)", { tags: ["Permissões"] }) },
     "/permissoes/users/{id}": {
       get: op("Permissões de um usuário", { tags: ["Permissões"], params: ["id"] }),
       put: op("Atualizar permissões de um usuário", { tags: ["Permissões"], params: ["id"] }),

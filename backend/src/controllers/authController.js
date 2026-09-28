@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
-const { normalizarPerfil } = require("../utils/permissoes");
+const { normalizarPerfil, ehDonoPlataforma } = require("../utils/permissoes");
 const { senhaValida } = require("../utils/passwordPolicy");
 
 function gerarToken(usuario) {
@@ -34,6 +34,7 @@ async function montarUsuarioPublico(usuario, req = null) {
     nome: usuario.nome,
     email: usuario.email,
     perfil: normalizarPerfil(usuario.perfil),
+    plataforma: ehDonoPlataforma(usuario),
     status: usuario.status || "ativo",
     telefone: usuario.telefone || "",
     departamento: usuario.departamento || "",
@@ -82,7 +83,7 @@ function normalizarListaPerfis(perfisPermitidos = []) {
 
 function loginEhDeEquipe(perfisPermitidosNormalizados = []) {
   return perfisPermitidosNormalizados.some((perfil) =>
-    ["tecnico", "admin", "desenvolvedor"].includes(perfil)
+    ["tecnico", "admin"].includes(perfil)
   );
 }
 
@@ -227,35 +228,17 @@ const loginUsuario = (req, res) =>
 
 /**
  * Login do painel administrativo/equipe.
- * Permite técnico, administrador e desenvolvedor.
+ * Permite técnico e administrador (perfis legados de desenvolvedor já chegam normalizados como admin).
  */
 const loginAdmin = (req, res) =>
-  executarLogin(req, res, [
-    "tecnico",
-    "admin",
-    "administrador",
-    "desenvolvedor",
-    "super_admin",
-    "dev",
-    "developer",
-  ]);
+  executarLogin(req, res, ["tecnico", "admin"]);
 
 /**
  * Login genérico.
  * Permite qualquer perfil ativo entrar e o frontend decide para qual painel enviar.
- * Isso corrige o problema do dev cair no bloqueio de "usuário comum".
  */
 const login = (req, res) =>
-  executarLogin(req, res, [
-    "usuario",
-    "tecnico",
-    "admin",
-    "administrador",
-    "desenvolvedor",
-    "super_admin",
-    "dev",
-    "developer",
-  ]);
+  executarLogin(req, res, ["usuario", "tecnico", "admin"]);
 
 const solicitarRecuperacaoSenha = async (req, res) => {
   try {

@@ -131,23 +131,22 @@ export const STATUS_OPCOES = [
 
 export const PRIORIDADES = ["Crítica", "Alta", "Media", "Baixa"];
 
-export const PERFIS = ["usuario", "tecnico", "admin", "desenvolvedor"];
+export const PERFIS = ["usuario", "tecnico", "admin"];
 
 export const PERFIL_LABEL: Record<string, string> = {
   usuario: "Usuário comum",
   tecnico: "Técnico",
   admin: "Administrador",
-  desenvolvedor: "Desenvolvedor",
-  super_admin: "Desenvolvedor",
 };
 
 export function normalizarPerfilApp(perfil?: string) {
   const valor = String(perfil || "usuario")
     .trim()
     .toLowerCase();
-  if (["super_admin", "dev", "developer"].includes(valor))
-    return "desenvolvedor";
-  if (["usuario", "tecnico", "admin", "desenvolvedor"].includes(valor))
+  // O antigo perfil desenvolvedor virou o admin da empresa (sessões salvas antes da mudança).
+  if (["desenvolvedor", "super_admin", "dev", "developer", "administrador"].includes(valor))
+    return "admin";
+  if (["usuario", "tecnico", "admin"].includes(valor))
     return valor;
   return "usuario";
 }
@@ -157,17 +156,16 @@ export function perfilLabel(perfil?: string) {
 }
 
 export function isEquipeApp(perfil?: string) {
-  return ["tecnico", "admin", "desenvolvedor"].includes(
-    normalizarPerfilApp(perfil),
-  );
+  return ["tecnico", "admin"].includes(normalizarPerfilApp(perfil));
 }
 
 export function isAdminApp(perfil?: string) {
-  return ["admin", "desenvolvedor"].includes(normalizarPerfilApp(perfil));
+  return normalizarPerfilApp(perfil) === "admin";
 }
 
-export function isDevApp(perfil?: string) {
-  return normalizarPerfilApp(perfil) === "desenvolvedor";
+/** Dono da plataforma SaaS: o servidor informa e também é quem bloqueia de fato. */
+export function isDonoPlataformaApp(usuario?: { plataforma?: boolean } | null) {
+  return usuario?.plataforma === true;
 }
 
 export const CONFIG_SISTEMA_PADRAO: ConfiguracoesSistema = {

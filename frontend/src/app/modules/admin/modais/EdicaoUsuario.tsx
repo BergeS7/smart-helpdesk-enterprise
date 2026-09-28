@@ -1,5 +1,5 @@
 /**
- * Responsabilidade: modal de edição de usuário (desenvolvedor): dados, perfil, localidade e senha.
+ * Responsabilidade: modal de edição de usuário (admin): dados, perfil, localidade e senha.
  */
 import { UserCheck } from "lucide-react";
 import { municipiosMaranhao } from "../../../data/municipiosMaranhao";

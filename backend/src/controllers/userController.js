@@ -11,6 +11,7 @@ const { montarUrlFotoPerfil, limparFotosPerfil, enviarAvatar, removerAvatar, arq
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
 const { validLocation } = require("../domain/serviceArea");
 const { senhaValida } = require("../utils/passwordPolicy");
+const { normalizarPerfil, ehAdmin, ehDonoPlataforma, ehEmailDonoPlataforma } = require("../utils/permissoes");
 
 function normalizarTexto(valor) {
   return String(valor || "").trim();
@@ -38,22 +39,12 @@ async function enviarCodigoVerificacao({ nome, email, codigo }) {
   });
 }
 
-function normalizarPerfilUsuario(perfil) {
-  const valor = String(perfil || "usuario").trim().toLowerCase();
+const normalizarPerfilUsuario = normalizarPerfil;
 
-  if (["super_admin", "dev", "developer"].includes(valor)) {
-    return "desenvolvedor";
-  }
-
-  if (["administrador"].includes(valor)) {
-    return "admin";
-  }
-
-  if (["usuario", "tecnico", "admin", "desenvolvedor"].includes(valor)) {
-    return valor;
-  }
-
-  return "usuario";
+// A conta dona da plataforma é protegida: admin de empresa não altera nem exclui, e ninguém assume o e-mail dela.
+async function contaDonaPlataforma(id) {
+  const result = await pool.query("SELECT email, email_verificado_em FROM usuarios WHERE id = $1", [id]);
+  return Boolean(result.rows[0]) && ehDonoPlataforma(result.rows[0]);
 }
 
 function normalizarStatusUsuario(status) {
@@ -81,6 +72,7 @@ async function montarUsuarioPublico(usuario, req = null) {
     nome: usuario.nome || "",
     email: usuario.email || "",
     perfil: normalizarPerfilUsuario(usuario.perfil),
+    plataforma: ehDonoPlataforma(usuario),
     status: usuario.status || "ativo",
     telefone: usuario.telefone || "",
     departamento: usuario.departamento || "",
@@ -115,7 +107,8 @@ async function buscarUsuarioPorId(id, req = null) {
         aprovado_por,
         ultimo_login_em,
         bloqueado_ate,
-        foto_perfil
+        foto_perfil,
+        email_verificado_em
      FROM usuarios
      WHERE id = $1`,
     [id]
@@ -181,7 +174,7 @@ async function criarPrimeiroAdmin(req, res) {
     const result = await pool.query(
       `INSERT INTO usuarios
        (nome, email, senha, perfil, status, telefone, departamento, cargo, aprovado_em, email_verificado_em)
-       VALUES ($1, LOWER($2), $3, 'desenvolvedor', 'ativo', $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       VALUES ($1, LOWER($2), $3, 'admin', 'ativo', $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING
         id,
         nome,
@@ -202,13 +195,13 @@ async function criarPrimeiroAdmin(req, res) {
         normalizarEmail(email),
         senhaHash,
         normalizarTexto(telefone),
-        normalizarTexto(departamento) || "Desenvolvimento",
-        normalizarTexto(cargo) || "Desenvolvedor",
+        normalizarTexto(departamento) || "Tecnologia da Informação",
+        normalizarTexto(cargo) || "Administrador",
       ]
     );
 
     return res.status(201).json({
-      mensagem: "Primeiro administrador/desenvolvedor criado com sucesso.",
+      mensagem: "Primeiro administrador criado com sucesso.",
       usuario: await montarUsuarioPublico(result.rows[0], req),
     });
   } catch (error) {
@@ -371,11 +364,15 @@ async function createUser(req, res) {
       });
     }
 
+    if (ehEmailDonoPlataforma(email)) {
+      return res.status(403).json({ erro: "Este e-mail é reservado à administração da plataforma." });
+    }
+
     let perfilNovo = normalizarPerfilUsuario(perfil || "usuario");
 
-    if (perfilAutor !== "desenvolvedor" && ["admin", "desenvolvedor"].includes(perfilNovo)) {
+    if (!ehAdmin(perfilAutor) && perfilNovo === "admin") {
       return res.status(403).json({
-        erro: "Somente desenvolvedor pode criar administradores ou desenvolvedores.",
+        erro: "Somente administrador pode criar administradores.",
       });
     }
 
@@ -468,7 +465,8 @@ async function listarUsuarios(req, res) {
           aprovado_por,
           ultimo_login_em,
           bloqueado_ate,
-          foto_perfil
+          foto_perfil,
+          email_verificado_em
        FROM usuarios
        ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
        ORDER BY criado_em DESC, id DESC`,
@@ -595,9 +593,9 @@ async function atualizarUsuarioAdmin(req, res) {
   try {
     const perfilAutor = perfilDoRequest(req);
 
-    if (perfilAutor !== "desenvolvedor") {
+    if (!ehAdmin(perfilAutor)) {
       return res.status(403).json({
-        erro: "Somente desenvolvedor pode alterar dados de outros usuários.",
+        erro: "Somente administrador pode alterar dados de outros usuários.",
       });
     }
 
@@ -606,6 +604,13 @@ async function atualizarUsuarioAdmin(req, res) {
     const valores = [];
 
     const dados = req.body || {};
+
+    if (!req.user?.plataforma && await contaDonaPlataforma(id)) {
+      return res.status(403).json({ erro: "A conta da administração da plataforma não pode ser alterada por aqui." });
+    }
+    if (dados.email !== undefined && ehEmailDonoPlataforma(dados.email) && !(await contaDonaPlataforma(id))) {
+      return res.status(403).json({ erro: "Este e-mail é reservado à administração da plataforma." });
+    }
     if ((dados.municipio !== undefined || dados.unidade !== undefined) && !validLocation(dados.municipio, dados.unidade)) return res.status(400).json({ erro: "Município ou unidade fora da área de atuação." });
 
     if (dados.email !== undefined && !normalizarEmail(dados.email)) {
@@ -917,9 +922,9 @@ async function excluirUsuarioAdmin(req, res) {
   try {
     const perfilAutor = perfilDoRequest(req);
 
-    if (perfilAutor !== "desenvolvedor") {
+    if (!ehAdmin(perfilAutor)) {
       return res.status(403).json({
-        erro: "Somente desenvolvedor pode excluir usuários.",
+        erro: "Somente administrador pode excluir usuários.",
       });
     }
 
@@ -929,6 +934,10 @@ async function excluirUsuarioAdmin(req, res) {
       return res.status(400).json({
         erro: "Você não pode excluir o próprio usuário logado.",
       });
+    }
+
+    if (await contaDonaPlataforma(id)) {
+      return res.status(403).json({ erro: "A conta da administração da plataforma não pode ser excluída." });
     }
 
     const result = await pool.query(

@@ -32,7 +32,7 @@ router.post("/base-conhecimento/:id/visualizar", authMiddleware, registrarVisual
 router.post("/base-conhecimento/:id/avaliar", authMiddleware, avaliarArtigoBase);
 
 router.get("/:tipo", authMiddleware, listarCatalogo);
-router.post("/:tipo", authMiddleware, exigirPerfis(["admin", "desenvolvedor"]), criarCatalogo);
-router.put("/:tipo/:id", authMiddleware, exigirPerfis(["admin", "desenvolvedor"]), atualizarCatalogo);
+router.post("/:tipo", authMiddleware, exigirPerfis(["admin"]), criarCatalogo);
+router.put("/:tipo/:id", authMiddleware, exigirPerfis(["admin"]), atualizarCatalogo);
 
 module.exports = router;

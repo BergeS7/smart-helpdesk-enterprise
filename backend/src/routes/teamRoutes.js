@@ -7,12 +7,12 @@ const { exigirPerfis } = require("../middlewares/authMiddleware");
 const teams = require("../controllers/teamController");
 
 router.use(auth);
-router.get("/users/search", exigirPerfis(["admin","desenvolvedor","super_admin","tecnico"]), teams.searchUsers);
+router.get("/users/search", exigirPerfis(["admin","tecnico"]), teams.searchUsers);
 router.get("/", teams.list);
-router.post("/", exigirPerfis(["admin","desenvolvedor","super_admin"]), teams.create);
+router.post("/", exigirPerfis(["admin"]), teams.create);
 router.get("/:id", teams.get);
 router.patch("/:id", teams.update);
-router.delete("/:id", exigirPerfis(["admin","desenvolvedor","super_admin"]), teams.remove);
+router.delete("/:id", exigirPerfis(["admin"]), teams.remove);
 router.get("/:id/members", teams.members);
 router.post("/:id/members", teams.addMember);
 router.delete("/:id/members/:userId", teams.removeMember);

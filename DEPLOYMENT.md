@@ -38,3 +38,13 @@ APP_URL=https://endereco-do-portal
 ```
 
 O domínio de `EMAIL_FROM` precisa estar verificado no Resend. Sem a chave, o envio usa as variáveis `SMTP_*`. `APP_URL` é o endereço do portal usado nos links dos e-mails; sem ela vale a primeira origem de `ALLOWED_ORIGINS`.
+
+## Administração da plataforma
+
+O diagnóstico do sistema, os avisos de manutenção e as versões do agente são da plataforma, não de uma empresa. Só a conta cujo e-mail está em `PLATFORM_OWNER_EMAIL` (e já confirmado) tem esse acesso; o admin de cada empresa não vê essas funções:
+
+```env
+PLATFORM_OWNER_EMAIL=dono@seudominio.com.br
+```
+
+Sem a variável, ninguém tem acesso de plataforma. Essa conta não pode ser alterada nem excluída por admins das empresas, e o e-mail dela não pode ser usado em outro cadastro.

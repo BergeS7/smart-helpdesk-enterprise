@@ -66,6 +66,8 @@ services:
       JWT_SECRET: "${JWT_SECRET:?Defina JWT_SECRET no arquivo .env}"
       JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
       ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:?Defina ALLOWED_ORIGINS no arquivo .env}"
+      # Conta dona da plataforma SaaS (diagnóstico, manutenção, versões do agente). Vazio: ninguém tem esse acesso.
+      PLATFORM_OWNER_EMAIL: "${PLATFORM_OWNER_EMAIL:-}"
       SUPABASE_URL: "${SUPABASE_URL:-}"
       SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:-}"
 

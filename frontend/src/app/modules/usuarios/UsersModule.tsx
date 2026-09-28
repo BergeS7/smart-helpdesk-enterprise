@@ -38,7 +38,9 @@ const locationLabel = (municipio?: string | null, unidade?: string | null) => {
 type Props = {
   users: ApiUsuario[];
   currentUser: ApiUsuario;
-  developer: boolean;
+  admin: boolean;
+  /** A conta dona da plataforma só é editável por ela mesma e nunca é apagada por aqui. */
+  platformOwner?: boolean;
   initialMode?: "list" | "access";
   onModeChange?: (mode: "list" | "access") => void;
   onRefresh: () => Promise<void> | void;
@@ -52,7 +54,8 @@ type Props = {
 export function UsersModule({
   users,
   currentUser,
-  developer,
+  admin,
+  platformOwner = false,
   initialMode = "list",
   onRefresh,
   onEdit,
@@ -191,12 +194,7 @@ export function UsersModule({
                 <option value="usuario">Usuário</option>
                 <option value="tecnico">Técnico</option>
                 <option value="supervisor">Supervisor</option>
-                {developer ? (
-                  <>
-                    <option value="admin">Administrador</option>
-                    <option value="desenvolvedor">Desenvolvedor</option>
-                  </>
-                ) : null}
+                {admin ? <option value="admin">Administrador</option> : null}
               </select>
             </label>
             <button
@@ -240,11 +238,8 @@ export function UsersModule({
             </header>
             <div className="divide-y">
               {visibleUsers.map((u) => {
-                const protectedRole = [
-                  "admin",
-                  "desenvolvedor",
-                  "super_admin",
-                ].includes(u.perfil);
+                const protectedRole = u.perfil === "admin";
+                const contaPlataforma = u.plataforma === true;
                 return (
                   <article
                     key={u.id}
@@ -304,7 +299,7 @@ export function UsersModule({
                           <ShieldCheck size={15} />
                         </button>
                       )}
-                      {developer ? (
+                      {admin && (!contaPlataforma || platformOwner) ? (
                         <button
                           className="ds-button ds-button--secondary"
                           onClick={() => onEdit(u)}
@@ -332,7 +327,7 @@ export function UsersModule({
                           </button>
                         </>
                       ) : null}
-                      {developer && u.id !== currentUser.id ? (
+                      {admin && u.id !== currentUser.id && !contaPlataforma ? (
                         <button
                           className="ds-button ds-button--danger"
                           onClick={() =>

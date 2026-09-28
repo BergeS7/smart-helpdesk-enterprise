@@ -3,7 +3,7 @@
  */
 const { isFinal } = require("../domain/ticketStatus");
 const profile = (user) => String(user?.perfil || "usuario").toLowerCase();
-const isAdmin = (user) => ["admin", "desenvolvedor", "super_admin"].includes(profile(user));
+const isAdmin = (user) => ["admin"].includes(profile(user));
 const isTechnician = (user) => profile(user) === "tecnico";
 const ownsAsRequester = (user, ticket) => Number(ticket?.usuario_id) === Number(user?.id) || (user?.email && String(ticket?.email_solicitante || "").toLowerCase() === String(user.email).toLowerCase());
 const ownsAsTechnician = (user, ticket) => Number(ticket?.responsavel_id) === Number(user?.id);

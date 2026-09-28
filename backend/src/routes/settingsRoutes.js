@@ -10,7 +10,7 @@ const { obterConfiguracoes, salvarConfiguracoes, atualizarLogoSistema, atualizar
 
 // Público para permitir que login, topo e menus usem nome/logo/cor antes do login.
 router.get("/", obterConfiguracoes);
-router.put("/", authMiddleware, exigirPerfis(["desenvolvedor"]), salvarConfiguracoes);
+router.put("/", authMiddleware, exigirPerfis(["admin"]), salvarConfiguracoes);
 function uploadLogoComPrefixo(prefixo) {
   return (req, res, next) => {
     req.logoPrefix = prefixo;
@@ -26,7 +26,7 @@ function uploadLogoComPrefixo(prefixo) {
   };
 }
 
-router.patch("/logo", authMiddleware, exigirPerfis(["desenvolvedor"]), uploadLogoComPrefixo("logo1"), atualizarLogoSistema);
-router.patch("/logo1", authMiddleware, exigirPerfis(["desenvolvedor"]), uploadLogoComPrefixo("logo1"), atualizarLogoSistema1);
+router.patch("/logo", authMiddleware, exigirPerfis(["admin"]), uploadLogoComPrefixo("logo1"), atualizarLogoSistema);
+router.patch("/logo1", authMiddleware, exigirPerfis(["admin"]), uploadLogoComPrefixo("logo1"), atualizarLogoSistema1);
 
 module.exports = router;

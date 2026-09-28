@@ -5,7 +5,7 @@ const pool = require("../../config/database");
 const { montarUrlFotoPerfil } = require("../../utils/profilePhoto");
 const { enviarArquivo, baixarArquivo, removerArquivo, lerReferencia } = require("../../utils/supabaseStorage");
 const { usuarioPodeAvaliarChamado } = require("../../services/ticketEvaluationAccessService");
-const { normalizarPerfil, ehAdmin, ehEquipe, ehDesenvolvedor } = require("../../utils/permissoes");
+const { normalizarPerfil, ehAdmin, ehEquipe } = require("../../utils/permissoes");
 const fs = require("fs");
 const path = require("path");
 const ticketPolicy = require("../../policies/ticketPolicy");
@@ -80,7 +80,7 @@ function bloquearMutacaoNaoAutorizada(req, res, chamado) {
 
 async function escolherResponsavelAutomatico({ departamento, categoria }) {
   const params = [];
-  const filtros = ["COALESCE(u.status, 'ativo') = 'ativo'", "COALESCE(u.perfil, 'usuario') IN ('tecnico','admin','desenvolvedor','super_admin')"];
+  const filtros = ["COALESCE(u.status, 'ativo') = 'ativo'", "COALESCE(u.perfil, 'usuario') IN ('tecnico','admin')"];
   if (departamento) {
     params.push(departamento);
     filtros.push(`(LOWER(COALESCE(u.departamento,'')) = LOWER($${params.length}) OR $${params.length} = '')`);

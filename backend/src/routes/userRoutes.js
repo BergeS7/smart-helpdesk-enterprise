@@ -7,6 +7,7 @@ const { registrationLimiter, uploadLimiter } = require("../middlewares/securityM
 const uploadFotoPerfil = require("../middlewares/profilePhotoUploadMiddleware");
 
 const authModule = require("../middlewares/authMiddleware");
+const { temPerfil } = require("../utils/permissoes");
 
 const {
   criarPrimeiroAdmin,
@@ -36,30 +37,9 @@ if (typeof authMiddleware !== "function") {
   );
 }
 
-function normalizarPerfilLocal(perfil) {
-  const valor = String(perfil || "usuario").trim().toLowerCase();
-
-  if (["super_admin", "dev", "developer"].includes(valor)) {
-    return "desenvolvedor";
-  }
-
-  if (["administrador"].includes(valor)) {
-    return "admin";
-  }
-
-  if (["usuario", "tecnico", "admin", "desenvolvedor"].includes(valor)) {
-    return valor;
-  }
-
-  return "usuario";
-}
-
 function exigirPerfisLocais(perfisPermitidos) {
   return (req, res, next) => {
-    const perfil = normalizarPerfilLocal(req.user?.perfil || req.usuario?.perfil);
-    const permitidos = perfisPermitidos.map(normalizarPerfilLocal);
-
-    if (!permitidos.includes(perfil)) {
+    if (!temPerfil(req.user?.perfil || req.usuario?.perfil, perfisPermitidos)) {
       return res.status(403).json({
         erro: "Você não tem permissão para executar esta ação.",
       });
@@ -101,42 +81,42 @@ router.delete("/me/foto", authMiddleware, removerMinhaFotoPerfil);
 router.get(
   "/",
   authMiddleware,
-  exigirPerfisLocais(["tecnico", "admin", "desenvolvedor"]),
+  exigirPerfisLocais(["tecnico", "admin"]),
   listarUsuarios
 );
 
 router.post(
   "/",
   authMiddleware,
-  exigirPerfisLocais(["admin", "desenvolvedor"]),
+  exigirPerfisLocais(["admin"]),
   createUser
 );
 
 router.patch(
   "/:id/aprovar",
   authMiddleware,
-  exigirPerfisLocais(["admin", "desenvolvedor"]),
+  exigirPerfisLocais(["admin"]),
   aprovarUsuario
 );
 
 router.patch(
   "/:id/rejeitar",
   authMiddleware,
-  exigirPerfisLocais(["admin", "desenvolvedor"]),
+  exigirPerfisLocais(["admin"]),
   rejeitarUsuario
 );
 
 router.put(
   "/:id",
   authMiddleware,
-  exigirPerfisLocais(["desenvolvedor"]),
+  exigirPerfisLocais(["admin"]),
   atualizarUsuarioAdmin
 );
 
 router.delete(
   "/:id",
   authMiddleware,
-  exigirPerfisLocais(["desenvolvedor"]),
+  exigirPerfisLocais(["admin"]),
   excluirUsuarioAdmin
 );
 

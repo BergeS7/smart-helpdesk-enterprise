@@ -6,7 +6,7 @@ const { decidirPrioridadeChamado } = require("../../services/prioridadeIAService
 const { enviarEmail } = require("../../services/emailService");
 const { enviarEmailAvaliacao } = require("../../services/ticketRatingEmailService");
 const { usuarioPodeAvaliarChamado } = require("../../services/ticketEvaluationAccessService");
-const { normalizarPerfil, ehAdmin, ehEquipe, ehDesenvolvedor } = require("../../utils/permissoes");
+const { normalizarPerfil, ehAdmin, ehEquipe } = require("../../utils/permissoes");
 const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../../services/distributionService");
 const { STATUS, canonicalize: canonicalizeStatus, label: statusLabel, isFinal: statusFinalizado, canTransition, REOPEN_WINDOW_DAYS, reopenDeadline, isReopenWindowOpen } = require("../../domain/ticketStatus");
 const { criarNotificacao, notificarStatus, notificarAvaliacao, notificarInteracao } = require("../../services/ticketNotificationService");
@@ -297,13 +297,13 @@ const atualizarChamado = async (req, res) => {
     // Assumir ou delegar inicia o fluxo na coluna "Em aberto".
     const statusEfetivo = alteraResponsavel && responsavelIdFinal ? STATUS.OPEN : statusCanonico;
     if (responsavelIdFinal) {
-      const user = await pool.query("SELECT nome, email FROM usuarios WHERE id = $1 AND COALESCE(status,'ativo')='ativo' AND perfil IN ('tecnico','admin','desenvolvedor','super_admin')", [responsavelIdFinal]);
+      const user = await pool.query("SELECT nome, email FROM usuarios WHERE id = $1 AND COALESCE(status,'ativo')='ativo' AND perfil IN ('tecnico','admin')", [responsavelIdFinal]);
       if (user.rows.length === 0) return res.status(400).json({ erro: "Responsável não encontrado ou não é atendente" });
       responsavelNome = user.rows[0].nome;
       if (alteraResponsavel && Number(responsavelIdFinal) !== Number(anterior.responsavel_id || 0)) {
         const capacity = await pool.query("SELECT COUNT(*)::int AS total FROM chamados WHERE responsavel_id=$1 AND id<>$2 AND status=ANY($3::text[])",[responsavelIdFinal,id,ACTIVE_STATUSES]);
         if (Number(capacity.rows[0].total) >= TECHNICIAN_CAPACITY) {
-          const suggestion = await pool.query(`SELECT u.id,u.nome,COUNT(c.id) FILTER (WHERE c.status=ANY($1::text[]))::int AS carga FROM usuarios u LEFT JOIN chamados c ON c.responsavel_id=u.id WHERE COALESCE(u.status,'ativo')='ativo' AND COALESCE(u.disponivel_atendimento,TRUE)=TRUE AND u.perfil IN ('tecnico','admin','desenvolvedor','super_admin') AND u.id<>$2 GROUP BY u.id,u.nome HAVING COUNT(c.id) FILTER (WHERE c.status=ANY($1::text[])) < $3 ORDER BY carga,u.nome LIMIT 1`,[ACTIVE_STATUSES,responsavelIdFinal,TECHNICIAN_CAPACITY]);
+          const suggestion = await pool.query(`SELECT u.id,u.nome,COUNT(c.id) FILTER (WHERE c.status=ANY($1::text[]))::int AS carga FROM usuarios u LEFT JOIN chamados c ON c.responsavel_id=u.id WHERE COALESCE(u.status,'ativo')='ativo' AND COALESCE(u.disponivel_atendimento,TRUE)=TRUE AND u.perfil IN ('tecnico','admin') AND u.id<>$2 GROUP BY u.id,u.nome HAVING COUNT(c.id) FILTER (WHERE c.status=ANY($1::text[])) < $3 ORDER BY carga,u.nome LIMIT 1`,[ACTIVE_STATUSES,responsavelIdFinal,TECHNICIAN_CAPACITY]);
           const recommended=suggestion.rows[0];
           return res.status(409).json({erro:`${responsavelNome} atingiu a capacidade de ${TECHNICIAN_CAPACITY} chamados ativos.${recommended?` Sugestão: atribua para ${recommended.nome} (${recommended.carga}/${TECHNICIAN_CAPACITY}).`:" Nenhum técnico disponível no momento."}`,codigo:"TECHNICIAN_CAPACITY_REACHED",capacidade:TECHNICIAN_CAPACITY,recomendado:recommended||null});
         }

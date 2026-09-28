@@ -6,14 +6,15 @@ import { login } from "./auth";
 export const API_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
 
-export type PerfilUsuario =
-  "usuario" | "tecnico" | "supervisor" | "admin" | "desenvolvedor" | "super_admin";
+export type PerfilUsuario = "usuario" | "tecnico" | "supervisor" | "admin";
 
 export type UsuarioLogado = {
   id: number;
   nome: string;
   email: string;
   perfil: PerfilUsuario;
+  /** Conta dona da plataforma SaaS (definida no servidor); não é um perfil. */
+  plataforma?: boolean;
   status?: string;
   telefone?: string;
   departamento?: string;

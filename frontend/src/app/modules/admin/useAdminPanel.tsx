@@ -10,7 +10,7 @@ import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus"
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
 import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, listarProblemasRecorrentes, listarLacunasAssistente, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type ProblemaRecorrente, type LacunaAssistente, type LacunasAssistente, type StatusArtigo, type VisibilidadeArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
-import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDevApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, ticketFiltersFromUrl } from "../comum/appShared";
+import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDonoPlataformaApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, ticketFiltersFromUrl } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 
 export type AdminPanelProps = {
@@ -154,11 +154,11 @@ export function useAdminPanel({
   const abaPendenteRef = useRef<AdminTab | null>(null);
 
   const perfilAtual = normalizarPerfilApp(usuario.perfil);
-  const desenvolvedor = isDevApp(usuario.perfil);
+  const plataforma = isDonoPlataformaApp(usuario);
   const administrador = isAdminApp(usuario.perfil);
   const tecnico = perfilAtual === "tecnico";
   // Mesma regra do backend. normalizarPerfilApp não reconhece "supervisor", por isso o perfil bruto.
-  const podePublicarBase = desenvolvedor || ["supervisor", "admin"].includes(String(usuario.perfil).toLowerCase());
+  const podePublicarBase = administrador || String(usuario.perfil).toLowerCase() === "supervisor";
 
   const equipe = useMemo(
     () => usuarios.filter((u) => isEquipeApp(u.perfil) && u.status === "ativo"),
@@ -375,18 +375,20 @@ export function useAdminPanel({
   useEffect(() => {
     if(!permissoesCarregadas)return;
     const teamTabs:AdminTab[]=["usuarios","acessos","carteira","teams"];
-    const developerTabs:AdminTab[]=["configuracoes","config_sla","config_integracoes","manutencao","diagnostico"];
+    const adminTabs:AdminTab[]=["configuracoes","config_sla"];
+    const platformTabs:AdminTab[]=["config_integracoes","manutencao","diagnostico"];
     const analyticsTabs:AdminTab[]=["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos","relatorios"];
     const deniedDashboard=tab==="dashboard"&&!permissoesAtuais.includes("visualizar_dashboard");
     const deniedTeam=teamTabs.includes(tab)&&!administrador;
-    const deniedDeveloper=developerTabs.includes(tab)&&!desenvolvedor;
+    const deniedAdmin=adminTabs.includes(tab)&&!administrador;
+    const deniedPlatform=platformTabs.includes(tab)&&!plataforma;
     const deniedCatalog=tab==="catalogos"&&!administrador;
     const deniedAnalytics=analyticsTabs.includes(tab)&&!administrador&&!permissoesAtuais.includes("visualizar_relatorios")&&!permissoesAtuais.includes("baixar_relatorios");
     const deniedAssets=tab==="patrimonio"&&!permissoesAtuais.includes("visualizar_patrimonio");
     const deniedKnowledge=tab==="base"&&!permissoesAtuais.includes("gerenciar_base");
-    const deniedDevelopment=["desenvolvimento","projetos"].includes(tab)&&!administrador&&!desenvolvedor&&!permissoesAtuais.includes("desenvolvimento_visualizar");
-    if(deniedDashboard||deniedTeam||deniedDeveloper||deniedCatalog||deniedAnalytics||deniedAssets||deniedKnowledge||deniedDevelopment)setTab("fila");
-  }, [administrador,desenvolvedor,permissoesAtuais,permissoesCarregadas,tab]);
+    const deniedDevelopment=["desenvolvimento","projetos"].includes(tab)&&!administrador&&!permissoesAtuais.includes("desenvolvimento_visualizar");
+    if(deniedDashboard||deniedTeam||deniedAdmin||deniedPlatform||deniedCatalog||deniedAnalytics||deniedAssets||deniedKnowledge||deniedDevelopment)setTab("fila");
+  }, [administrador,plataforma,permissoesAtuais,permissoesCarregadas,tab]);
 
   useEffect(() => {
     carregarNotificacoes().catch(() => {});
@@ -891,14 +893,14 @@ export function useAdminPanel({
       icon: BrainCircuit,
       label: "Demandas",
       title: "Desenvolvimento",
-      show: administrador || desenvolvedor || permissoesAtuais.includes("desenvolvimento_visualizar"),
+      show: administrador || permissoesAtuais.includes("desenvolvimento_visualizar"),
     },
     {
       key: "projetos" as AdminTab,
       icon: ListChecks,
       label: "Projetos",
       title: "Projetos de desenvolvimento",
-      show: administrador || desenvolvedor || permissoesAtuais.includes("desenvolvimento_visualizar"),
+      show: administrador || permissoesAtuais.includes("desenvolvimento_visualizar"),
     },
     ...(["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos"] as AdminTab[]).map((key)=>({
       key,
@@ -1010,41 +1012,41 @@ export function useAdminPanel({
       icon: Activity,
       label: "Diagnóstico",
       title: "Saúde do sistema",
-      show: desenvolvedor,
+      show: plataforma,
     },
     {
       key: "configuracoes" as AdminTab,
       icon: Settings,
       label: "Ajustes",
       title: "Configurações",
-      show: desenvolvedor,
+      show: administrador,
     },
     {
       key: "config_sla" as AdminTab,
       icon: Clock3,
       label: "SLA",
       title: "SLA e prioridades",
-      show: desenvolvedor,
+      show: administrador,
     },
     {
       key: "config_integracoes" as AdminTab,
       icon: Settings,
       label: "Integrações",
       title: "Integrações",
-      show: desenvolvedor,
+      show: plataforma,
     },
     {
       key: "manutencao" as AdminTab,
       icon: AlertTriangle,
       label: "Manutenção",
       title: "Avisos de manutenção",
-      show: desenvolvedor,
+      show: plataforma,
     },
   ].filter((item) => item.show);
 
   const navigationAreas = buildAdminNavigation({
     administrador,
-    desenvolvedor,
+    plataforma,
     tecnico,
     permissions: permissoesAtuais,
   });
@@ -1148,7 +1150,7 @@ export function useAdminPanel({
     setPerfilForm,
     usuarioPermissoes,
     setUsuarioPermissoes,
-    desenvolvedor,
+    plataforma,
     administrador,
     tecnico,
     equipe,

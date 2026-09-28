@@ -13,41 +13,18 @@ const {
   excluirAvisoManutencao,
 } = require("../controllers/maintenanceController");
 
+const { temPerfil } = require("../utils/permissoes");
+
 const authMiddleware =
   typeof authModule === "function"
     ? authModule
     : authModule.authMiddleware || authModule.default;
 
-function normalizarPerfilLocal(perfil) {
-  const valor = String(perfil || "usuario").trim().toLowerCase();
-
-  if (["super_admin", "dev", "developer"].includes(valor)) {
-    return "desenvolvedor";
-  }
-
-  if (["usuario", "tecnico", "admin", "administrador", "desenvolvedor"].includes(valor)) {
-    return valor === "administrador" ? "admin" : valor;
-  }
-
-  return "usuario";
-}
-
-function exigirDesenvolvedor(req, res, next) {
-  const perfil = normalizarPerfilLocal(req.user?.perfil);
-
-  if (perfil !== "desenvolvedor") {
-    return res.status(403).json({
-      erro: "Apenas desenvolvedor pode gerenciar avisos de manutenção.",
-    });
-  }
-
-  next();
-}
+// Avisos de manutenção valem para a plataforma inteira: só o dono gerencia.
+const { exigirDonoPlataforma } = authModule;
 
 function exigirEquipe(req, res, next) {
-  const perfil = normalizarPerfilLocal(req.user?.perfil);
-
-  if (!["tecnico", "admin", "desenvolvedor"].includes(perfil)) {
+  if (!req.user?.plataforma && !temPerfil(req.user?.perfil, ["tecnico", "admin"])) {
     return res.status(403).json({
       erro: "Você não tem permissão para acessar avisos administrativos.",
     });
@@ -74,21 +51,21 @@ router.get(
 router.post(
   "/",
   authMiddleware,
-  exigirDesenvolvedor,
+  exigirDonoPlataforma,
   criarAvisoManutencao
 );
 
 router.put(
   "/:id",
   authMiddleware,
-  exigirDesenvolvedor,
+  exigirDonoPlataforma,
   atualizarAvisoManutencao
 );
 
 router.delete(
   "/:id",
   authMiddleware,
-  exigirDesenvolvedor,
+  exigirDonoPlataforma,
   excluirAvisoManutencao
 );
 

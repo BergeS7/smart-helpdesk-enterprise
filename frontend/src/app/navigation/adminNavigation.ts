@@ -39,7 +39,7 @@ export const ADMIN_ROUTES: Record<AdminRouteKey, readonly string[]> = {
   projetos: ["/admin/desenvolvimento/projetos"],
 };
 
-export type NavigationContext = { administrador:boolean; desenvolvedor:boolean; tecnico:boolean; permissions:PermissionKey[] };
+export type NavigationContext = { administrador:boolean; plataforma:boolean; tecnico:boolean; permissions:PermissionKey[] };
 export type NavigationArea = { id:string; label:string; title:string; description:string; icon:typeof LayoutDashboard; defaultTab:AdminRouteKey; tabs:AdminRouteKey[]; visible:boolean };
 
 export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
@@ -47,12 +47,12 @@ export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
   const areas:NavigationArea[]=[
     {id:"home",label:"Início",title:"Visão operacional",description:"Acompanhe os principais indicadores e prioridades da operação.",icon:LayoutDashboard,defaultTab:"dashboard",tabs:["dashboard"],visible:ctx.permissions.includes("visualizar_dashboard")},
     {id:"service",label:"Atendimento",title:"Central de Atendimento",description:"Organize, distribua e acompanhe os chamados em tempo real.",icon:Headphones,defaultTab:"fila",tabs:["fila","kanban","chamados","historico"],visible:true},
-    {id:"development",label:"Desenvolvimento",title:"Desenvolvimento e Projetos",description:"Analise melhorias, automações, backlog, entregas e resultados gerados pela TI.",icon:Code2,defaultTab:"desenvolvimento",tabs:["desenvolvimento","projetos"],visible:ctx.desenvolvedor||ctx.administrador||ctx.permissions.includes("desenvolvimento_visualizar")},
+    {id:"development",label:"Desenvolvimento",title:"Desenvolvimento e Projetos",description:"Analise melhorias, automações, backlog, entregas e resultados gerados pela TI.",icon:Code2,defaultTab:"desenvolvimento",tabs:["desenvolvimento","projetos"],visible:ctx.administrador||ctx.permissions.includes("desenvolvimento_visualizar")},
     {id:"team",label:"Equipe",title:"Equipe e Acessos",description:"Gerencie pessoas, capacidade, grupos e permissões de acesso.",icon:Users,defaultTab:"usuarios",tabs:["usuarios","carteira","teams","acessos"],visible:ctx.administrador},
     {id:"analytics",label:"Indicadores",title:"Indicadores",description:"Analise desempenho, SLA, satisfação e evolução do atendimento.",icon:BarChart3,defaultTab:ctx.tecnico?"satisfacao":"indicadores_operacao",tabs:ctx.tecnico?["satisfacao"]:["indicadores_operacao","indicadores_sla","indicadores_tecnicos","satisfacao","indicadores_ativos","relatorios"],visible:reports||ctx.administrador||ctx.tecnico},
     {id:"knowledge",label:"Base",title:"Base de Conhecimento",description:"Centralize orientações e soluções reutilizáveis para a equipe.",icon:BookOpen,defaultTab:"base",tabs:["base"],visible:ctx.permissions.includes("gerenciar_base")},
     {id:"assets",label:"Ativos",title:"Monitoramento de Ativos",description:"Acompanhe equipamentos, disponibilidade e alertas da operação.",icon:MapPinned,defaultTab:"patrimonio",tabs:["patrimonio"],visible:ctx.permissions.includes("visualizar_patrimonio")},
-    {id:"admin",label:"Ajustes",title:"Ajustes",description:"Configure regras, catálogos, integrações e serviços do sistema.",icon:Settings,defaultTab:ctx.desenvolvedor?"configuracoes":"catalogos",tabs:ctx.desenvolvedor?["configuracoes","config_sla","catalogos","config_integracoes","manutencao","diagnostico"]:["catalogos"],visible:ctx.administrador||ctx.desenvolvedor},
+    {id:"admin",label:"Ajustes",title:"Ajustes",description:"Configure regras, catálogos, integrações e serviços do sistema.",icon:Settings,defaultTab:ctx.administrador?"configuracoes":"config_integracoes",tabs:[...(ctx.administrador?["configuracoes","config_sla","catalogos"] as AdminRouteKey[]:[]),...(ctx.plataforma?["config_integracoes","manutencao","diagnostico"] as AdminRouteKey[]:[])],visible:ctx.administrador||ctx.plataforma},
   ];
   return areas.filter(area=>area.visible);
 }

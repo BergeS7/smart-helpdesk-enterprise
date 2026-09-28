@@ -58,15 +58,15 @@ function exigirPermissaoDeExportacao(req, res, next) {
 }
 
 router.post("/", authMiddleware, criarChamado);
-router.get("/", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "supervisor", "tecnico"]), listarChamados);
+router.get("/", authMiddleware, exigirPerfis(["admin", "supervisor", "tecnico"]), listarChamados);
 router.get("/usuario/me", authMiddleware, listarChamadosDoUsuario);
 router.get("/relatorios/resumo/metricas", authMiddleware, exigirPermissao("visualizar_relatorios"), obterResumoRelatorio);
 router.get("/relatorios/:formato", authMiddleware, exigirPermissaoDeExportacao, exportarRelatorio);
-router.get("/respostas-rapidas/lista", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), listarRespostasRapidas);
-router.post("/respostas-rapidas", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), criarRespostaRapida);
-router.get("/filtros-salvos/lista", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), listarFiltrosSalvos);
-router.post("/filtros-salvos", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), salvarFiltro);
-router.delete("/filtros-salvos/:id", authMiddleware, exigirPerfis(["admin", "desenvolvedor", "tecnico"]), excluirFiltro);
+router.get("/respostas-rapidas/lista", authMiddleware, exigirPerfis(["admin", "tecnico"]), listarRespostasRapidas);
+router.post("/respostas-rapidas", authMiddleware, exigirPerfis(["admin", "tecnico"]), criarRespostaRapida);
+router.get("/filtros-salvos/lista", authMiddleware, exigirPerfis(["admin", "tecnico"]), listarFiltrosSalvos);
+router.post("/filtros-salvos", authMiddleware, exigirPerfis(["admin", "tecnico"]), salvarFiltro);
+router.delete("/filtros-salvos/:id", authMiddleware, exigirPerfis(["admin", "tecnico"]), excluirFiltro);
 
 router.get("/:id/historico.pdf", authMiddleware, baixarHistoricoPdf);
 router.get("/:id", authMiddleware, buscarChamadoPorId);
@@ -85,6 +85,6 @@ router.get("/:id/anexos/:anexoId/download", authMiddleware, baixarAnexo);
 router.get("/:id/movimentacoes", authMiddleware, listarMovimentacoes);
 router.post("/:id/avaliar", authMiddleware, avaliarChamado);
 
-router.delete("/:id", authMiddleware, exigirPerfis(["desenvolvedor"]), excluirChamado);
+router.delete("/:id", authMiddleware, exigirPerfis(["admin"]), excluirChamado);
 
 module.exports = router;
