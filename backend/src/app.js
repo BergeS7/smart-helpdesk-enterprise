@@ -23,6 +23,8 @@ const permissionRoutes = require("./routes/permissionRoutes");
 const systemRoutes = require("./routes/systemRoutes");
 const developmentRoutes = require("./routes/developmentRoutes");
 const assistenteRoutes = require("./routes/assistenteRoutes");
+const plataformaRoutes = require("./routes/plataformaRoutes");
+const empresaRoutes = require("./routes/empresaRoutes");
 const { startPrivacyRetentionSchedule } = require("./services/privacyComplianceService");
 
 const app = express();
@@ -84,6 +86,8 @@ app.use("/api/assets", assetRoutes);
 app.use("/api/permissoes", permissionRoutes);
 app.use("/api/development", developmentRoutes);
 app.use("/api/assistente", assistenteRoutes);
+app.use("/api/plataforma", plataformaRoutes);
+app.use("/api/empresas", empresaRoutes);
 app.use(notFound);
 app.use(errorHandler);
 

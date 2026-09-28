@@ -181,6 +181,8 @@ export type NovoCadastroUsuario = {
   regiao?: string;
   ativo_id?: string | number;
   cargo?: string;
+  /** Slug da empresa quando o cadastro vem do link /cadastro/<slug>. */
+  empresa?: string;
 };
 
 export type FiltrosChamados = {

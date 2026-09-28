@@ -13,6 +13,7 @@ const { validLocation } = require("../domain/serviceArea");
 const { senhaValida } = require("../utils/passwordPolicy");
 const { normalizarPerfil, ehAdmin, ehDonoPlataforma, ehEmailDonoPlataforma } = require("../utils/permissoes");
 const { EMPRESA_PRINCIPAL } = require("../config/tenantContext");
+const { empresaAtivaPorSlug } = require("./empresaController");
 
 function normalizarTexto(valor) {
   return String(valor || "").trim();
@@ -218,8 +219,12 @@ async function criarPrimeiroAdmin(req, res) {
 // Cadastro público cria conta pendente e inicia a confirmação do e-mail.
 async function cadastrarUsuarioPublico(req, res) {
   try {
-    const { nome, email, senha, telefone, departamento, municipio, unidade, cargo, aceitaTermos } = req.body;
+    const { nome, email, senha, telefone, departamento, municipio, unidade, cargo, aceitaTermos, empresa } = req.body;
     if (!validLocation(municipio, unidade)) return res.status(400).json({ erro: "Município ou unidade fora da área de atuação." });
+
+    // Link /cadastro/<slug> leva a pessoa para a empresa dela; sem slug, vale a empresa principal.
+    const empresaId = empresa ? await empresaAtivaPorSlug(empresa) : EMPRESA_PRINCIPAL;
+    if (!empresaId) return res.status(404).json({ erro: "Link de cadastro inválido ou empresa indisponível." });
 
     if (!normalizarTexto(nome) || !normalizarEmail(email) || !normalizarTexto(senha)) {
       return res.status(400).json({
@@ -248,7 +253,7 @@ async function cadastrarUsuarioPublico(req, res) {
        (nome, email, senha, perfil, status, telefone, departamento, municipio, unidade, cargo,
         email_verificacao_hash, email_verificacao_expira_em, email_verificacao_enviado_em, empresa_id)
        VALUES ($1, LOWER($2), $3, 'usuario', 'pendente', $4, $5, $6, $7, $8,
-        $9, CURRENT_TIMESTAMP + INTERVAL '20 minutes', CURRENT_TIMESTAMP, ${EMPRESA_PRINCIPAL})
+        $9, CURRENT_TIMESTAMP + INTERVAL '20 minutes', CURRENT_TIMESTAMP, $10)
        RETURNING
         id,
         nome,
@@ -276,6 +281,7 @@ async function cadastrarUsuarioPublico(req, res) {
         normalizarTexto(unidade),
         normalizarTexto(cargo),
         codigoHash,
+        empresaId,
       ]
     );
 

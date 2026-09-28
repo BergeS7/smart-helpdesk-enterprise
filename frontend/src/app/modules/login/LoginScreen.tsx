@@ -1,14 +1,14 @@
 /**
  * Responsabilidade: tela de login, cadastro, verificação de e-mail e recuperação de senha.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { openLegalDocument } from "../../components/LegalComplianceLayer";
 import { ArrowRight, Eye, EyeOff, KeyRound, Mail, ShieldCheck, User } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { municipiosMaranhao } from "../../data/municipiosMaranhao";
 import { Button, Field, Input } from "../../components/shared/FormPrimitives";
-import { cadastrarUsuarioPublico, verificarEmailCadastro, reenviarVerificacaoEmail, login, redefinirSenha, salvarSessao, solicitarRecuperacaoSenha, type ApiAvisoSistema, type ConfiguracoesSistema, type UsuarioLogado } from "../../services/api";
+import { cadastrarUsuarioPublico, obterEmpresaPublica, verificarEmailCadastro, reenviarVerificacaoEmail, login, redefinirSenha, salvarSessao, solicitarRecuperacaoSenha, type ApiAvisoSistema, type ConfiguracoesSistema, type UsuarioLogado } from "../../services/api";
 import { AvisosSistemaBanner, SystemThemeStyle, logoSistema1, nomeSistema, normalizarPerfilApp, variaveisTemaSistema } from "../comum/appShared";
 import type { LoginMode, TelaAuth } from "../comum/appShared";
 
@@ -17,13 +17,27 @@ export function LoginScreen({
   onLogin,
   configSistema,
   avisosSistema,
+  empresaCadastroSlug,
 }: {
   onLogin: (usuario: UsuarioLogado) => void;
   configSistema: ConfiguracoesSistema;
   avisosSistema: ApiAvisoSistema[];
+  /** Vindo do link /cadastro/<slug>: o cadastro entra na equipe dessa empresa. */
+  empresaCadastroSlug?: string;
 }) {
   const [mode, setMode] = useState<LoginMode>("usuario");
   const [tela, setTela] = useState<TelaAuth>("login");
+  const [empresaCadastro, setEmpresaCadastro] = useState<{ nome: string; slug: string } | null>(null);
+
+  useEffect(() => {
+    if (!empresaCadastroSlug) return;
+    obterEmpresaPublica(empresaCadastroSlug)
+      .then((empresa) => {
+        setEmpresaCadastro(empresa);
+        setTela("cadastro");
+      })
+      .catch((error) => toast.error(error instanceof Error ? error.message : "Link de cadastro inválido."));
+  }, [empresaCadastroSlug]);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -85,7 +99,7 @@ export function LoginScreen({
     event.preventDefault();
     setLoading(true);
     try {
-      const resposta = await cadastrarUsuarioPublico(cadastro);
+      const resposta = await cadastrarUsuarioPublico({ ...cadastro, empresa: empresaCadastro?.slug });
       toast.success(resposta.mensagem);
       setVerificacao({ email: cadastro.email, codigo: "" });
       setTela("verificar");
@@ -283,6 +297,11 @@ export function LoginScreen({
                 <h2 className="text-center text-2xl font-black text-zinc-800">
                   Solicitar cadastro
                 </h2>
+                {empresaCadastro && (
+                  <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm text-slate-700">
+                    Cadastro na equipe de <b>{empresaCadastro.nome}</b>. O administrador da empresa aprova o seu acesso.
+                  </p>
+                )}
                 <Field label="Nome">
                   <Input
                     required

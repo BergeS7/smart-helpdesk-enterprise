@@ -5,7 +5,7 @@ import { GlobalCommandPalette } from "../../components/GlobalCommandPalette";
 import { ProfileCenter } from "../../components/ProfileCenter";
 import { PushNotificationOnboarding } from "../../components/PushNotificationSettings";
 import { PermissionDialog } from "../../components/PermissionDialog";
-import { BarChart3, Bell, BookOpen, Filter, Headphones, LayoutDashboard, ListChecks, LogOut, MapPinned, Menu, Moon, RefreshCw, Search, Settings, Star, Sun, User, Users, X } from "lucide-react";
+import { BarChart3, Bell, BookOpen, Building2, Filter, Headphones, LayoutDashboard, ListChecks, LogOut, MapPinned, Menu, Moon, RefreshCw, Search, Settings, Star, Sun, User, Users, X } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { TICKET_STATUS } from "../../domain/ticketStatus";
 import { WorkspaceNavigation } from "../../components/WorkspaceNavigation";
@@ -14,6 +14,7 @@ import { ModuleBoundary } from "../../components/ModuleBoundary";
 import { aprovarUsuario, atualizarChamado, baixarRelatorio, buscarChamado, excluirUsuarioAdmin, rejeitarUsuario, type ApiUsuario } from "../../services/api";
 import { AvisosSistemaBanner, ChamadosListModule, DevelopmentWorkspace, FilaChamadosView, IndicatorsWorkspace, KanbanWorkspace, MySatisfactionPage, OperationalDashboard, PatrimonioMapPage, ReportsWorkspace, SatisfactionAnalyticsPage, SettingsWorkspace, SystemDiagnosticsPage, SystemThemeStyle, UsersModule, chamadoIdFromNotification, formatDate, normalizeStatus, notificacaoClass, notificacaoIcone, variaveisTemaSistema } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
+import { PlataformaEmpresas } from "../plataforma/PlataformaEmpresas";
 import { MobileMoreAction, MobileMoreSheet, MobileNavButton } from "../portal/PortalComponents";
 import { CarteiraEquipeView, HistoricoEquipeView } from "./EquipeViews";
 import { ChamadoDetalhe } from "../chamados/ChamadoDetalhe";
@@ -547,7 +548,7 @@ export function AdminPanel(props: AdminPanelProps) {
             )}
 
             {administrador &&
-              ["teams", "catalogos", "manutencao"].includes(tab) && (
+              ["teams", "catalogos"].includes(tab) && (
                 <div
                   className={`mb-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
                 >
@@ -652,6 +653,8 @@ export function AdminPanel(props: AdminPanelProps) {
             )}
 
             {tab === "manutencao" && plataforma && <AbaManutencao painel={painel} />}
+
+            {tab === "empresas" && plataforma && <PlataformaEmpresas />}
 
             {tab === "relatorios" && (
               <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando relatórios…</strong></div>}><ReportsWorkspace
@@ -791,12 +794,22 @@ export function AdminPanel(props: AdminPanelProps) {
               setMenuMaisAdmin(false);
             }}
           />
-          {(administrador||plataforma) && (
+          {administrador && (
             <MobileMoreAction
               icon={<Settings size={18} />}
               label="Ajustes"
               onClick={() => {
-                setTab(administrador?"configuracoes":"config_integracoes");
+                setTab("configuracoes");
+                setMenuMaisAdmin(false);
+              }}
+            />
+          )}
+          {plataforma && (
+            <MobileMoreAction
+              icon={<Building2 size={18} />}
+              label="Plataforma"
+              onClick={() => {
+                setTab("empresas");
                 setMenuMaisAdmin(false);
               }}
             />

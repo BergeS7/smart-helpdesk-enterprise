@@ -15,3 +15,4 @@ export * from "./api/conhecimento";
 export * from "./api/sistema";
 export * from "./api/desenvolvimento";
 export * from "./api/assistente";
+export * from "./api/plataforma";
