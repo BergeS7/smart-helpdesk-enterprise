@@ -4,32 +4,71 @@
 const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
 const { normalizarPerfil, temPerfil, ehDonoPlataforma } = require("../utils/permissoes");
+const { executarComoEmpresa, executarComoSistema } = require("../config/tenantContext");
+
+// Valida o token e descobre a empresa do usuário (consulta feita ainda sem empresa no contexto).
+async function carregarSessao(header) {
+  const token = String(header || "").replace("Bearer ", "");
+  let current;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const result = await pool.query(
+      `SELECT u.id, u.nome, u.email, u.perfil, u.status, u.email_verificado_em, u.empresa_id,
+              COALESCE(u.token_version,1) AS token_version, e.status AS empresa_status
+         FROM usuarios u JOIN empresas e ON e.id = u.empresa_id
+        WHERE u.id = $1`,
+      [decoded.id]
+    );
+    current = result.rows[0];
+    if (!current || current.status !== "ativo" || Number(decoded.tokenVersion || 1) !== Number(current.token_version)) {
+      return { status: 401, erro: "Sessão revogada ou usuário inativo" };
+    }
+  } catch (error) {
+    return { status: 401, erro: "Token inválido ou sessão expirada" };
+  }
+
+  const plataforma = ehDonoPlataforma(current);
+  if (current.empresa_status !== "ativa" && !plataforma) {
+    return { status: 403, erro: "O acesso desta empresa está suspenso. Fale com o responsável pelo contrato." };
+  }
+  return {
+    user: {
+      id: current.id,
+      nome: current.nome,
+      email: current.email,
+      perfil: normalizarPerfil(current.perfil),
+      plataforma,
+      empresaId: current.empresa_id,
+      tokenVersion: current.token_version,
+    },
+  };
+}
 
 const authMiddleware = async (req, res, next) => {
   const header = req.headers.authorization;
   if (!header) return res.status(401).json({ erro: "Token não enviado" });
 
-  const token = header.replace("Bearer ", "");
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const result = await pool.query("SELECT id,nome,email,perfil,status,email_verificado_em,COALESCE(token_version,1) AS token_version FROM usuarios WHERE id=$1", [decoded.id]);
-    const current = result.rows[0];
-    if (!current || current.status !== "ativo" || Number(decoded.tokenVersion || 1) !== Number(current.token_version)) {
-      return res.status(401).json({ erro: "Sessão revogada ou usuário inativo", requestId: req.id });
-    }
-    req.user = {
-      id: current.id,
-      nome: current.nome,
-      email: current.email,
-      perfil: normalizarPerfil(current.perfil),
-      plataforma: ehDonoPlataforma(current),
-      tokenVersion: current.token_version,
-    };
-    next();
-  } catch (error) {
-    return res.status(401).json({ erro: "Token inválido ou sessão expirada", requestId: req.id });
-  }
+  const sessao = await carregarSessao(header);
+  if (!sessao.user) return res.status(sessao.status).json({ erro: sessao.erro, requestId: req.id });
+  req.user = sessao.user;
+  // Daqui em diante toda consulta da requisição enxerga só os dados desta empresa.
+  executarComoEmpresa(req.user.empresaId, next);
 };
+
+// Rotas que também servem à tela de login: com sessão válida usam a empresa do usuário, sem ela seguem públicas.
+async function autenticacaoOpcional(req, res, next) {
+  if (!req.headers.authorization) return next();
+  const sessao = await carregarSessao(req.headers.authorization);
+  if (!sessao.user) return next();
+  req.user = sessao.user;
+  executarComoEmpresa(req.user.empresaId, next);
+}
+
+// Callbacks de upload (multer) perdem o contexto assíncrono; reaplica a empresa já autenticada.
+function manterEmpresa(req, res, next) {
+  if (!req.user?.empresaId) return next();
+  executarComoEmpresa(req.user.empresaId, next);
+}
 
 function exigirPerfil(perfilNecessario) {
   return exigirPerfis([perfilNecessario]);
@@ -45,9 +84,10 @@ function exigirPerfis(perfis) {
 }
 
 // Recursos da plataforma SaaS (diagnóstico, manutenção, versões do agente): só o dono, nunca um perfil.
+// Esses recursos não pertencem a uma empresa, então rodam como dono do banco, fora do isolamento.
 function exigirDonoPlataforma(req, res, next) {
   if (!req.user?.plataforma) return res.status(403).json({ erro: "Acesso exclusivo da administração da plataforma." });
-  next();
+  executarComoSistema(next);
 }
 
 function exigirPermissao(permissao) {
@@ -65,3 +105,5 @@ module.exports.exigirPerfil = exigirPerfil;
 module.exports.exigirPerfis = exigirPerfis;
 module.exports.exigirPermissao = exigirPermissao;
 module.exports.exigirDonoPlataforma = exigirDonoPlataforma;
+module.exports.manterEmpresa = manterEmpresa;
+module.exports.autenticacaoOpcional = autenticacaoOpcional;

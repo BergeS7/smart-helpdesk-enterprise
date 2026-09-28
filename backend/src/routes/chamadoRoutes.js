@@ -32,7 +32,7 @@ const {
 } = require("../controllers/chamadoController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
-const { exigirPerfis, exigirPermissao } = require("../middlewares/authMiddleware");
+const { exigirPerfis, exigirPermissao, manterEmpresa } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
 const { uploadLimiter } = require("../middlewares/securityMiddleware");
 const { userHasPermission } = require("../services/permissionService");
@@ -79,7 +79,7 @@ router.get("/:id/comentarios", authMiddleware, listarComentarios);
 router.post("/:id/comentarios", authMiddleware, adicionarComentario);
 
 router.get("/:id/anexos", authMiddleware, listarAnexos);
-router.post("/:id/anexos", authMiddleware, uploadLimiter, upload.array("arquivos", 5), adicionarAnexos);
+router.post("/:id/anexos", authMiddleware, uploadLimiter, upload.array("arquivos", 5), manterEmpresa, adicionarAnexos);
 router.get("/:id/anexos/:anexoId/download", authMiddleware, baixarAnexo);
 
 router.get("/:id/movimentacoes", authMiddleware, listarMovimentacoes);

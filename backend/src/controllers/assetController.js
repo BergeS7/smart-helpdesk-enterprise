@@ -10,9 +10,10 @@ const ASSET_STATUSES = new Set(["online", "warning", "offline"]);
 const { municipalities: SERVICE_MUNICIPALITIES } = require("../domain/serviceArea");
 const inventoryDomain = require("../domain/assetInventory");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
+const { executarComoEmpresa } = require("../config/tenantContext");
 async function validInvite(token) {
   if (!token) return null;
-  const result = await pool.query("SELECT id FROM agente_convites WHERE token_hash=$1 AND usado_em IS NULL AND revogado_em IS NULL AND expira_em>NOW()", [hash(token)]);
+  const result = await pool.query("SELECT id, empresa_id FROM agente_convites WHERE token_hash=$1 AND usado_em IS NULL AND revogado_em IS NULL AND expira_em>NOW()", [hash(token)]);
   return result.rows[0] || null;
 }
 
@@ -23,9 +24,14 @@ function diagnosticStatus(body) {
     : "online";
 }
 
+// O agente não tem usuário logado: a empresa vem do convite (instalação) ou do próprio ativo (envios).
 async function enroll(req, res) {
   const invite = await validInvite(req.body.enrollmentKey || req.headers["x-agent-enrollment"]);
   if (!invite) return res.status(403).json({ erro: "Convite de instalação inválido, expirado ou já utilizado" });
+  return executarComoEmpresa(invite.empresa_id, () => registrarAtivo(req, res, invite));
+}
+
+async function registrarAtivo(req, res, invite) {
   const deviceId = clean(req.body.deviceId || req.body.serialNumber || req.body.hostname, 100);
   const hostname = clean(req.body.hostname);
   if (!deviceId || !hostname) return res.status(400).json({ erro: "deviceId e hostname são obrigatórios" });
@@ -43,7 +49,7 @@ async function enroll(req, res) {
   res.status(201).json({ deviceId, token });
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
 }
-async function authenticateAgent(req, res, next) { const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,""); if(!token) return res.status(401).json({erro:"Token do agente não enviado"}); const result=await pool.query("SELECT id,device_id FROM ativos WHERE token_hash=$1",[hash(token)]); if(!result.rows[0]) return res.status(401).json({erro:"Token do agente inválido"}); req.asset=result.rows[0]; next(); }
+async function authenticateAgent(req, res, next) { const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,""); if(!token) return res.status(401).json({erro:"Token do agente não enviado"}); const result=await pool.query("SELECT id,device_id,empresa_id FROM ativos WHERE token_hash=$1",[hash(token)]); if(!result.rows[0]) return res.status(401).json({erro:"Token do agente inválido"}); req.asset=result.rows[0]; executarComoEmpresa(req.asset.empresa_id, next); }
 async function heartbeat(req,res) {
   const b=req.body;
   const status=diagnosticStatus(b);
@@ -95,7 +101,7 @@ async function snapshots(req,res){const result=await pool.query("SELECT id,repor
 async function snapshot(req,res){const result=await pool.query("SELECT id,report_id AS \"reportId\",coletado_em AS \"collectedAt\",inventory_json AS inventory FROM ativo_snapshots WHERE ativo_id=$1 AND id=$2",[req.params.id,req.params.snapshotId]);if(!result.rows[0])return res.status(404).json({erro:"Snapshot não encontrado"});res.json(result.rows[0]);}
 async function alerts(req,res){const result=await pool.query("SELECT id,codigo AS code,categoria AS category,titulo AS title,mensagem AS message,severidade AS severity,ativo AS active,detectado_em AS \"detectedAt\",reconhecido AS acknowledged FROM ativo_alertas WHERE ativo_id=$1 ORDER BY ativo DESC,severidade DESC,detectado_em DESC",[req.params.id]);res.json(result.rows);}
 async function acknowledgeAlert(req,res){const result=await pool.query("UPDATE ativo_alertas SET reconhecido=TRUE,atualizado_em=NOW() WHERE id=$1 AND ativo_id=$2 RETURNING id",[req.params.alertId,req.params.id]);if(!result.rows[0])return res.status(404).json({erro:"Alerta não encontrado"});res.json({ok:true});}
-async function locations(req,res){const invite=await validInvite(req.headers["x-agent-enrollment"]);if(!invite)return res.status(401).json({erro:"Convite de instalação válido é obrigatório"});const result=await pool.query("SELECT id,nome,municipio,latitude,longitude,rede_prefixo FROM ativo_unidades WHERE ativa=true AND municipio=ANY($1::text[]) ORDER BY municipio,nome",[SERVICE_MUNICIPALITIES]);res.json(result.rows);}
+async function locations(req,res){const invite=await validInvite(req.headers["x-agent-enrollment"]);if(!invite)return res.status(401).json({erro:"Convite de instalação válido é obrigatório"});const result=await executarComoEmpresa(invite.empresa_id,()=>pool.query("SELECT id,nome,municipio,latitude,longitude,rede_prefixo FROM ativo_unidades WHERE ativa=true AND municipio=ANY($1::text[]) ORDER BY municipio,nome",[SERVICE_MUNICIPALITIES]));res.json(result.rows);}
 async function adminLocations(_req,res){const result=await pool.query("SELECT id,nome,municipio,latitude,longitude,rede_prefixo FROM ativo_unidades WHERE ativa=true AND municipio=ANY($1::text[]) ORDER BY municipio,nome",[SERVICE_MUNICIPALITIES]);res.json(result.rows);}
 async function createInvite(req,res){const token=crypto.randomBytes(24).toString("base64url");const hours=Math.min(24,Math.max(1,Number(req.body?.validade_horas)||2));await pool.query("INSERT INTO agente_convites(token_hash,descricao,criado_por,expira_em) VALUES($1,$2,$3,NOW()+($4::text||' hours')::interval)",[hash(token),clean(req.body?.descricao||"Instalação de agente",255),req.user.id,hours]);res.status(201).json({convite:token,expira_em:new Date(Date.now()+hours*3600000).toISOString(),aviso:"O convite é exibido uma única vez."});}
 async function updateLocation(req,res){const {municipio,unidade,latitude,longitude}=req.body;if(!municipio||!unidade||!Number.isFinite(Number(latitude))||!Number.isFinite(Number(longitude)))return res.status(400).json({erro:"Município, unidade e coordenadas são obrigatórios"});const result=await pool.query("UPDATE ativos SET municipio=$1,unidade=$2,latitude=$3,longitude=$4,atualizado_em=NOW() WHERE id=$5 RETURNING id",[clean(municipio,150),clean(unidade),Number(latitude),Number(longitude),req.params.id]);if(!result.rows[0])return res.status(404).json({erro:"Ativo não encontrado"});res.json(await presentAsset(req,await loadAsset(req.params.id)));}

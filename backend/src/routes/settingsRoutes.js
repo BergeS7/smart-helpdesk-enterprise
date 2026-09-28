@@ -4,12 +4,12 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
-const { exigirPerfis } = require("../middlewares/authMiddleware");
+const { exigirPerfis, manterEmpresa, autenticacaoOpcional } = require("../middlewares/authMiddleware");
 const uploadLogoSistema = require("../middlewares/systemLogoUploadMiddleware");
 const { obterConfiguracoes, salvarConfiguracoes, atualizarLogoSistema, atualizarLogoSistema1 } = require("../controllers/settingsController");
 
-// Público para permitir que login, topo e menus usem nome/logo/cor antes do login.
-router.get("/", obterConfiguracoes);
+// Público para a tela de login usar nome/logo/cor; com sessão, devolve as configurações da empresa do usuário.
+router.get("/", autenticacaoOpcional, obterConfiguracoes);
 router.put("/", authMiddleware, exigirPerfis(["admin"]), salvarConfiguracoes);
 function uploadLogoComPrefixo(prefixo) {
   return (req, res, next) => {
@@ -26,7 +26,7 @@ function uploadLogoComPrefixo(prefixo) {
   };
 }
 
-router.patch("/logo", authMiddleware, exigirPerfis(["admin"]), uploadLogoComPrefixo("logo1"), atualizarLogoSistema);
-router.patch("/logo1", authMiddleware, exigirPerfis(["admin"]), uploadLogoComPrefixo("logo1"), atualizarLogoSistema1);
+router.patch("/logo", authMiddleware, exigirPerfis(["admin"]), uploadLogoComPrefixo("logo1"), manterEmpresa, atualizarLogoSistema);
+router.patch("/logo1", authMiddleware, exigirPerfis(["admin"]), uploadLogoComPrefixo("logo1"), manterEmpresa, atualizarLogoSistema1);
 
 module.exports = router;

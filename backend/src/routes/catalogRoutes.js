@@ -4,7 +4,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
-const { exigirPerfis, exigirPermissao } = require("../middlewares/authMiddleware");
+const { exigirPerfis, exigirPermissao, manterEmpresa } = require("../middlewares/authMiddleware");
 const uploadImagem = require("../middlewares/profilePhotoUploadMiddleware");
 const { listarCatalogo, criarCatalogo, atualizarCatalogo, listarBase, obterBase, sugerirBase, listarRecorrencias, sugestaoArtigoDoChamado, criarRascunhoDoChamado, registrarCliqueRecomendacao, responderRecomendacao, enviarImagemBase, criarBase, atualizarBase, registrarVisualizacaoBase, avaliarArtigoBase } = require("../controllers/catalogController");
 
@@ -18,7 +18,7 @@ function tratarUploadImagem(req, res, next) {
 }
 
 router.get("/base-conhecimento", authMiddleware, listarBase);
-router.post("/base-conhecimento/imagens", authMiddleware, exigirPermissao("gerenciar_base"), tratarUploadImagem, enviarImagemBase);
+router.post("/base-conhecimento/imagens", authMiddleware, exigirPermissao("gerenciar_base"), tratarUploadImagem, manterEmpresa, enviarImagemBase);
 router.get("/base-conhecimento/sugestoes", authMiddleware, sugerirBase);
 router.get("/base-conhecimento/recorrentes", authMiddleware, exigirPermissao("gerenciar_base"), listarRecorrencias);
 router.get("/base-conhecimento/chamados/:chamadoId/sugestao", authMiddleware, exigirPermissao("gerenciar_base"), sugestaoArtigoDoChamado);

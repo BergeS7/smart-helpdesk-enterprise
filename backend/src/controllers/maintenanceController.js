@@ -44,6 +44,8 @@ async function listarAvisosAtivos(req, res) {
           atualizado_em
        FROM avisos_sistema
        WHERE ativo = TRUE
+         -- Rota pública (sem empresa no contexto): só avisos da plataforma, nunca os de uma empresa.
+         AND empresa_id IS NULL
          AND (inicio_em IS NULL OR inicio_em <= CURRENT_TIMESTAMP)
          AND (fim_em IS NULL OR fim_em >= CURRENT_TIMESTAMP)
        ORDER BY criado_em DESC`

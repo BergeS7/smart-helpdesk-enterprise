@@ -1,5 +1,6 @@
 const webpush = require("web-push");
 const pool = require("../config/database");
+const { executarComoSistema } = require("../config/tenantContext");
 
 // Tabelas privadas: nunca disponibilizar chaves ou endpoints pela API de dados.
 const schema = `
@@ -25,8 +26,9 @@ const schema = `
   END $$;
 `;
 let ready;
+// Estrutura e chaves VAPID são da plataforma: rodam como dono do banco, fora da empresa da requisição.
 function ensurePushSchema() {
-  if (!ready) ready = (async () => {
+  if (!ready) ready = executarComoSistema(async () => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -35,11 +37,15 @@ function ensurePushSchema() {
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }
     finally { client.release(); }
-  })().catch((error) => { ready = null; throw error; });
+  }).catch((error) => { ready = null; throw error; });
   return ready;
 }
 
-async function getKeys() {
+function getKeys() {
+  return executarComoSistema(lerChaves);
+}
+
+async function lerChaves() {
   await ensurePushSchema();
   let result = await pool.query("SELECT public_key, private_key FROM web_push_keys WHERE id=1");
   if (!result.rows.length) {

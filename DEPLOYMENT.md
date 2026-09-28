@@ -48,3 +48,11 @@ PLATFORM_OWNER_EMAIL=dono@seudominio.com.br
 ```
 
 Sem a variável, ninguém tem acesso de plataforma. Essa conta não pode ser alterada nem excluída por admins das empresas, e o e-mail dela não pode ser usado em outro cadastro.
+
+## Isolamento entre empresas
+
+Os dados de cada empresa são separados pelo próprio PostgreSQL (Row Level Security). Em toda requisição de um usuário logado, a conexão assume o papel `helpdesk_empresa` e grava a empresa em `app.empresa_id`; o banco só mostra e só aceita linhas dessa empresa. Login, rotas públicas, o agente antes de se identificar, rotinas agendadas e migrations rodam como o usuário dono do banco.
+
+O usuário configurado em `DB_USER`/`DATABASE_URL` precisa poder criar o papel `helpdesk_empresa` e assumi-lo (a migration faz `GRANT helpdesk_empresa` para ele).
+
+Ao criar uma tabela nova com dados de empresa, a migration precisa incluir `empresa_id`, ligar a RLS e criar a política `isolamento_empresa` (veja `backend/migrations/1791000000000_isolamento_por_empresa.js`). Sem RLS ligada, todas as empresas enxergam todas as linhas da tabela.

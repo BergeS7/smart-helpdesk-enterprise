@@ -6,6 +6,7 @@ const { carregarConfiguracoesObjeto } = require("../settingsController");
 const { isBusinessTime, businessMinutesBetween } = require("../../domain/businessHours");
 const { STATUS, canonicalize: canonicalizeStatus, label: statusLabel, isFinal: statusFinalizado, canTransition, REOPEN_WINDOW_DAYS, reopenDeadline, isReopenWindowOpen } = require("../../domain/ticketStatus");
 const { registrarMovimentacao } = require("./registro");
+const { empresaAtual } = require("../../config/tenantContext");
 
 function formatarPrazo(minutos) {
   const total = Number(minutos || 0);
@@ -40,12 +41,14 @@ async function calcularSLAConfiguravel(prioridade) {
   return montarSLAConfiguravel(prioridade, config);
 }
 
-let sincronizacaoSlaAtivos = null;
+// Uma sincronização por empresa: cada uma tem as próprias regras de SLA e só enxerga os próprios chamados.
+const sincronizacoesSlaAtivos = new Map();
 
-// Normaliza prazos antigos uma única vez por processo antes das leituras de SLA.
+// Normaliza prazos antigos uma única vez por processo (e por empresa) antes das leituras de SLA.
 async function sincronizarSlaChamadosAtivosUmaVez() {
-  if (!sincronizacaoSlaAtivos) {
-    sincronizacaoSlaAtivos = (async () => {
+  const empresa = empresaAtual();
+  if (!sincronizacoesSlaAtivos.has(empresa)) {
+    sincronizacoesSlaAtivos.set(empresa, (async () => {
       const config = await carregarConfiguracoesObjeto().catch(() => ({}));
       const regras = {
         critica: montarSLAConfiguravel("Critica", config),
@@ -76,11 +79,11 @@ async function sincronizarSlaChamadosAtivosUmaVez() {
         [...resposta, ...resolucao, ...labels]
       );
     })().catch((error) => {
-      sincronizacaoSlaAtivos = null;
+      sincronizacoesSlaAtivos.delete(empresa);
       throw error;
-    });
+    }));
   }
-  return sincronizacaoSlaAtivos;
+  return sincronizacoesSlaAtivos.get(empresa);
 }
 
 function minutosRestantes(dataLimite, referencia = new Date()) {

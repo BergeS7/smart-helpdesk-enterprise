@@ -12,6 +12,7 @@ const { recordLegalAcceptance } = require("../services/privacyComplianceService"
 const { validLocation } = require("../domain/serviceArea");
 const { senhaValida } = require("../utils/passwordPolicy");
 const { normalizarPerfil, ehAdmin, ehDonoPlataforma, ehEmailDonoPlataforma } = require("../utils/permissoes");
+const { EMPRESA_PRINCIPAL } = require("../config/tenantContext");
 
 function normalizarTexto(valor) {
   return String(valor || "").trim();
@@ -173,8 +174,8 @@ async function criarPrimeiroAdmin(req, res) {
 
     const result = await pool.query(
       `INSERT INTO usuarios
-       (nome, email, senha, perfil, status, telefone, departamento, cargo, aprovado_em, email_verificado_em)
-       VALUES ($1, LOWER($2), $3, 'admin', 'ativo', $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       (nome, email, senha, perfil, status, telefone, departamento, cargo, aprovado_em, email_verificado_em, empresa_id)
+       VALUES ($1, LOWER($2), $3, 'admin', 'ativo', $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ${EMPRESA_PRINCIPAL})
        RETURNING
         id,
         nome,
@@ -245,9 +246,9 @@ async function cadastrarUsuarioPublico(req, res) {
     const result = await pool.query(
       `INSERT INTO usuarios
        (nome, email, senha, perfil, status, telefone, departamento, municipio, unidade, cargo,
-        email_verificacao_hash, email_verificacao_expira_em, email_verificacao_enviado_em)
+        email_verificacao_hash, email_verificacao_expira_em, email_verificacao_enviado_em, empresa_id)
        VALUES ($1, LOWER($2), $3, 'usuario', 'pendente', $4, $5, $6, $7, $8,
-        $9, CURRENT_TIMESTAMP + INTERVAL '20 minutes', CURRENT_TIMESTAMP)
+        $9, CURRENT_TIMESTAMP + INTERVAL '20 minutes', CURRENT_TIMESTAMP, ${EMPRESA_PRINCIPAL})
        RETURNING
         id,
         nome,

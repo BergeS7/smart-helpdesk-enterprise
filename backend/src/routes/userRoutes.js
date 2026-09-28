@@ -8,6 +8,7 @@ const uploadFotoPerfil = require("../middlewares/profilePhotoUploadMiddleware");
 
 const authModule = require("../middlewares/authMiddleware");
 const { temPerfil } = require("../utils/permissoes");
+const { manterEmpresa } = authModule;
 
 const {
   criarPrimeiroAdmin,
@@ -74,7 +75,7 @@ router.post("/reenviar-verificacao", registrationLimiter, reenviarVerificacaoEma
 router.get("/me", authMiddleware, obterMeuPerfil);
 router.put("/me", authMiddleware, atualizarMeuPerfil);
 router.get("/me/ativos", authMiddleware, require("../controllers/assetController").myAssets);
-router.patch("/me/foto", authMiddleware, uploadLimiter, tratarUploadFoto, atualizarMinhaFotoPerfil);
+router.patch("/me/foto", authMiddleware, uploadLimiter, tratarUploadFoto, manterEmpresa, atualizarMinhaFotoPerfil);
 router.delete("/me/foto", authMiddleware, removerMinhaFotoPerfil);
 
 // Rotas administrativas

@@ -3,6 +3,7 @@
  */
 const pool = require("../config/database");
 const { ehAdmin } = require("../utils/permissoes");
+const { EMPRESA_PRINCIPAL } = require("../config/tenantContext");
 const { enviarArquivo, removerArquivo, urlPublica, lerReferencia } = require("../utils/supabaseStorage");
 
 function podeConfigurar(user) {
@@ -27,7 +28,6 @@ const defaults = {
 };
 
 const chavesPermitidas = new Set(Object.keys(defaults));
-let inicializacaoConfiguracoes = null;
 
 function normalizarValorConfig(chave, valor) {
   if (valor === undefined || valor === null) return String(defaults[chave] ?? "");
@@ -52,35 +52,13 @@ function normalizarValorConfig(chave, valor) {
   return String(valor).trim();
 }
 
-async function garantirTabelaConfiguracoes() {
-  if (!inicializacaoConfiguracoes) {
-    inicializacaoConfiguracoes = (async () => {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS configuracoes_sistema (
-          chave VARCHAR(120) PRIMARY KEY,
-          valor TEXT NOT NULL,
-          atualizado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
-          atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      const entradas = Object.entries(defaults);
-      await pool.query(
-        `INSERT INTO configuracoes_sistema (chave, valor)
-         SELECT * FROM UNNEST($1::text[], $2::text[])
-         ON CONFLICT (chave) DO NOTHING`,
-        [entradas.map(([chave]) => chave), entradas.map(([, valor]) => String(valor))]
-      );
-    })().catch((error) => {
-      inicializacaoConfiguracoes = null;
-      throw error;
-    });
-  }
-  return inicializacaoConfiguracoes;
-}
-
+// Cada empresa tem as próprias configurações; chaves ausentes usam os valores padrão.
+// Sem empresa no contexto (tela de login, rotinas) vale a empresa principal.
 async function carregarConfiguracoesObjeto() {
-  await garantirTabelaConfiguracoes();
-  const result = await pool.query("SELECT chave, valor FROM configuracoes_sistema");
+  const result = await pool.query(
+    "SELECT chave, valor FROM configuracoes_sistema WHERE empresa_id = COALESCE(NULLIF(current_setting('app.empresa_id', true), '')::integer, $1)",
+    [EMPRESA_PRINCIPAL]
+  );
   const dados = { ...defaults };
   for (const row of result.rows) {
     if (chavesPermitidas.has(row.chave)) dados[row.chave] = row.valor;
@@ -103,7 +81,6 @@ const obterConfiguracoes = async (req, res) => {
 const salvarConfiguracoes = async (req, res) => {
   try {
     if (!podeConfigurar(req.user)) return res.status(403).json({ erro: "Acesso não autorizado" });
-    await garantirTabelaConfiguracoes();
 
     const entradas = Object.entries(req.body || {}).filter(([chave]) => chavesPermitidas.has(chave) && !["logo_url", "logo_1_url"].includes(chave));
 
@@ -112,7 +89,7 @@ const salvarConfiguracoes = async (req, res) => {
         `INSERT INTO configuracoes_sistema (chave, valor, atualizado_por)
          SELECT dados.chave, dados.valor, $3
            FROM UNNEST($1::text[], $2::text[]) AS dados(chave, valor)
-         ON CONFLICT (chave)
+         ON CONFLICT (empresa_id, chave)
          DO UPDATE SET valor = EXCLUDED.valor, atualizado_por = EXCLUDED.atualizado_por, atualizado_em = CURRENT_TIMESTAMP`,
         [entradas.map(([chave]) => chave), entradas.map(([chave, valor]) => normalizarValorConfig(chave, valor)), req.user.id]
       );
@@ -130,8 +107,6 @@ async function atualizarLogoPorChave(req, res, chave, prefixo, label) {
     if (!podeConfigurar(req.user)) return res.status(403).json({ erro: "Acesso não autorizado" });
     if (!req.file) return res.status(400).json({ erro: `Envie uma imagem para a ${label}` });
 
-    await garantirTabelaConfiguracoes();
-
     const anterior = await pool.query("SELECT valor FROM configuracoes_sistema WHERE chave = $1", [chave]);
     const caminhoAnterior = anterior.rows[0]?.valor || "";
     const logoUrl = await enviarArquivo({ bucket: "system-assets", pasta: `logos/${prefixo}`, arquivo: req.file, publico: true });
@@ -139,7 +114,7 @@ async function atualizarLogoPorChave(req, res, chave, prefixo, label) {
     await pool.query(
       `INSERT INTO configuracoes_sistema (chave, valor, atualizado_por)
        VALUES ($1, $2, $3)
-       ON CONFLICT (chave)
+       ON CONFLICT (empresa_id, chave)
        DO UPDATE SET valor = EXCLUDED.valor, atualizado_por = EXCLUDED.atualizado_por, atualizado_em = CURRENT_TIMESTAMP`,
       [chave, logoUrl, req.user.id]
     );
@@ -149,7 +124,7 @@ async function atualizarLogoPorChave(req, res, chave, prefixo, label) {
       await pool.query(
         `INSERT INTO configuracoes_sistema (chave, valor, atualizado_por)
          VALUES ('logo_url', $1, $2)
-         ON CONFLICT (chave)
+         ON CONFLICT (empresa_id, chave)
          DO UPDATE SET valor = EXCLUDED.valor, atualizado_por = EXCLUDED.atualizado_por, atualizado_em = CURRENT_TIMESTAMP`,
         [logoUrl, req.user.id]
       );
