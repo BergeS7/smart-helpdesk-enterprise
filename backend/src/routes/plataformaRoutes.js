@@ -11,5 +11,7 @@ router.get("/empresas", empresas.listarEmpresas);
 router.post("/empresas", empresas.criarEmpresa);
 router.patch("/empresas/:id", empresas.atualizarEmpresa);
 router.post("/empresas/:id/convite", empresas.gerarNovoConvite);
+router.get("/empresas/:id/operacao", empresas.operacaoEmpresa);
+router.get("/empresas/:id/acessos", empresas.acessosEmpresa);
 
 module.exports = router;

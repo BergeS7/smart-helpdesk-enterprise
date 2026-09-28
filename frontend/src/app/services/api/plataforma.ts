@@ -39,6 +39,34 @@ export const atualizarEmpresaPlataforma = (id: number, dados: Partial<Pick<Empre
 export const gerarConviteEmpresa = (id: number) =>
   request<{ convite: ConviteEmpresa }>(`/plataforma/empresas/${id}/convite`, { method: "POST" });
 
+export type OperacaoEmpresa = {
+  empresa: Pick<EmpresaPlataforma, "id" | "nome" | "slug" | "plano" | "status">;
+  chamados: {
+    abertos: number;
+    sla_vencido: number;
+    sem_responsavel: number;
+    criados_30d: number;
+    resolvidos_30d: number;
+    horas_media_resolucao_30d: string | null;
+    por_status: { status: string; total: number }[];
+    recentes: {
+      id: number; numero_chamado: string | null; titulo: string; status: string; prioridade: string | null;
+      tipo_chamado: string | null; criado_em: string; sla_vencido: boolean; responsavel: string | null;
+    }[];
+  };
+  usuarios: { perfil: string; ativos: number; pendentes: number }[];
+  satisfacao_90d: { media: string | null; avaliacoes: number };
+  ativos: { total: number; comunicando_24h: number };
+  base: { publicados: number };
+};
+
+export type AcessoPlataforma = { id: number; usuario_email: string; recurso: string; ip: string | null; criado_em: string };
+
+/** Só leitura; cada chamada fica registrada no histórico de acessos da empresa. */
+export const consultarOperacaoEmpresa = (id: number) => request<OperacaoEmpresa>(`/plataforma/empresas/${id}/operacao`);
+
+export const listarAcessosPlataforma = (id: number) => request<AcessoPlataforma[]>(`/plataforma/empresas/${id}/acessos`);
+
 export const consultarConviteEmpresa = (token: string) =>
   request<{ empresa: { nome: string; slug: string }; email: string }>(`/empresas/convites/${encodeURIComponent(token)}`, { auth: false });
 

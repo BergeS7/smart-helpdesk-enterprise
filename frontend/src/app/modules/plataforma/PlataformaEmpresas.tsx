@@ -3,10 +3,11 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Building2, Copy, Link2, RefreshCw } from "lucide-react";
+import { BarChart3, Building2, Copy, Link2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Card, Field, Input, Select } from "../../components/shared/FormPrimitives";
 import { formatDate } from "../comum/appShared";
+import { OperacaoEmpresa } from "./OperacaoEmpresa";
 import {
   atualizarEmpresaPlataforma,
   criarEmpresaPlataforma,
@@ -71,6 +72,7 @@ export function PlataformaEmpresas() {
   const [salvando, setSalvando] = useState(false);
   const [emAndamento, setEmAndamento] = useState<number | null>(null);
   const [linkGerado, setLinkGerado] = useState<{ empresa: string; convite: ConviteEmpresa } | null>(null);
+  const [operacaoDe, setOperacaoDe] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -200,6 +202,9 @@ export function PlataformaEmpresas() {
                     </p>
                   )}
                   <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="secondary" className="!h-9 text-xs" onClick={() => setOperacaoDe(empresa.id)}>
+                      <BarChart3 size={14} /> Ver operação
+                    </Button>
                     <Button type="button" variant="secondary" className="!h-9 text-xs" onClick={() => void copiar(linkCadastroEmpresa(empresa.slug), "Link de cadastro da equipe")}>
                       <Copy size={14} /> Link de cadastro da equipe
                     </Button>
@@ -220,6 +225,7 @@ export function PlataformaEmpresas() {
           </div>
         )}
       </Card>
+      {operacaoDe !== null && <OperacaoEmpresa empresaId={operacaoDe} onFechar={() => setOperacaoDe(null)} />}
     </div>
   );
 }

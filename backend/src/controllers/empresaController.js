@@ -8,6 +8,7 @@ const pool = require("../config/database");
 const { senhaValida } = require("../utils/passwordPolicy");
 const { ehEmailDonoPlataforma } = require("../utils/permissoes");
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
+const { consultarOperacao, registrarAcesso, listarAcessos } = require("../services/operacaoEmpresaService");
 const { CONVITE_VALIDADE_DIAS, gerarSlug, proximoSlugLivre, validarEmpresa } = require("../domain/empresa");
 
 const hash = (valor) => crypto.createHash("sha256").update(String(valor)).digest("hex");
@@ -146,6 +147,28 @@ async function gerarNovoConvite(req, res) {
   }
 }
 
+// A plataforma só visualiza a operação do cliente, e o acesso fica registrado antes da consulta.
+async function operacaoEmpresa(req, res) {
+  try {
+    const empresaId = Number(req.params.id);
+    const empresa = await pool.query("SELECT id, nome, slug, plano, status FROM empresas WHERE id = $1", [empresaId]);
+    if (!empresa.rows[0]) return res.status(404).json({ erro: "Empresa não encontrada." });
+    await registrarAcesso({ empresaId, user: req.user, recurso: "operacao", req });
+    const operacao = await consultarOperacao(empresaId);
+    return res.json({ empresa: empresa.rows[0], ...operacao });
+  } catch (error) {
+    return responderErro(res, error, "consultar a operação da empresa");
+  }
+}
+
+async function acessosEmpresa(req, res) {
+  try {
+    return res.json(await listarAcessos(Number(req.params.id)));
+  } catch (error) {
+    return responderErro(res, error, "listar acessos da plataforma");
+  }
+}
+
 // ---- Rotas públicas (sem login) ----
 
 async function conviteValido(executor, token, { bloquear = false } = {}) {
@@ -225,6 +248,6 @@ async function empresaAtivaPorSlug(slug) {
 }
 
 module.exports = {
-  listarEmpresas, criarEmpresa, atualizarEmpresa, gerarNovoConvite,
+  listarEmpresas, criarEmpresa, atualizarEmpresa, gerarNovoConvite, operacaoEmpresa, acessosEmpresa,
   consultarConvite, ativarConvite, empresaPublica, empresaAtivaPorSlug,
 };
