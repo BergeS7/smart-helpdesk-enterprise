@@ -4,28 +4,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import type { GeoJsonObject } from "geojson";
-import { centroMaranhao } from "../../data/municipiosMaranhao";
 import { useLocalidades } from "../../hooks/useLocalidades";
+import { VISAO_BRASIL, areaDaEmpresa, type Area } from "../../domain/mapaArea";
 import type { Device } from "../../types/device";
-
-const MARANHAO_BOUNDS: [[number, number], [number, number]] = [[-7.9, -48.8], [-0.7, -41.7]];
-const IBGE_MARANHAO_GEOJSON = "https://servicodados.ibge.gov.br/api/v3/malhas/estados/21?formato=application/vnd.geo%2Bjson&qualidade=minima";
-const IBGE_CACHE_KEY = "smart-helpdesk:mapa:maranhao:v1";
-const IBGE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-type GeoJsonCache = { data: GeoJsonObject; expiresAt: number };
-
-function readGeoJsonCache(): GeoJsonObject | null {
-  try {
-    const cached = JSON.parse(localStorage.getItem(IBGE_CACHE_KEY) || "null") as GeoJsonCache | null;
-    return cached?.data && cached.expiresAt > Date.now() ? cached.data : null;
-  } catch { return null; }
-}
-
-function writeGeoJsonCache(data: GeoJsonObject) {
-  try { localStorage.setItem(IBGE_CACHE_KEY, JSON.stringify({ data, expiresAt: Date.now() + IBGE_CACHE_TTL_MS })); } catch { /* armazenamento indisponível */ }
-}
 
 type Coordenada = { latitude: number; longitude: number };
 
@@ -54,29 +35,23 @@ function ZoomObserver({ onZoom }: { onZoom: (zoom: number) => void }) {
   return null;
 }
 
-function FitMaranhao({ data, focused }: { data: GeoJsonObject | null; focused: boolean }) {
+// Enquadra a região da empresa ao abrir e quando as unidades mudam; depois que a pessoa mexe no mapa, não interfere mais.
+function EnquadrarEmpresa({ area, focused }: { area: Area | null; focused: boolean }) {
   const map = useMap();
+  const mexeu = useRef(false);
+  const ultimaArea = useRef("");
+  useMapEvents({ dragstart: () => { mexeu.current = true; } });
   useEffect(() => {
-    if (!data || focused) return;
-    const bounds = L.geoJSON(data).getBounds();
-    map.fitBounds(bounds, { padding: [18, 18], animate: false });
-    map.setMaxBounds(bounds.pad(0.025));
-  }, [data, focused, map]);
+    const chave = JSON.stringify(area);
+    if (!area || focused || chave === ultimaArea.current || (mexeu.current && ultimaArea.current)) return;
+    ultimaArea.current = chave;
+    map.fitBounds(area, { padding: [24, 24], maxZoom: 11, animate: false });
+  }, [area, focused, map]);
   return null;
 }
 
 export function PatrimonioMap({ devices, allDevices, selected, municipio, onSelect, onMunicipioSelect }: { devices: Device[]; allDevices: Device[]; selected?: Device | null; municipio?: string; onSelect: (device: Device) => void; onMunicipioSelect: (municipio: string) => void }) {
-  const [maranhaoGeoJson, setMaranhaoGeoJson] = useState<GeoJsonObject | null>(() => readGeoJsonCache());
-  const [zoom, setZoom] = useState(7);
-  useEffect(() => {
-    if (maranhaoGeoJson) return;
-    const controller = new AbortController();
-    fetch(IBGE_MARANHAO_GEOJSON, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() as Promise<GeoJsonObject> : null)
-      .then((data) => { if (data) { writeGeoJsonCache(data); setMaranhaoGeoJson(data); } })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [maranhaoGeoJson]);
+  const [zoom, setZoom] = useState(VISAO_BRASIL.zoom);
 
   const positionedDevices = useMemo(() => devices.filter((device) => device.latitude != null && device.longitude != null), [devices]);
   const icons = useMemo(() => new Map(positionedDevices.map((device) => {
@@ -116,13 +91,14 @@ export function PatrimonioMap({ devices, allDevices, selected, municipio, onSele
     return { ...cidade, ativos, icon };
   }).filter((cidade) => cidade.ativos.length > 0), [coordenadasCidades, devicesByMunicipio]);
   useEffect(() => { if (cidades.length) citiesShown.current = true; }, [cidades]);
+  const area = useMemo(() => areaDaEmpresa(unidades, allDevices), [allDevices, unidades]);
 
-  return <MapContainer center={centroMaranhao} zoom={7} minZoom={7} maxZoom={15} maxBounds={MARANHAO_BOUNDS} maxBoundsViscosity={1} scrollWheelZoom className="h-full w-full">
-    <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" bounds={MARANHAO_BOUNDS} noWrap />
+  return <MapContainer center={VISAO_BRASIL.centro} zoom={VISAO_BRASIL.zoom} minZoom={3} maxZoom={15} scrollWheelZoom className="h-full w-full">
+    <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" noWrap />
     {zoom <= 9 && cidades.map((cidade) => <Marker key={cidade.nome} position={[cidade.latitude, cidade.longitude]} icon={cidade.icon} eventHandlers={{ click: () => onMunicipioSelect(cidade.nome) }}><Tooltip direction="top" offset={[0, -12]}><b>{cidade.nome}</b><br />{cidade.ativos.length} computador(es)<br /><span className="text-emerald-600">{cidade.ativos.filter((device) => device.status === "online").length} online</span></Tooltip></Marker>)}
     {zoom > 9 && positionedDevices.map((device) => <Marker key={device.id} position={[device.latitude!, device.longitude!]} icon={icons.get(device.id)!} eventHandlers={{ click: () => onSelect(device) }}><Tooltip direction="top" offset={[0, -10]} opacity={1}><div className="min-w-40"><b>{device.hostname}</b><br />{device.patrimonio}<br />{device.municipio}<br /><span className={`device-tooltip-${device.status}`}>{device.status === "online" ? "Online" : device.status === "warning" ? "Atenção" : "Offline"}</span></div></Tooltip></Marker>)}
     <MapFocus device={selected} municipio={municipio} coordenadasCidades={coordenadasCidades} />
-    <FitMaranhao data={maranhaoGeoJson} focused={Boolean(selected || municipio)} />
+    <EnquadrarEmpresa area={area} focused={Boolean(selected || municipio)} />
     <ZoomObserver onZoom={setZoom} />
   </MapContainer>;
 }

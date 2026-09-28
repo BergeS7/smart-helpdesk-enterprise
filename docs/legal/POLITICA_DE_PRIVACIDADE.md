@@ -31,7 +31,7 @@ A controladora deve registrar a base de cada finalidade. Conforme o caso, podem 
 
 ## 5. Compartilhamento
 
-O acesso interno é limitado por perfil e permissão. Dados podem ser tratados por provedores contratados de infraestrutura, backup, correio eletrônico e suporte, sujeitos a contrato, confidencialidade, segurança e instruções da controladora. O mapa solicita imagens ao OpenStreetMap e malha territorial ao IBGE; esses serviços podem receber dados técnicos da conexão, como IP, conforme suas próprias políticas. Quando o usuário ativa notificações push, a inscrição pode envolver o serviço de push do navegador. A controladora deve identificar os destinatários efetivos e avaliar eventual transferência internacional.
+O acesso interno é limitado por perfil e permissão. Dados podem ser tratados por provedores contratados de infraestrutura, backup, correio eletrônico e suporte, sujeitos a contrato, confidencialidade, segurança e instruções da controladora. O mapa solicita imagens ao OpenStreetMap, que pode receber dados técnicos da conexão, como IP, conforme sua própria política. Quando o usuário ativa notificações push, a inscrição pode envolver o serviço de push do navegador. A controladora deve identificar os destinatários efetivos e avaliar eventual transferência internacional.
 
 Não há venda de dados pessoais nem uso para publicidade comportamental.
 
