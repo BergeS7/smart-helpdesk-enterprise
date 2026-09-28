@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import "./patrimonio-map.css";
-import { municipiosMaranhao } from "../../data/municipiosMaranhao";
+import { useLocalidades } from "../../hooks/useLocalidades";
 import {
   createAgentInvite,
   deriveDeviceAlerts,
@@ -56,6 +56,7 @@ const emptyFilters: PatrimonioFilters = {
   query: "",
 };
 export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
+  const { municipios: municipiosEmpresa } = useLocalidades();
   const [devices, setDevices] = useState<Device[]>([]),
     [alerts, setAlerts] = useState<DeviceAlert[]>([]),
     [summary, setSummary] = useState<MunicipioSummary[]>([]),
@@ -407,7 +408,7 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
             <div className="mt-6">
               <DeviceFilters
                 filters={filters}
-                municipios={municipiosMaranhao.map((m) => m.nome)}
+                municipios={municipiosEmpresa}
                 onChange={setFilters}
               />
             </div>

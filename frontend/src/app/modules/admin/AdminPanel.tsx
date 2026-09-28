@@ -15,6 +15,7 @@ import { aprovarUsuario, atualizarChamado, baixarRelatorio, buscarChamado, exclu
 import { AvisosSistemaBanner, ChamadosListModule, DevelopmentWorkspace, FilaChamadosView, IndicatorsWorkspace, KanbanWorkspace, MySatisfactionPage, OperationalDashboard, PatrimonioMapPage, ReportsWorkspace, SatisfactionAnalyticsPage, SettingsWorkspace, SystemDiagnosticsPage, SystemThemeStyle, UsersModule, chamadoIdFromNotification, formatDate, normalizeStatus, notificacaoClass, notificacaoIcone, variaveisTemaSistema } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 import { PlataformaEmpresas } from "../plataforma/PlataformaEmpresas";
+import { AbaUnidades } from "./abas/Unidades";
 import { MobileMoreAction, MobileMoreSheet, MobileNavButton } from "../portal/PortalComponents";
 import { CarteiraEquipeView, HistoricoEquipeView } from "./EquipeViews";
 import { ChamadoDetalhe } from "../chamados/ChamadoDetalhe";
@@ -655,6 +656,8 @@ export function AdminPanel(props: AdminPanelProps) {
             {tab === "manutencao" && plataforma && <AbaManutencao painel={painel} />}
 
             {tab === "empresas" && plataforma && <PlataformaEmpresas />}
+
+            {tab === "unidades" && administrador && <AbaUnidades />}
 
             {tab === "relatorios" && (
               <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando relatórios…</strong></div>}><ReportsWorkspace

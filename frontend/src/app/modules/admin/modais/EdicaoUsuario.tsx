@@ -2,7 +2,8 @@
  * Responsabilidade: modal de edição de usuário (admin): dados, perfil, localidade e senha.
  */
 import { UserCheck } from "lucide-react";
-import { municipiosMaranhao } from "../../../data/municipiosMaranhao";
+import { SeletorUnidade } from "../../../components/shared/SeletorUnidade";
+import { useLocalidades } from "../../../hooks/useLocalidades";
 import { Button, Field, Input, Modal, Select } from "../../../components/shared/FormPrimitives";
 import { UserAssetsField } from "../../../components/patrimonio/UserAssetsField";
 import { PERFIS, UsuarioSistemaAvatar, perfilLabel } from "../../comum/appShared";
@@ -10,6 +11,7 @@ import type { PainelAdmin } from "../useAdminPanel";
 
 export function ModalEdicaoUsuario({ painel }: { painel: PainelAdmin }) {
   const { usuarioEditando, setUsuarioEditando, usuarioForm, setUsuarioForm, salvandoUsuarioAdmin, salvarEdicaoUsuario } = painel;
+  const localidades = useLocalidades();
   return (
     <Modal
       title={`Editar usuário - ${usuarioEditando.nome}`}
@@ -118,14 +120,15 @@ export function ModalEdicaoUsuario({ painel }: { painel: PainelAdmin }) {
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Cidade / área de atuação">
-            <Select required value={usuarioForm.municipio} onChange={(e)=>{const municipio=e.target.value;setUsuarioForm({...usuarioForm,municipio,unidade:municipio?`Maranhão Motos - ${municipio}`:""})}}>
-              <option value="">Selecione</option>
-              {municipiosMaranhao.map((item)=><option key={item.nome} value={item.nome}>{item.nome}</option>)}
-            </Select>
-          </Field>
           <Field label="Unidade / local padrão">
-            <Input readOnly value={usuarioForm.unidade} placeholder="Definida pela cidade" />
+            <SeletorUnidade
+              required
+              unidades={localidades.unidades}
+              carregando={localidades.carregando}
+              value={usuarioForm}
+              onChange={({ municipio, unidade }) => setUsuarioForm({ ...usuarioForm, municipio, unidade })}
+              className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            />
           </Field>
         </div>
 

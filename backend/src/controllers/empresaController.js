@@ -9,6 +9,8 @@ const { senhaValida } = require("../utils/passwordPolicy");
 const { ehEmailDonoPlataforma } = require("../utils/permissoes");
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
 const { consultarOperacao, registrarAcesso, listarAcessos } = require("../services/operacaoEmpresaService");
+const { listarUnidades } = require("../services/localidadesService");
+const { EMPRESA_PRINCIPAL, executarComoEmpresa } = require("../config/tenantContext");
 const { CONVITE_VALIDADE_DIAS, gerarSlug, proximoSlugLivre, validarEmpresa } = require("../domain/empresa");
 
 const hash = (valor) => crypto.createHash("sha256").update(String(valor)).digest("hex");
@@ -241,6 +243,20 @@ async function empresaPublica(req, res) {
   }
 }
 
+// Unidades onde a pessoa pode trabalhar: as da empresa do usuário logado, as da empresa do link
+// de cadastro (?empresa=<slug>) ou, na tela de login sem link, as da empresa principal.
+async function localidades(req, res) {
+  try {
+    let empresaId = req.user?.empresaId;
+    if (!empresaId) empresaId = req.query.empresa ? await empresaAtivaPorSlug(req.query.empresa) : EMPRESA_PRINCIPAL;
+    if (!empresaId) return res.status(404).json({ erro: "Link de cadastro inválido ou empresa indisponível." });
+    const unidades = await executarComoEmpresa(empresaId, () => listarUnidades());
+    return res.json(unidades.map(({ id, nome, municipio, latitude, longitude }) => ({ id, nome, municipio, latitude, longitude })));
+  } catch (error) {
+    return responderErro(res, error, "listar unidades");
+  }
+}
+
 // Usado pelo cadastro público: resolve a empresa do link, ou null quando o slug não serve.
 async function empresaAtivaPorSlug(slug) {
   const result = await pool.query("SELECT id FROM empresas WHERE slug = $1 AND status = 'ativa'", [String(slug || "")]);
@@ -249,5 +265,5 @@ async function empresaAtivaPorSlug(slug) {
 
 module.exports = {
   listarEmpresas, criarEmpresa, atualizarEmpresa, gerarNovoConvite, operacaoEmpresa, acessosEmpresa,
-  consultarConvite, ativarConvite, empresaPublica, empresaAtivaPorSlug,
+  consultarConvite, ativarConvite, empresaPublica, empresaAtivaPorSlug, localidades,
 };

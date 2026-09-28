@@ -10,7 +10,7 @@ export type AdminRouteKey =
   | "indicadores_operacao" | "indicadores_sla" | "indicadores_tecnicos" | "indicadores_ativos"
   | "desenvolvimento" | "projetos"
   | "relatorios" | "patrimonio" | "diagnostico" | "configuracoes" | "config_sla" | "config_integracoes" | "manutencao"
-  | "empresas";
+  | "empresas" | "unidades";
 
 export const ADMIN_ROUTES: Record<AdminRouteKey, readonly string[]> = {
   dashboard: ["/admin", "/admin/dashboard"],
@@ -34,6 +34,7 @@ export const ADMIN_ROUTES: Record<AdminRouteKey, readonly string[]> = {
   configuracoes: ["/admin/configuracoes/sistema", "/admin/configuracoes"],
   config_sla: ["/admin/configuracoes/sla"],
   empresas: ["/admin/plataforma/empresas", "/admin/plataforma"],
+  unidades: ["/admin/configuracoes/unidades"],
   config_integracoes: ["/admin/plataforma/integracoes", "/admin/configuracoes/integracoes"],
   manutencao: ["/admin/plataforma/manutencao", "/admin/configuracoes/manutencao", "/admin/manutencao"],
   diagnostico: ["/admin/plataforma/diagnostico", "/admin/configuracoes/diagnostico", "/admin/diagnostico"],
@@ -54,7 +55,7 @@ export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
     {id:"analytics",label:"Indicadores",title:"Indicadores",description:"Analise desempenho, SLA, satisfação e evolução do atendimento.",icon:BarChart3,defaultTab:ctx.tecnico?"satisfacao":"indicadores_operacao",tabs:ctx.tecnico?["satisfacao"]:["indicadores_operacao","indicadores_sla","indicadores_tecnicos","satisfacao","indicadores_ativos","relatorios"],visible:reports||ctx.administrador||ctx.tecnico},
     {id:"knowledge",label:"Base",title:"Base de Conhecimento",description:"Centralize orientações e soluções reutilizáveis para a equipe.",icon:BookOpen,defaultTab:"base",tabs:["base"],visible:ctx.permissions.includes("gerenciar_base")},
     {id:"assets",label:"Ativos",title:"Monitoramento de Ativos",description:"Acompanhe equipamentos, disponibilidade e alertas da operação.",icon:MapPinned,defaultTab:"patrimonio",tabs:["patrimonio"],visible:ctx.permissions.includes("visualizar_patrimonio")},
-    {id:"admin",label:"Ajustes",title:"Ajustes",description:"Configure as regras, o SLA e os catálogos da sua empresa.",icon:Settings,defaultTab:"configuracoes",tabs:["configuracoes","config_sla","catalogos"],visible:ctx.administrador},
+    {id:"admin",label:"Ajustes",title:"Ajustes",description:"Configure as regras, o SLA e os catálogos da sua empresa.",icon:Settings,defaultTab:"configuracoes",tabs:["configuracoes","config_sla","unidades","catalogos"],visible:ctx.administrador},
     {id:"platform",label:"Plataforma",title:"Plataforma",description:"Empresas clientes, saúde do sistema, avisos e integrações do SaaS.",icon:Building2,defaultTab:"empresas",tabs:["empresas","diagnostico","manutencao","config_integracoes"],visible:ctx.plataforma},
   ];
   return areas.filter(area=>area.visible);
@@ -67,7 +68,7 @@ export const TAB_LABELS:Record<AdminRouteKey,string>={
   satisfacao:"Satisfação",relatorios:"Exportações",base:"Artigos",patrimonio:"Equipamentos",
   desenvolvimento:"Demandas",projetos:"Projetos",
   configuracoes:"Sistema",config_sla:"SLA e prioridades",catalogos:"Catálogos",config_integracoes:"Integrações",manutencao:"Manutenção",diagnostico:"Diagnóstico",
-  empresas:"Empresas",
+  empresas:"Empresas",unidades:"Unidades",
 };
 
 export const TAB_ICONS:Partial<Record<AdminRouteKey,typeof Ticket>>={fila:Headphones,kanban:Ticket,chamados:Ticket,historico:Activity,desenvolvimento:Code2,projetos:Code2,usuarios:Users,carteira:Users,teams:Users,acessos:ShieldCheck,relatorios:BarChart3,satisfacao:BarChart3};

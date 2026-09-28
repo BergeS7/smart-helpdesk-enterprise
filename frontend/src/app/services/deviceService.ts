@@ -4,9 +4,12 @@
 import { API_URL, getToken } from "./api";
 import type { AssetAlert, AssignableUser, MyAsset, AssetChange, AssetInventory, AssetSnapshot, Device, DeviceAlert, DeviceHistory, MunicipioSummary } from "../types/device";
 async function assetRequest<T>(path: string): Promise<T> { const response=await fetch(`${API_URL}/assets${path}`,{headers:{Authorization:`Bearer ${getToken()||""}`}}); const data=await response.json().catch(()=>null); if(!response.ok) throw new Error(data?.erro||"Erro ao consultar ativos"); return data as T; }
-export type AssetLocation={id:number;nome:string;municipio:string;latitude:number;longitude:number;rede_prefixo?:string|null};
+export type AssetLocation={id:number;nome:string;municipio:string;latitude:number|null;longitude:number|null;rede_prefixo?:string|null;ativa?:boolean};
 async function assetWrite<T>(path:string,method:string,body:unknown):Promise<T>{const response=await fetch(`${API_URL}/assets${path}`,{method,headers:{Authorization:`Bearer ${getToken()||""}`,"Content-Type":"application/json"},body:JSON.stringify(body)});const data=await response.json().catch(()=>null);if(!response.ok)throw new Error(data?.erro||"Erro ao atualizar ativo");return data as T;}
-export async function getAssetLocations():Promise<AssetLocation[]>{return assetRequest<AssetLocation[]>("/admin/locations");}
+export async function getAssetLocations(incluirInativas=false):Promise<AssetLocation[]>{return assetRequest<AssetLocation[]>(`/admin/locations${incluirInativas?"?todas=1":""}`);}
+export type NovaUnidade={nome:string;municipio:string;latitude?:number|null;longitude?:number|null};
+export async function createAssetLocation(unidade:NovaUnidade):Promise<AssetLocation>{return assetWrite<AssetLocation>("/admin/locations","POST",unidade);}
+export async function updateAssetLocation(id:number,dados:Partial<NovaUnidade>&{ativa?:boolean}):Promise<AssetLocation>{return assetWrite<AssetLocation>(`/admin/locations/${id}`,"PATCH",dados);}
 export async function createAgentInvite(validadeHoras=2):Promise<{convite:string;expira_em:string;aviso:string}>{return assetWrite("/admin/invites","POST",{validade_horas:validadeHoras,descricao:"Instalação de computador"});}
 export type AgentRelease={id:string;version:string;sha256:string;sizeBytes:number;active:boolean;publishedAt:string;revokedAt:string|null};
 export type AgentReleaseOverview={currentVersion:string|null;releases:AgentRelease[];agents:{version:string;total:number}[]};

@@ -375,7 +375,7 @@ export function useAdminPanel({
   useEffect(() => {
     if(!permissoesCarregadas)return;
     const teamTabs:AdminTab[]=["usuarios","acessos","carteira","teams"];
-    const adminTabs:AdminTab[]=["configuracoes","config_sla"];
+    const adminTabs:AdminTab[]=["configuracoes","config_sla","unidades"];
     const platformTabs:AdminTab[]=["empresas","config_integracoes","manutencao","diagnostico"];
     const analyticsTabs:AdminTab[]=["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos","relatorios"];
     const deniedDashboard=tab==="dashboard"&&!permissoesAtuais.includes("visualizar_dashboard");
@@ -1033,6 +1033,13 @@ export function useAdminPanel({
       icon: Clock3,
       label: "SLA",
       title: "SLA e prioridades",
+      show: administrador,
+    },
+    {
+      key: "unidades" as AdminTab,
+      icon: MapPinned,
+      label: "Unidades",
+      title: "Unidades da empresa",
       show: administrador,
     },
     {

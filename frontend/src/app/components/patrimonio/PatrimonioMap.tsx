@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import type { GeoJsonObject } from "geojson";
-import { centroMaranhao, municipiosMaranhao } from "../../data/municipiosMaranhao";
+import { centroMaranhao } from "../../data/municipiosMaranhao";
+import { useLocalidades } from "../../hooks/useLocalidades";
 import type { Device } from "../../types/device";
 
 const MARANHAO_BOUNDS: [[number, number], [number, number]] = [[-7.9, -48.8], [-0.7, -41.7]];
@@ -26,15 +27,25 @@ function writeGeoJsonCache(data: GeoJsonObject) {
   try { localStorage.setItem(IBGE_CACHE_KEY, JSON.stringify({ data, expiresAt: Date.now() + IBGE_CACHE_TTL_MS })); } catch { /* armazenamento indisponível */ }
 }
 
-function MapFocus({ device, municipio }: { device?: Device | null; municipio?: string }) {
+type Coordenada = { latitude: number; longitude: number };
+
+function media(pontos: Coordenada[]): Coordenada | null {
+  if (!pontos.length) return null;
+  return {
+    latitude: pontos.reduce((soma, p) => soma + p.latitude, 0) / pontos.length,
+    longitude: pontos.reduce((soma, p) => soma + p.longitude, 0) / pontos.length,
+  };
+}
+
+function MapFocus({ device, municipio, coordenadasCidades }: { device?: Device | null; municipio?: string; coordenadasCidades: Map<string, Coordenada> }) {
   const map = useMap();
   useEffect(() => {
     if (device && device.latitude != null && device.longitude != null) map.flyTo([device.latitude, device.longitude], 12, { duration: 0.8 });
     else if (municipio) {
-      const alvo = municipiosMaranhao.find((item) => item.nome === municipio);
+      const alvo = coordenadasCidades.get(municipio);
       if (alvo) map.flyTo([alvo.latitude, alvo.longitude], 10, { duration: 0.8 });
     }
-  }, [device, map, municipio]);
+  }, [coordenadasCidades, device, map, municipio]);
   return null;
 }
 
@@ -85,19 +96,32 @@ export function PatrimonioMap({ devices, allDevices, selected, municipio, onSele
   // As bolinhas das cidades surgem em sequência só na primeira vez; a atualização a cada 30 s
   // recria os ícones e não deve repetir a entrada.
   const citiesShown = useRef(false);
-  const cidades = useMemo(() => municipiosMaranhao.map((cidade, index) => {
+  const { unidades } = useLocalidades();
+  // Posição de cada cidade: média das unidades da empresa com coordenada; sem elas, a dos computadores dali.
+  const coordenadasCidades = useMemo(() => {
+    const resultado = new Map<string, Coordenada>();
+    for (const municipio of new Set([...unidades.map((u) => u.municipio), ...devicesByMunicipio.keys()])) {
+      const daUnidade = media(unidades.filter((u) => u.municipio === municipio && u.latitude != null && u.longitude != null) as Coordenada[]);
+      const dosAtivos = media((devicesByMunicipio.get(municipio) || []).filter((d) => d.latitude != null && d.longitude != null) as Coordenada[]);
+      const coordenada = daUnidade || dosAtivos;
+      if (coordenada) resultado.set(municipio, coordenada);
+    }
+    return resultado;
+  }, [devicesByMunicipio, unidades]);
+  const cidades = useMemo(() => [...coordenadasCidades.entries()].map(([nome, coordenada], index) => {
+    const cidade = { nome, ...coordenada };
     const ativos = devicesByMunicipio.get(cidade.nome) || [];
     const alertas = ativos.filter((device) => device.status !== "online").length;
     const icon = L.divIcon({ className: "city-dot-wrapper", html: `<div class="city-dot ${alertas ? "city-dot-alert" : ""}${citiesShown.current ? "" : " city-dot-intro"}" style="animation-delay:${Math.min(index, 30) * 35}ms"><span>${ativos.length}</span></div>`, iconSize: [34, 34], iconAnchor: [17, 17] });
     return { ...cidade, ativos, icon };
-  }).filter((cidade) => cidade.ativos.length > 0), [devicesByMunicipio]);
+  }).filter((cidade) => cidade.ativos.length > 0), [coordenadasCidades, devicesByMunicipio]);
   useEffect(() => { if (cidades.length) citiesShown.current = true; }, [cidades]);
 
   return <MapContainer center={centroMaranhao} zoom={7} minZoom={7} maxZoom={15} maxBounds={MARANHAO_BOUNDS} maxBoundsViscosity={1} scrollWheelZoom className="h-full w-full">
     <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" bounds={MARANHAO_BOUNDS} noWrap />
     {zoom <= 9 && cidades.map((cidade) => <Marker key={cidade.nome} position={[cidade.latitude, cidade.longitude]} icon={cidade.icon} eventHandlers={{ click: () => onMunicipioSelect(cidade.nome) }}><Tooltip direction="top" offset={[0, -12]}><b>{cidade.nome}</b><br />{cidade.ativos.length} computador(es)<br /><span className="text-emerald-600">{cidade.ativos.filter((device) => device.status === "online").length} online</span></Tooltip></Marker>)}
     {zoom > 9 && positionedDevices.map((device) => <Marker key={device.id} position={[device.latitude!, device.longitude!]} icon={icons.get(device.id)!} eventHandlers={{ click: () => onSelect(device) }}><Tooltip direction="top" offset={[0, -10]} opacity={1}><div className="min-w-40"><b>{device.hostname}</b><br />{device.patrimonio}<br />{device.municipio}<br /><span className={`device-tooltip-${device.status}`}>{device.status === "online" ? "Online" : device.status === "warning" ? "Atenção" : "Offline"}</span></div></Tooltip></Marker>)}
-    <MapFocus device={selected} municipio={municipio} />
+    <MapFocus device={selected} municipio={municipio} coordenadasCidades={coordenadasCidades} />
     <FitMaranhao data={maranhaoGeoJson} focused={Boolean(selected || municipio)} />
     <ZoomObserver onZoom={setZoom} />
   </MapContainer>;

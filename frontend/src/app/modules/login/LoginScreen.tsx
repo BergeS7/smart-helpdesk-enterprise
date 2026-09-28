@@ -6,7 +6,8 @@ import type { FormEvent } from "react";
 import { openLegalDocument } from "../../components/LegalComplianceLayer";
 import { ArrowRight, Eye, EyeOff, KeyRound, Mail, ShieldCheck, User } from "lucide-react";
 import { Toaster, toast } from "sonner";
-import { municipiosMaranhao } from "../../data/municipiosMaranhao";
+import { SeletorUnidade } from "../../components/shared/SeletorUnidade";
+import { useLocalidades } from "../../hooks/useLocalidades";
 import { Button, Field, Input } from "../../components/shared/FormPrimitives";
 import { cadastrarUsuarioPublico, obterEmpresaPublica, verificarEmailCadastro, reenviarVerificacaoEmail, login, redefinirSenha, salvarSessao, solicitarRecuperacaoSenha, type ApiAvisoSistema, type ConfiguracoesSistema, type UsuarioLogado } from "../../services/api";
 import { AvisosSistemaBanner, SystemThemeStyle, logoSistema1, nomeSistema, normalizarPerfilApp, variaveisTemaSistema } from "../comum/appShared";
@@ -28,6 +29,8 @@ export function LoginScreen({
   const [mode, setMode] = useState<LoginMode>("usuario");
   const [tela, setTela] = useState<TelaAuth>("login");
   const [empresaCadastro, setEmpresaCadastro] = useState<{ nome: string; slug: string } | null>(null);
+  // Unidades da empresa do link de cadastro (ou da principal, sem link).
+  const localidades = useLocalidades(empresaCadastroSlug);
 
   useEffect(() => {
     if (!empresaCadastroSlug) return;
@@ -360,12 +363,16 @@ export function LoginScreen({
                   />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Município">
-                    <select required value={cadastro.municipio} onChange={(e) => { const municipio = e.target.value; setCadastro({ ...cadastro, municipio, unidade: municipio ? `Maranhão Motos - ${municipio}` : "" }); }} className="h-10 w-full rounded-md border border-input bg-input-background px-3 text-sm">
-                      <option value="">Selecione</option>{municipiosMaranhao.map((item) => <option key={item.nome} value={item.nome}>{item.nome}</option>)}
-                    </select>
+                  <Field label="Unidade">
+                    <SeletorUnidade
+                      required
+                      unidades={localidades.unidades}
+                      carregando={localidades.carregando}
+                      value={cadastro}
+                      onChange={({ municipio, unidade }) => setCadastro({ ...cadastro, municipio, unidade })}
+                      className="h-10 w-full rounded-md border border-input bg-input-background px-3 text-sm"
+                    />
                   </Field>
-                  <Field label="Unidade"><Input readOnly value={cadastro.unidade} placeholder="Definida pelo município" /></Field>
                 </div>
                 <label className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-zinc-700">
                   <input

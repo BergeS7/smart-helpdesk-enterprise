@@ -4,7 +4,7 @@
 import { Filter, Search, X } from "lucide-react";
 import { useState } from "react";
 import type { FiltrosChamados } from "../services/api";
-import { municipiosMaranhao } from "../data/municipiosMaranhao";
+import { useLocalidades } from "../hooks/useLocalidades";
 
 export function TicketWorkspaceToolbar({
   filters,
@@ -20,6 +20,7 @@ export function TicketWorkspaceToolbar({
   embedded?: boolean;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const { unidades, municipios } = useLocalidades();
   const active =
     Number(!!filters.prioridade) +
     Number(!!filters.status) +
@@ -105,33 +106,33 @@ export function TicketWorkspaceToolbar({
                 value={filters.municipio || ""}
                 onChange={(e) => {
                   const municipio = e.target.value || undefined;
-                  onChange({
-                    ...filters,
-                    municipio,
-                    unidade: municipio
-                      ? `Maranhão Motos - ${municipio}`
-                      : undefined,
-                  });
+                  onChange({ ...filters, municipio, unidade: undefined });
                 }}
                 className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm font-bold"
               >
-                <option value="">Todas as 27 áreas</option>
-                {municipiosMaranhao.map((item) => (
-                  <option key={item.nome}>{item.nome}</option>
+                <option value="">Todas as áreas</option>
+                {municipios.map((nome) => (
+                  <option key={nome}>{nome}</option>
                 ))}
               </select>
             </label>
             <label className="text-xs font-bold text-slate-500">
               Unidade / local do atendimento
-              <input
+              <select
                 aria-label="Unidade"
                 value={filters.unidade || ""}
                 onChange={(e) =>
                   onChange({ ...filters, unidade: e.target.value || undefined })
                 }
-                placeholder="Todas as unidades"
                 className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm font-bold"
-              />
+              >
+                <option value="">Todas as unidades</option>
+                {unidades
+                  .filter((u) => !filters.municipio || u.municipio === filters.municipio)
+                  .map((u) => (
+                    <option key={u.id} value={u.nome}>{u.nome}</option>
+                  ))}
+              </select>
             </label>
             <label className="text-xs font-bold text-slate-500">
               Prioridade

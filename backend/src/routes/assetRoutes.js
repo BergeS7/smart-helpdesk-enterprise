@@ -27,4 +27,5 @@ router.patch("/:id/location",auth,exigirPermissao("administrar_ativos"),c.update
 router.patch("/:id/user",auth,exigirPermissao("administrar_ativos"),c.setUser);
 router.patch("/:id/status",auth,exigirPermissao("administrar_ativos"),c.updateStatus);
 router.post("/admin/locations",auth,exigirPerfis(["admin"]),c.saveLocation);
+router.patch("/admin/locations/:id",auth,exigirPerfis(["admin"]),c.updateUnit);
 module.exports=router;

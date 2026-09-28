@@ -79,6 +79,13 @@ export const ativarConviteEmpresa = (token: string, dados: { nome: string; senha
 export const obterEmpresaPublica = (slug: string) =>
   request<{ nome: string; slug: string }>(`/empresas/publico/${encodeURIComponent(slug)}`, { auth: false });
 
+/** Unidade onde a pessoa trabalha; o conjunto delas é a área de atuação da empresa. */
+export type Localidade = { id: number; nome: string; municipio: string; latitude: number | null; longitude: number | null };
+
+/** Com sessão, as da empresa do usuário; sem sessão, as da empresa do link de cadastro ou da principal. */
+export const listarLocalidades = (empresaSlug?: string) =>
+  request<Localidade[]>(`/empresas/localidades${empresaSlug ? `?empresa=${encodeURIComponent(empresaSlug)}` : ""}`);
+
 /** Links montados no endereço em que o sistema está aberto (o mesmo que o cliente vai usar). */
 export const linkAtivacaoEmpresa = (token: string) => `${window.location.origin}/ativar/${token}`;
 export const linkCadastroEmpresa = (slug: string) => `${window.location.origin}/cadastro/${slug}`;

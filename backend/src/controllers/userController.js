@@ -9,10 +9,10 @@ const pool = require("../config/database");
 const { emailConfigurado, enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil, limparFotosPerfil, enviarAvatar, removerAvatar, arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
-const { validLocation } = require("../domain/serviceArea");
+const { localidadeValida } = require("../services/localidadesService");
 const { senhaValida } = require("../utils/passwordPolicy");
 const { normalizarPerfil, ehAdmin, ehDonoPlataforma, ehEmailDonoPlataforma } = require("../utils/permissoes");
-const { EMPRESA_PRINCIPAL } = require("../config/tenantContext");
+const { EMPRESA_PRINCIPAL, executarComoEmpresa } = require("../config/tenantContext");
 const { empresaAtivaPorSlug } = require("./empresaController");
 
 function normalizarTexto(valor) {
@@ -220,11 +220,12 @@ async function criarPrimeiroAdmin(req, res) {
 async function cadastrarUsuarioPublico(req, res) {
   try {
     const { nome, email, senha, telefone, departamento, municipio, unidade, cargo, aceitaTermos, empresa } = req.body;
-    if (!validLocation(municipio, unidade)) return res.status(400).json({ erro: "Município ou unidade fora da área de atuação." });
-
     // Link /cadastro/<slug> leva a pessoa para a empresa dela; sem slug, vale a empresa principal.
     const empresaId = empresa ? await empresaAtivaPorSlug(empresa) : EMPRESA_PRINCIPAL;
     if (!empresaId) return res.status(404).json({ erro: "Link de cadastro inválido ou empresa indisponível." });
+    if (!(await executarComoEmpresa(empresaId, () => localidadeValida(municipio, unidade)))) {
+      return res.status(400).json({ erro: "Escolha uma das unidades da empresa." });
+    }
 
     if (!normalizarTexto(nome) || !normalizarEmail(email) || !normalizarTexto(senha)) {
       return res.status(400).json({
@@ -356,7 +357,7 @@ async function createUser(req, res) {
   try {
     const perfilAutor = perfilDoRequest(req);
     const { nome, email, senha, perfil, status, telefone, departamento, municipio, unidade, cargo } = req.body;
-    if (!validLocation(municipio, unidade)) return res.status(400).json({ erro: "Município ou unidade fora da área de atuação." });
+    if (!(await localidadeValida(municipio, unidade))) return res.status(400).json({ erro: "Escolha uma das unidades da empresa." });
 
     if (!normalizarTexto(nome) || !normalizarEmail(email) || !normalizarTexto(senha)) {
       return res.status(400).json({
@@ -618,7 +619,7 @@ async function atualizarUsuarioAdmin(req, res) {
     if (dados.email !== undefined && ehEmailDonoPlataforma(dados.email) && !(await contaDonaPlataforma(id))) {
       return res.status(403).json({ erro: "Este e-mail é reservado à administração da plataforma." });
     }
-    if ((dados.municipio !== undefined || dados.unidade !== undefined) && !validLocation(dados.municipio, dados.unidade)) return res.status(400).json({ erro: "Município ou unidade fora da área de atuação." });
+    if ((dados.municipio !== undefined || dados.unidade !== undefined) && !(await localidadeValida(dados.municipio, dados.unidade))) return res.status(400).json({ erro: "Escolha uma das unidades da empresa." });
 
     if (dados.email !== undefined && !normalizarEmail(dados.email)) {
       return res.status(400).json({
@@ -751,7 +752,7 @@ async function atualizarMeuPerfil(req, res) {
     }
 
     const { nome, telefone, departamento, municipio, unidade, cargo } = req.body;
-    if ((municipio !== undefined || unidade !== undefined) && !validLocation(municipio, unidade)) return res.status(400).json({ erro: "Município ou unidade fora da área de atuação." });
+    if ((municipio !== undefined || unidade !== undefined) && !(await localidadeValida(municipio, unidade))) return res.status(400).json({ erro: "Escolha uma das unidades da empresa." });
 
     const result = await pool.query(
       `UPDATE usuarios

@@ -6,7 +6,8 @@ import { MapPin, Search, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { criarUsuarioAdmin, type ApiUsuario, type PerfilUsuario } from "../../services/api";
 import { PermissionMatrixPage } from "../../components/PermissionMatrixPage";
-import { municipiosMaranhao } from "../../data/municipiosMaranhao";
+import { SeletorUnidade } from "../../components/shared/SeletorUnidade";
+import { useLocalidades } from "../../hooks/useLocalidades";
 
 const initial = {
   nome: "",
@@ -64,6 +65,7 @@ export function UsersModule({
   onReject,
   onDelete,
 }: Props) {
+  const localidades = useLocalidades();
   const [mode, setMode] = useState<"list" | "access">(initialMode),
     [form, setForm] = useState(initial),
     [saving, setSaving] = useState(false),
@@ -156,32 +158,14 @@ export function UsersModule({
               </label>
             ))}
             <label className="block text-xs font-bold text-slate-600">
-              Cidade / área de atuação
-              <select
-                required
-                value={form.municipio}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setForm({
-                    ...form,
-                    municipio: value,
-                    unidade: value ? `Maranhão Motos - ${value}` : "",
-                  });
-                }}
-                className="mt-1 w-full px-3"
-              >
-                <option value="">Selecione</option>
-                {municipiosMaranhao.map((item) => (
-                  <option key={item.nome}>{item.nome}</option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-xs font-bold text-slate-600">
               Unidade
-              <input
-                readOnly
-                value={form.unidade}
-                className="mt-1 w-full bg-slate-50 px-3"
+              <SeletorUnidade
+                required
+                unidades={localidades.unidades}
+                carregando={localidades.carregando}
+                value={form}
+                onChange={({ municipio, unidade }) => setForm({ ...form, municipio, unidade })}
+                className="mt-1 w-full px-3"
               />
             </label>
             <label className="block text-xs font-bold text-slate-600">
@@ -229,8 +213,8 @@ export function UsersModule({
                     className="h-10 rounded-xl border px-3 text-xs font-bold"
                   >
                     <option value="">Todas as áreas</option>
-                    {municipiosMaranhao.map((item) => (
-                      <option key={item.nome}>{item.nome}</option>
+                    {localidades.municipios.map((nome) => (
+                      <option key={nome}>{nome}</option>
                     ))}
                   </select>
                 </div>
