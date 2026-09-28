@@ -113,6 +113,7 @@ async function executarLogin(req, res, perfisPermitidos) {
           ,email_verificado_em
           ,COALESCE(token_version, 1) AS token_version
           ,foto_perfil
+          ,(SELECT e.status FROM empresas e WHERE e.id = usuarios.empresa_id) AS empresa_status
        FROM usuarios
        WHERE LOWER(email) = LOWER($1)`,
       [String(email).trim()]
@@ -187,6 +188,11 @@ async function executarLogin(req, res, perfisPermitidos) {
         erro: mensagemStatusUsuario(usuario.status),
         status: usuario.status,
       });
+    }
+
+    // Mesma regra do authMiddleware: empresa suspensa ou cancelada não entra (a administração da plataforma sim).
+    if (usuario.empresa_status !== "ativa" && !ehDonoPlataforma(usuario)) {
+      return res.status(403).json({ erro: "O acesso desta empresa está suspenso. Fale com o responsável pelo contrato." });
     }
 
     await pool.query(

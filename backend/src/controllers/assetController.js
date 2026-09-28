@@ -10,7 +10,7 @@ const ASSET_STATUSES = new Set(["online", "warning", "offline"]);
 const { listarUnidades } = require("../services/localidadesService");
 const inventoryDomain = require("../domain/assetInventory");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
-const { executarComoEmpresa } = require("../config/tenantContext");
+const { executarComoEmpresa, executarComoSistema } = require("../config/tenantContext");
 async function validInvite(token) {
   if (!token) return null;
   const result = await pool.query("SELECT id, empresa_id FROM agente_convites WHERE token_hash=$1 AND usado_em IS NULL AND revogado_em IS NULL AND expira_em>NOW()", [hash(token)]);
@@ -32,6 +32,10 @@ async function enroll(req, res) {
 }
 
 async function registrarAtivo(req, res, invite) {
+  // O mesmo computador já cadastrado em outra empresa: a linha é invisível aqui e o ON CONFLICT falharia.
+  const deviceIdInformado = clean(req.body.deviceId || req.body.serialNumber || req.body.hostname, 100);
+  const emOutraEmpresa = deviceIdInformado && await executarComoSistema(() => pool.query("SELECT 1 FROM ativos WHERE device_id=$1 AND empresa_id<>$2", [deviceIdInformado, invite.empresa_id]));
+  if (emOutraEmpresa?.rows.length) return res.status(409).json({ erro: "Este computador já está cadastrado em outra empresa. Peça à administração da plataforma para liberá-lo antes de instalar com este convite." });
   const deviceId = clean(req.body.deviceId || req.body.serialNumber || req.body.hostname, 100);
   const hostname = clean(req.body.hostname);
   if (!deviceId || !hostname) return res.status(400).json({ erro: "deviceId e hostname são obrigatórios" });

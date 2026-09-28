@@ -25,4 +25,15 @@ async function localidadeValida(municipio, unidade) {
   return result.rows.length > 0;
 }
 
-module.exports = { listarUnidades, localidadeValida };
+// Na edição de um usuário, manter a localização que ele já tem é sempre aceito (a unidade pode ter sido
+// desativada depois); só uma localização nova precisa ser uma unidade ativa. Campo omitido mantém o atual.
+async function localidadeAceitaParaUsuario(usuarioId, municipio, unidade) {
+  const atual = (await pool.query("SELECT municipio, unidade FROM usuarios WHERE id = $1", [usuarioId])).rows[0] || {};
+  const texto = (valor) => String(valor || "").trim();
+  const novoMunicipio = municipio === undefined ? atual.municipio : municipio;
+  const novaUnidade = unidade === undefined ? atual.unidade : unidade;
+  if (texto(novoMunicipio) === texto(atual.municipio) && texto(novaUnidade) === texto(atual.unidade)) return true;
+  return localidadeValida(novoMunicipio, novaUnidade);
+}
+
+module.exports = { listarUnidades, localidadeValida, localidadeAceitaParaUsuario };

@@ -12,6 +12,8 @@ test("PostgreSQL: problemas recorrentes e cobertura pela base", {
   const { Client } = require("pg");
   const client = new Client({ connectionString: process.env.KB_TEST_DATABASE_URL });
   await client.connect();
+  // Conexão direta (sem o contexto da requisição): os dados de teste entram na empresa principal.
+  await client.query("SELECT set_config('app.empresa_id', '1', false)");
   const databasePath = require.resolve("../src/config/database");
   require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded: true, exports: client };
   for (const modulo of ["../src/services/knowledgeRecurrenceService", "../src/services/knowledgeSearchService", "../src/services/knowledgeMetricsService"]) {

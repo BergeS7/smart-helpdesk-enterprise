@@ -32,6 +32,8 @@ export default function App() {
     ApiAvisoSistema[]
   >([]);
 
+  // Nome, logo e cores são de cada empresa: recarrega ao entrar ou trocar de conta, não só ao abrir a página.
+  const usuarioId = usuario?.id;
   useEffect(() => {
     obterConfiguracoesSistema()
       .then((config) =>
@@ -41,7 +43,7 @@ export default function App() {
     listarAvisosSistemaAtivos()
       .then(setAvisosSistemaGlobal)
       .catch(() => {});
-  }, []);
+  }, [usuarioId]);
 
   const content = rotaPublica.ativar ? (
     <AtivacaoEmpresa token={rotaPublica.ativar} configSistema={configSistemaGlobal} />

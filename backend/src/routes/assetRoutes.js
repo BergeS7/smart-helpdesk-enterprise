@@ -2,12 +2,13 @@
  * Responsabilidade: Rotas de asset; associa endpoints aos middlewares e controladores autorizados.
  */
 const router=require("express").Router();
-const auth=require("../middlewares/authMiddleware"); const {exigirPerfis,exigirPermissao,exigirDonoPlataforma}=require("../middlewares/authMiddleware");
+const auth=require("../middlewares/authMiddleware"); const {exigirPerfis,exigirPermissao,exigirDonoPlataforma,modoSistema}=require("../middlewares/authMiddleware");
 const c=require("../controllers/assetController");
 const {agentEnrollmentLimiter}=require("../middlewares/securityMiddleware");
 router.get("/agent/locations",agentEnrollmentLimiter,c.locations); router.post("/agent/enroll",agentEnrollmentLimiter,c.enroll); router.post("/agent/heartbeat",c.authenticateAgent,c.heartbeat); router.post("/agent/report",c.authenticateAgent,c.reportInventory);
 const releases=require("../controllers/agentReleaseController");
-router.get("/agent/update",c.authenticateAgent,releases.latestForAgent); router.get("/agent/update/package",c.authenticateAgent,releases.packageForAgent);
+// Versões do agente são da plataforma (agente_versoes não é visível para o papel das empresas).
+router.get("/agent/update",c.authenticateAgent,modoSistema,releases.latestForAgent); router.get("/agent/update/package",c.authenticateAgent,modoSistema,releases.packageForAgent);
 router.get("/admin/agent-releases",auth,exigirDonoPlataforma,releases.adminList);
 router.post("/admin/agent-releases",auth,exigirDonoPlataforma,releases.adminPublish);
 router.patch("/admin/agent-releases/:id/revoke",auth,exigirDonoPlataforma,releases.adminRevoke);

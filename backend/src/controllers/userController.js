@@ -9,7 +9,7 @@ const pool = require("../config/database");
 const { emailConfigurado, enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil, limparFotosPerfil, enviarAvatar, removerAvatar, arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
-const { localidadeValida } = require("../services/localidadesService");
+const { localidadeValida, localidadeAceitaParaUsuario } = require("../services/localidadesService");
 const { senhaValida } = require("../utils/passwordPolicy");
 const { normalizarPerfil, ehAdmin, ehDonoPlataforma, ehEmailDonoPlataforma } = require("../utils/permissoes");
 const { EMPRESA_PRINCIPAL, executarComoEmpresa } = require("../config/tenantContext");
@@ -619,7 +619,7 @@ async function atualizarUsuarioAdmin(req, res) {
     if (dados.email !== undefined && ehEmailDonoPlataforma(dados.email) && !(await contaDonaPlataforma(id))) {
       return res.status(403).json({ erro: "Este e-mail é reservado à administração da plataforma." });
     }
-    if ((dados.municipio !== undefined || dados.unidade !== undefined) && !(await localidadeValida(dados.municipio, dados.unidade))) return res.status(400).json({ erro: "Escolha uma das unidades da empresa." });
+    if ((dados.municipio !== undefined || dados.unidade !== undefined) && !(await localidadeAceitaParaUsuario(id, dados.municipio, dados.unidade))) return res.status(400).json({ erro: "Escolha uma das unidades da empresa." });
 
     if (dados.email !== undefined && !normalizarEmail(dados.email)) {
       return res.status(400).json({
@@ -752,7 +752,7 @@ async function atualizarMeuPerfil(req, res) {
     }
 
     const { nome, telefone, departamento, municipio, unidade, cargo } = req.body;
-    if ((municipio !== undefined || unidade !== undefined) && !(await localidadeValida(municipio, unidade))) return res.status(400).json({ erro: "Escolha uma das unidades da empresa." });
+    if ((municipio !== undefined || unidade !== undefined) && !(await localidadeAceitaParaUsuario(usuarioId, municipio, unidade))) return res.status(400).json({ erro: "Escolha uma das unidades da empresa." });
 
     const result = await pool.query(
       `UPDATE usuarios

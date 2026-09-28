@@ -22,7 +22,14 @@ function erroHttp(status, mensagem) {
 
 function responderErro(res, error, contexto) {
   if (error.status) return res.status(error.status).json({ erro: error.message });
-  if (error.code === "23505") return res.status(409).json({ erro: "Já existe uma empresa com este CNPJ." });
+  if (error.code === "23505") {
+    const conflitos = {
+      uq_empresas_cnpj: "Já existe uma empresa com este CNPJ.",
+      uq_empresas_slug: "Outra empresa acabou de ser cadastrada com um nome parecido. Tente novamente.",
+      usuarios_email_key: "Já existe uma conta com este e-mail.",
+    };
+    return res.status(409).json({ erro: conflitos[error.constraint] || "Registro duplicado." });
+  }
   console.error(`Erro ao ${contexto}:`, error);
   return res.status(500).json({ erro: `Erro ao ${contexto}.` });
 }

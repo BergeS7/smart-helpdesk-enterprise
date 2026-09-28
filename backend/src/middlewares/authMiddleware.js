@@ -64,6 +64,11 @@ async function autenticacaoOpcional(req, res, next) {
   executarComoEmpresa(req.user.empresaId, next);
 }
 
+// Para recursos da plataforma acessados por quem já se identificou (ex.: agente buscando a versão nova).
+function modoSistema(req, res, next) {
+  executarComoSistema(next);
+}
+
 // Callbacks de upload (multer) perdem o contexto assíncrono; reaplica a empresa já autenticada.
 function manterEmpresa(req, res, next) {
   if (!req.user?.empresaId) return next();
@@ -106,4 +111,5 @@ module.exports.exigirPerfis = exigirPerfis;
 module.exports.exigirPermissao = exigirPermissao;
 module.exports.exigirDonoPlataforma = exigirDonoPlataforma;
 module.exports.manterEmpresa = manterEmpresa;
+module.exports.modoSistema = modoSistema;
 module.exports.autenticacaoOpcional = autenticacaoOpcional;

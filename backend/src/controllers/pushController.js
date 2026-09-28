@@ -1,5 +1,6 @@
 const pool = require("../config/database");
 const push = require("../services/pushService");
+const { executarComoSistema } = require("../config/tenantContext");
 
 exports.config = async (req, res) => {
   try {
@@ -13,11 +14,13 @@ exports.subscribe = async (req, res) => {
   try {
     await push.ensurePushSchema();
     const subscription = { endpoint: req.body.endpoint, keys: { p256dh: req.body.keys.p256dh, auth: req.body.keys.auth } };
-    const result = await pool.query(`INSERT INTO web_push_subscriptions(endpoint,usuario_id,subscription,token_version)
-      VALUES($1,$2,$3,$4) ON CONFLICT(endpoint) DO UPDATE SET
+    // Em modo sistema: o aparelho pode estar inscrito por alguém de outra empresa (linha invisível para a RLS);
+    // o WHERE garante que só a própria inscrição é atualizada, e o conflito vira o 409 abaixo.
+    const result = await executarComoSistema(() => pool.query(`INSERT INTO web_push_subscriptions(endpoint,usuario_id,subscription,token_version,empresa_id)
+      VALUES($1,$2,$3,$4,$5) ON CONFLICT(endpoint) DO UPDATE SET
       subscription=EXCLUDED.subscription,token_version=EXCLUDED.token_version,atualizado_em=NOW()
       WHERE web_push_subscriptions.usuario_id=EXCLUDED.usuario_id RETURNING endpoint`,
-    [subscription.endpoint, req.user.id, JSON.stringify(subscription), req.user.tokenVersion]);
+    [subscription.endpoint, req.user.id, JSON.stringify(subscription), req.user.tokenVersion, req.user.empresaId]));
     if (!result.rows.length) return res.status(409).json({ erro: "Este aparelho está vinculado a outra conta. Desative e ative novamente." });
     res.json({ enabled: true });
   } catch { res.status(503).json({ erro: "Não foi possível ativar as notificações." }); }

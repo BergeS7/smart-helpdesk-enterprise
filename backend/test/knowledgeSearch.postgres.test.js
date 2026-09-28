@@ -12,6 +12,8 @@ test("PostgreSQL: recomendação por confiança e visibilidade", {
   const { Client } = require("pg");
   const client = new Client({ connectionString: process.env.KB_TEST_DATABASE_URL });
   await client.connect();
+  // Conexão direta (sem o contexto da requisição): os dados de teste entram na empresa principal.
+  await client.query("SELECT set_config('app.empresa_id', '1', false)");
   const databasePath = require.resolve("../src/config/database");
   require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded: true, exports: client };
   delete require.cache[require.resolve("../src/services/knowledgeSearchService")];
