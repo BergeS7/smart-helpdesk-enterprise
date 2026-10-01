@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Smart HelpDesk Maranhão Motos",
+  "name": "Smart HelpDesk",
   "short_name": "Smart HelpDesk",
-  "description": "Central corporativa de chamados, atendimento e suporte da Maranhão Motos.",
+  "description": "Central corporativa de chamados, atendimento e suporte.",
   "lang": "pt-BR",
   "start_url": "/?source=pwa",
   "scope": "/",
