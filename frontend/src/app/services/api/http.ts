@@ -8,6 +8,8 @@ export const API_URL =
 
 export type PerfilUsuario = "usuario" | "tecnico" | "supervisor" | "admin";
 
+export type RecursoPlano = "base_conhecimento" | "assistente_ia";
+
 export type UsuarioLogado = {
   id: number;
   nome: string;
@@ -15,6 +17,10 @@ export type UsuarioLogado = {
   perfil: PerfilUsuario;
   /** Conta dona da plataforma SaaS (definida no servidor); não é um perfil. */
   plataforma?: boolean;
+  /** Plano da empresa e recursos que ele libera; ausente em sessões antigas (aí nada é escondido). */
+  plano?: "base" | "plus" | "pro";
+  plano_nome?: string;
+  recursos?: RecursoPlano[];
   status?: string;
   telefone?: string;
   departamento?: string;

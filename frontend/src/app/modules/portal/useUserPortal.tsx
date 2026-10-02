@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { PORTAL_ROUTES, useModuleRoute } from "../../routes/useModuleRoute";
 import { atualizarChamado, atualizarMeuPerfil, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, baixarRelatorio, buscarChamado, criarChamado, criarDemandaDesenvolvimento, listarBaseConhecimento, listarCatalogo, listarChamadosDoUsuario, listarNotificacoes, marcarNotificacoesLidas, obterDashboard, obterMeuPerfil, obterMinhasPermissoes, reportFrontendError, removerMinhaFotoPerfil, sugerirArtigosBase, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type ArtigoSugerido, type CatalogoItem, type DashboardResumo, type Notificacao, type ConfiguracoesSistema, type UsuarioLogado, type PermissionKey } from "../../services/api";
-import { STATUS_COLUNAS, chamadoIdFromNotification, emailSuporteSistema, logoSistema1, nomeSistema, normalizeStatus } from "../comum/appShared";
+import { STATUS_COLUNAS, chamadoIdFromNotification, emailSuporteSistema, logoSistema1, nomeSistema, normalizeStatus, temRecursoApp } from "../comum/appShared";
 import type { UsuarioTab } from "../comum/appShared";
 
 // Espera o usuário parar de digitar antes de consultar; abaixo do mínimo a API nem é chamada.
@@ -82,6 +82,9 @@ export function useUserPortal({
   const [formatoBaixando, setFormatoBaixando] = useState<"csv" | "excel" | "pdf" | null>(null);
 
   const usuarioAtual = perfil || usuario;
+  // Recursos do plano da empresa: a base de conhecimento começa no Plus e o assistente de IA, no Pro.
+  const temBase = temRecursoApp(usuarioAtual, "base_conhecimento");
+  const temAssistente = temRecursoApp(usuarioAtual, "assistente_ia");
   const sistemaNome = nomeSistema(configSistema);
   const sistemaLogo1 = logoSistema1(configSistema);
   const suporteEmail = emailSuporteSistema(configSistema);
@@ -228,12 +231,7 @@ export function useUserPortal({
       label: "Meus Chamados",
       title: "Meus chamados",
     },
-    {
-      key: "base" as UsuarioTab,
-      icon: BookOpen,
-      label: "Base de Conhecimento",
-      title: "Base de conhecimento",
-    },
+    ...(temBase ? [{ key: "base" as UsuarioTab, icon: BookOpen, label: "Base de Conhecimento", title: "Base de conhecimento" }] : []),
     {
       key: "avisos" as UsuarioTab,
       icon: Bell,
@@ -638,6 +636,8 @@ export function useUserPortal({
   return {
     usuario,
     setUsuario,
+    temBase,
+    temAssistente,
     onLogout,
     configSistema,
     avisosSistema,

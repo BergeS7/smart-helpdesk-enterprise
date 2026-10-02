@@ -42,7 +42,7 @@ export const ADMIN_ROUTES: Record<AdminRouteKey, readonly string[]> = {
   projetos: ["/admin/desenvolvimento/projetos"],
 };
 
-export type NavigationContext = { administrador:boolean; plataforma:boolean; tecnico:boolean; permissions:PermissionKey[] };
+export type NavigationContext = { administrador:boolean; plataforma:boolean; tecnico:boolean; permissions:PermissionKey[]; baseConhecimento?:boolean };
 export type NavigationArea = { id:string; label:string; title:string; description:string; icon:typeof LayoutDashboard; defaultTab:AdminRouteKey; tabs:AdminRouteKey[]; visible:boolean };
 
 export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
@@ -53,7 +53,7 @@ export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
     {id:"development",label:"Desenvolvimento",title:"Desenvolvimento e Projetos",description:"Analise melhorias, automações, backlog, entregas e resultados gerados pela TI.",icon:Code2,defaultTab:"desenvolvimento",tabs:["desenvolvimento","projetos"],visible:ctx.administrador||ctx.permissions.includes("desenvolvimento_visualizar")},
     {id:"team",label:"Equipe",title:"Equipe e Acessos",description:"Gerencie pessoas, capacidade, grupos e permissões de acesso.",icon:Users,defaultTab:"usuarios",tabs:["usuarios","carteira","teams","acessos"],visible:ctx.administrador},
     {id:"analytics",label:"Indicadores",title:"Indicadores",description:"Analise desempenho, SLA, satisfação e evolução do atendimento.",icon:BarChart3,defaultTab:ctx.tecnico?"satisfacao":"indicadores_operacao",tabs:ctx.tecnico?["satisfacao"]:["indicadores_operacao","indicadores_sla","indicadores_tecnicos","satisfacao","indicadores_ativos","relatorios"],visible:reports||ctx.administrador||ctx.tecnico},
-    {id:"knowledge",label:"Base",title:"Base de Conhecimento",description:"Centralize orientações e soluções reutilizáveis para a equipe.",icon:BookOpen,defaultTab:"base",tabs:["base"],visible:ctx.permissions.includes("gerenciar_base")},
+    {id:"knowledge",label:"Base",title:"Base de Conhecimento",description:"Centralize orientações e soluções reutilizáveis para a equipe.",icon:BookOpen,defaultTab:"base",tabs:["base"],visible:ctx.baseConhecimento!==false&&ctx.permissions.includes("gerenciar_base")},
     {id:"assets",label:"Ativos",title:"Monitoramento de Ativos",description:"Acompanhe equipamentos, disponibilidade e alertas da operação.",icon:MapPinned,defaultTab:"patrimonio",tabs:["patrimonio"],visible:ctx.permissions.includes("visualizar_patrimonio")},
     {id:"admin",label:"Ajustes",title:"Ajustes",description:"Configure as regras, o SLA e os catálogos da sua empresa.",icon:Settings,defaultTab:"configuracoes",tabs:["configuracoes","config_sla","unidades","catalogos"],visible:ctx.administrador},
     {id:"platform",label:"Plataforma",title:"Plataforma",description:"Empresas clientes, saúde do sistema, avisos e integrações do SaaS.",icon:Building2,defaultTab:"empresas",tabs:["empresas","diagnostico","manutencao","config_integracoes"],visible:ctx.plataforma},

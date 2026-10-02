@@ -12,6 +12,7 @@ const { recordLegalAcceptance } = require("../services/privacyComplianceService"
 const { localidadeValida, localidadeAceitaParaUsuario } = require("../services/localidadesService");
 const { senhaValida } = require("../utils/passwordPolicy");
 const { normalizarPerfil, ehAdmin, ehDonoPlataforma, ehEmailDonoPlataforma } = require("../utils/permissoes");
+const { dadosPlanoPublico } = require("../domain/planos");
 const { EMPRESA_PRINCIPAL, executarComoEmpresa } = require("../config/tenantContext");
 const { empresaAtivaPorSlug } = require("./empresaController");
 
@@ -75,6 +76,7 @@ async function montarUsuarioPublico(usuario, req = null) {
     email: usuario.email || "",
     perfil: normalizarPerfilUsuario(usuario.perfil),
     plataforma: ehDonoPlataforma(usuario),
+    ...dadosPlanoPublico(usuario.empresa_plano),
     status: usuario.status || "ativo",
     telefone: usuario.telefone || "",
     departamento: usuario.departamento || "",
@@ -110,7 +112,8 @@ async function buscarUsuarioPorId(id, req = null) {
         ultimo_login_em,
         bloqueado_ate,
         foto_perfil,
-        email_verificado_em
+        email_verificado_em,
+        (SELECT e.plano FROM empresas e WHERE e.id = usuarios.empresa_id) AS empresa_plano
      FROM usuarios
      WHERE id = $1`,
     [id]

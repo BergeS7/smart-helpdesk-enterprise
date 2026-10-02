@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: regras puras do cadastro de empresas clientes (slug, CNPJ, plano e dados do responsável).
  */
-const PLANOS = Object.freeze(["essencial", "profissional", "enterprise"]);
+const { PLANOS, PLANO_PADRAO } = require("./planos");
 const STATUS_EMPRESA = Object.freeze(["ativa", "suspensa", "cancelada"]);
 const CONVITE_VALIDADE_DIAS = 7;
 const SLUG_MAX = 50;
@@ -82,7 +82,7 @@ function validarEmpresa(entrada = {}, { parcial = false } = {}) {
     dados.cnpj = null;
   }
   if (informado("plano") || entrada.plano !== undefined) {
-    const plano = String(entrada.plano || (parcial ? "" : "essencial")).trim().toLowerCase();
+    const plano = String(entrada.plano || (parcial ? "" : PLANO_PADRAO)).trim().toLowerCase();
     if (!PLANOS.includes(plano)) erros.push("Plano inválido.");
     else dados.plano = plano;
   }

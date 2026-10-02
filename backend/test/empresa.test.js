@@ -28,10 +28,10 @@ test("CNPJ confere os dígitos verificadores", () => {
   assert.equal(cnpjValido("123"), false);
 });
 
-test("cadastro exige nome e e-mail do responsável; plano padrão é o essencial", () => {
+test("cadastro exige nome e e-mail do responsável; plano padrão é o base", () => {
   const ok = validarEmpresa({ nome: "Acme", email_responsavel: " TI@Acme.com.br ", cnpj: "11.222.333/0001-81" });
   assert.deepEqual(ok.erros, []);
-  assert.deepEqual(ok.dados, { nome: "Acme", email_responsavel: "ti@acme.com.br", cnpj: "11222333000181", plano: "essencial" });
+  assert.deepEqual(ok.dados, { nome: "Acme", email_responsavel: "ti@acme.com.br", cnpj: "11222333000181", plano: "base" });
 
   const ruim = validarEmpresa({ nome: "A", email_responsavel: "sem-arroba", plano: "gratis", cnpj: "000" });
   assert.equal(ruim.erros.length, 4);
@@ -39,7 +39,7 @@ test("cadastro exige nome e e-mail do responsável; plano padrão é o essencial
 
 test("edição valida só os campos enviados e aceita remover o CNPJ", () => {
   assert.deepEqual(validarEmpresa({ status: "suspensa" }, { parcial: true }), { dados: { status: "suspensa" }, erros: [] });
-  assert.deepEqual(validarEmpresa({ plano: "profissional" }, { parcial: true }).dados, { plano: "profissional" });
+  assert.deepEqual(validarEmpresa({ plano: "plus" }, { parcial: true }).dados, { plano: "plus" });
   assert.deepEqual(validarEmpresa({ cnpj: "" }, { parcial: true }).dados, { cnpj: null });
   assert.match(validarEmpresa({ status: "apagada" }, { parcial: true }).erros[0], /Situação/);
 });

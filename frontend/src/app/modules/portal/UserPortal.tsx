@@ -122,7 +122,7 @@ export function UserPortal(props: UserPortalProps) {
     ) {
       return <AbaRelatorios portal={portal} />;
     }
-    if (tab === "base") {
+    if (tab === "base" && portal.temBase) {
       return (
         <UsuarioBaseConhecimento
           artigos={artigosBase}
@@ -248,7 +248,7 @@ export function UserPortal(props: UserPortalProps) {
               </form>
 
               <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-                <BotaoAssistente aberto={assistenteAberto} onClick={() => setAssistenteAberto((valor) => !valor)} />
+                {portal.temAssistente && <BotaoAssistente aberto={assistenteAberto} onClick={() => setAssistenteAberto((valor) => !valor)} />}
                 <button
                   type="button"
                   onClick={() => setModalChamadoAberto(true)}
@@ -429,13 +429,13 @@ export function UserPortal(props: UserPortalProps) {
           </main>
         </div>
 
-        <AssistenteChat
+        {portal.temAssistente && <AssistenteChat
           aberto={assistenteAberto}
           onFechar={fecharAssistente}
           nomeUsuario={usuario?.nome}
           artigos={artigosBase}
           onAbrirChamado={({ titulo, descricao }) => { setNovo((atual) => ({ ...atual, titulo, descricao })); setModalChamadoAberto(true); }}
-        />
+        />}
       </div>
 
       <NavegacaoMobileUsuario portal={portal} />

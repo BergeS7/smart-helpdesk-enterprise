@@ -23,7 +23,7 @@ afterEach(async () => {
 
 it("mostra os indicadores só para leitura e o histórico que já inclui este acesso", async () => {
   vi.mocked(consultarOperacaoEmpresa).mockResolvedValue({
-    empresa: { id: 3, nome: "Acme", slug: "acme", plano: "essencial", status: "ativa" },
+    empresa: { id: 3, nome: "Acme", slug: "acme", plano: "base", status: "ativa" },
     chamados: {
       abertos: 2, sla_vencido: 1, sem_responsavel: 1, criados_30d: 5, resolvidos_30d: 3, horas_media_resolucao_30d: "4.5",
       por_status: [{ status: "OPEN", total: 2 }],

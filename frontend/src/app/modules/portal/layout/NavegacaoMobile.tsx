@@ -6,10 +6,10 @@ import { MobileNavButton } from "../PortalComponents";
 import type { PainelPortal } from "../useUserPortal";
 
 export function NavegacaoMobileUsuario({ portal }: { portal: PainelPortal }) {
-  const { tab, setTab, setModalChamadoAberto, setNotificacoesAberta, menuMaisUsuario, setMenuMaisUsuario, unread } = portal;
+  const { tab, setTab, setModalChamadoAberto, setNotificacoesAberta, menuMaisUsuario, setMenuMaisUsuario, unread, temBase } = portal;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+6px)] pt-2 shadow-[0_-10px_28px_rgba(15,23,42,0.12)] backdrop-blur lg:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-5 items-end gap-1">
+      <div className={`mx-auto grid max-w-md items-end gap-1 ${temBase ? "grid-cols-5" : "grid-cols-4"}`}>
         <MobileNavButton
           icon={<LayoutDashboard size={21} />}
           label="Início"
@@ -45,16 +45,18 @@ export function NavegacaoMobileUsuario({ portal }: { portal: PainelPortal }) {
           </span>
           <span>Abrir</span>
         </button>
-        <MobileNavButton
-          icon={<BookOpen size={21} />}
-          label="Base"
-          active={tab === "base"}
-          onClick={() => {
-            setTab("base");
-            setMenuMaisUsuario(false);
-            setNotificacoesAberta(false);
-          }}
-        />
+        {temBase && (
+          <MobileNavButton
+            icon={<BookOpen size={21} />}
+            label="Base"
+            active={tab === "base"}
+            onClick={() => {
+              setTab("base");
+              setMenuMaisUsuario(false);
+              setNotificacoesAberta(false);
+            }}
+          />
+        )}
         <MobileNavButton
           icon={<Menu size={21} />}
           label="Mais"

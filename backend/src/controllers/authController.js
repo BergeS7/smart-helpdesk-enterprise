@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const { enviarEmail } = require("../services/emailService");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
 const { normalizarPerfil, ehDonoPlataforma } = require("../utils/permissoes");
+const { dadosPlanoPublico } = require("../domain/planos");
 const { senhaValida } = require("../utils/passwordPolicy");
 
 function gerarToken(usuario) {
@@ -35,6 +36,7 @@ async function montarUsuarioPublico(usuario, req = null) {
     email: usuario.email,
     perfil: normalizarPerfil(usuario.perfil),
     plataforma: ehDonoPlataforma(usuario),
+    ...dadosPlanoPublico(usuario.empresa_plano),
     status: usuario.status || "ativo",
     telefone: usuario.telefone || "",
     departamento: usuario.departamento || "",
@@ -114,6 +116,7 @@ async function executarLogin(req, res, perfisPermitidos) {
           ,COALESCE(token_version, 1) AS token_version
           ,foto_perfil
           ,(SELECT e.status FROM empresas e WHERE e.id = usuarios.empresa_id) AS empresa_status
+          ,(SELECT e.plano FROM empresas e WHERE e.id = usuarios.empresa_id) AS empresa_plano
        FROM usuarios
        WHERE LOWER(email) = LOWER($1)`,
       [String(email).trim()]

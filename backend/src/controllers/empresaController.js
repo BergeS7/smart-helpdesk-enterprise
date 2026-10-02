@@ -12,6 +12,7 @@ const { consultarOperacao, registrarAcesso, listarAcessos } = require("../servic
 const { listarUnidades } = require("../services/localidadesService");
 const { EMPRESA_PRINCIPAL, executarComoEmpresa } = require("../config/tenantContext");
 const { CONVITE_VALIDADE_DIAS, gerarSlug, proximoSlugLivre, validarEmpresa } = require("../domain/empresa");
+const { PERFIS_COBRADOS, calcularMensalidade } = require("../domain/planos");
 
 const hash = (valor) => crypto.createHash("sha256").update(String(valor)).digest("hex");
 const COLUNAS_EMPRESA = "e.id, e.nome, e.slug, e.cnpj, e.plano, e.status, e.email_responsavel, e.criado_em, e.atualizado_em";
@@ -71,13 +72,14 @@ async function listarEmpresas(req, res) {
         (SELECT COUNT(*)::int FROM usuarios u WHERE u.empresa_id = e.id AND u.status = 'ativo') AS usuarios_ativos,
         (SELECT COUNT(*)::int FROM usuarios u WHERE u.empresa_id = e.id AND u.perfil = 'admin' AND u.status = 'ativo') AS admins,
         (SELECT COUNT(*)::int FROM usuarios u WHERE u.empresa_id = e.id AND u.perfil = 'tecnico' AND u.status = 'ativo') AS tecnicos,
+        (SELECT COUNT(*)::int FROM usuarios u WHERE u.empresa_id = e.id AND u.perfil = ANY($1) AND u.status = 'ativo') AS tecnicos_cobrados,
         (SELECT COUNT(*)::int FROM chamados c WHERE c.empresa_id = e.id AND c.status NOT IN ('RESOLVED','CLOSED','CANCELED')) AS chamados_abertos,
         (SELECT COUNT(*)::int FROM ativos a WHERE a.empresa_id = e.id) AS ativos,
         (SELECT MAX(ec.expira_em) FROM empresa_convites ec
           WHERE ec.empresa_id = e.id AND ec.usado_em IS NULL AND ec.revogado_em IS NULL AND ec.expira_em > NOW()) AS convite_pendente_ate
       FROM empresas e
-      ORDER BY e.criado_em DESC, e.id DESC`);
-    return res.json(result.rows);
+      ORDER BY e.criado_em DESC, e.id DESC`, [PERFIS_COBRADOS]);
+    return res.json(result.rows.map((empresa) => ({ ...empresa, mensalidade: calcularMensalidade(empresa.plano, empresa.tecnicos_cobrados) })));
   } catch (error) {
     return responderErro(res, error, "listar empresas");
   }

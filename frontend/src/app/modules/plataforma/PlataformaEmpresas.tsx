@@ -21,14 +21,16 @@ import {
   type PlanoEmpresa,
 } from "../../services/api";
 
+// Preços e faixas vêm do servidor (domain/planos.js); aqui só o nome de cada plano.
 const PLANOS: { valor: PlanoEmpresa; nome: string }[] = [
-  { valor: "essencial", nome: "Essencial" },
-  { valor: "profissional", nome: "Profissional" },
-  { valor: "enterprise", nome: "Enterprise" },
+  { valor: "base", nome: "Base" },
+  { valor: "plus", nome: "Plus" },
+  { valor: "pro", nome: "Pro" },
 ];
+const MOEDA = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const STATUS_CLASSE = { ativa: "border-emerald-200 bg-emerald-50 text-emerald-700", suspensa: "border-amber-200 bg-amber-50 text-amber-700", cancelada: "border-zinc-200 bg-zinc-100 text-zinc-600" };
 const STATUS_NOME = { ativa: "Ativa", suspensa: "Suspensa", cancelada: "Cancelada" };
-const VAZIO: NovaEmpresa = { nome: "", cnpj: "", plano: "essencial", email_responsavel: "" };
+const VAZIO: NovaEmpresa = { nome: "", cnpj: "", plano: "base", email_responsavel: "" };
 const EMPRESA_PRINCIPAL = 1;
 
 async function copiar(texto: string, descricao: string) {
@@ -194,6 +196,13 @@ export function PlataformaEmpresas() {
                   <p className="text-xs text-zinc-600">
                     {empresa.usuarios_ativos ?? 0} usuário(s) ativo(s) · {empresa.tecnicos ?? 0} técnico(s) · {empresa.chamados_abertos ?? 0} chamado(s) aberto(s) · {empresa.ativos ?? 0} ativo(s)
                   </p>
+                  {empresa.mensalidade && (
+                    <p className="text-xs text-zinc-600">
+                      Mensalidade: <b className="text-zinc-900">{MOEDA.format(empresa.mensalidade.total)}</b>
+                      {" · "}{empresa.mensalidade.tecnicos} de {empresa.mensalidade.tecnicosIncluidos} técnico(s) incluído(s)
+                      {empresa.mensalidade.tecnicosExtras > 0 && ` + ${empresa.mensalidade.tecnicosExtras} extra(s) (${MOEDA.format(empresa.mensalidade.valorExtras)})`}
+                    </p>
+                  )}
                   {semAdmin && (
                     <p className="text-xs font-bold text-amber-700">
                       {empresa.convite_pendente_ate

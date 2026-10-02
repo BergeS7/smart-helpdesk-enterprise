@@ -6,7 +6,7 @@ import { UsuarioKanbanLeitura } from "../PortalComponents";
 import type { PainelPortal } from "../useUserPortal";
 
 export function AbaInicio({ portal }: { portal: PainelPortal }) {
-  const { setTab, usuarioAtual, chamadosBoardUsuario, artigosSugeridos, abrirDetalhe, abrirAvaliacao } = portal;
+  const { setTab, usuarioAtual, chamadosBoardUsuario, artigosSugeridos, abrirDetalhe, abrirAvaliacao, temBase } = portal;
   return (
     <div className="min-h-full lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
       <section className="mb-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -19,7 +19,7 @@ export function AbaInicio({ portal }: { portal: PainelPortal }) {
           {usuarioAtual.departamento && <span className="hidden rounded-full border border-zinc-200 bg-white px-3 py-1.5 sm:inline-flex">{usuarioAtual.departamento}</span>}
         </div>
       </section>
-      <section className="grid min-h-full flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_310px]">
+      <section className={`grid min-h-full flex-1 gap-4 lg:min-h-0 ${temBase ? "lg:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_310px]" : ""}`}>
         <div className="flex min-w-0 flex-col gap-4 lg:min-h-0">
           <UsuarioKanbanLeitura
             colunas={chamadosBoardUsuario}
@@ -30,6 +30,7 @@ export function AbaInicio({ portal }: { portal: PainelPortal }) {
         </div>
 
         {/* Mesmo cabeçalho e cartão das colunas de chamados, para os topos ficarem alinhados. */}
+        {temBase && (
         <aside className="flex min-h-0 flex-col">
           <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
             <h3 className="text-sm font-black text-zinc-900">Artigos sugeridos</h3>
@@ -89,6 +90,7 @@ export function AbaInicio({ portal }: { portal: PainelPortal }) {
             </div>
           </div>
         </aside>
+        )}
       </section>
     </div>
   );

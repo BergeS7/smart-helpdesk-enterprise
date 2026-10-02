@@ -7,7 +7,7 @@ import { AlertTriangle, Bell, CheckCircle2, CircleDot, PauseCircle, RefreshCw, S
 import smartHelpdeskLogo from "../../../assets/smart-helpdesk-logo.png";
 import { TICKET_STATUS, canonicalTicketStatus, type TicketStatus } from "../../domain/ticketStatus";
 import { type AdminRouteKey } from "../../navigation/adminNavigation";
-import { login, API_URL, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type FiltrosChamados, type ConfiguracoesSistema, type UsuarioLogado } from "../../services/api";
+import { login, API_URL, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type FiltrosChamados, type ConfiguracoesSistema, type UsuarioLogado, type RecursoPlano } from "../../services/api";
 
 export const PatrimonioMapPage = lazy(() =>
   import("../../pages/PatrimonioMap/PatrimonioMapPage").then((module) => ({
@@ -166,6 +166,11 @@ export function isAdminApp(perfil?: string) {
 /** Dono da plataforma SaaS: o servidor informa e também é quem bloqueia de fato. */
 export function isDonoPlataformaApp(usuario?: { plataforma?: boolean } | null) {
   return usuario?.plataforma === true;
+}
+
+/** Recurso do plano da empresa. Sessão sem a lista (anterior aos planos) não esconde nada: quem bloqueia é o servidor. */
+export function temRecursoApp(usuario: { recursos?: readonly string[] } | null | undefined, recurso: RecursoPlano) {
+  return !usuario?.recursos || usuario.recursos.includes(recurso);
 }
 
 export const CONFIG_SISTEMA_PADRAO: ConfiguracoesSistema = {

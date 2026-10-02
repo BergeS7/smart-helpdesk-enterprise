@@ -3,7 +3,7 @@
  */
 import { request } from "./http";
 
-export type PlanoEmpresa = "essencial" | "profissional" | "enterprise";
+export type PlanoEmpresa = "base" | "plus" | "pro";
 export type StatusEmpresa = "ativa" | "suspensa" | "cancelada";
 
 export type EmpresaPlataforma = {
@@ -19,9 +19,22 @@ export type EmpresaPlataforma = {
   usuarios_ativos?: number;
   admins?: number;
   tecnicos?: number;
+  /** Equipe que entra na cobrança: técnicos, supervisores e admins ativos. */
+  tecnicos_cobrados?: number;
+  mensalidade?: MensalidadeEmpresa | null;
   chamados_abertos?: number;
   ativos?: number;
   convite_pendente_ate?: string | null;
+};
+
+export type MensalidadeEmpresa = {
+  plano: PlanoEmpresa;
+  tecnicos: number;
+  tecnicosIncluidos: number;
+  tecnicosExtras: number;
+  valorBase: number;
+  valorExtras: number;
+  total: number;
 };
 
 export type ConviteEmpresa = { token: string; expira_em: string; email: string };

@@ -4,7 +4,8 @@
 const express = require("express");
 const { rateLimit } = require("express-rate-limit");
 const authMiddleware = require("../middlewares/authMiddleware");
-const { exigirPermissao } = require("../middlewares/authMiddleware");
+const { exigirPermissao, exigirRecurso } = require("../middlewares/authMiddleware");
+const { RECURSOS } = require("../domain/planos");
 const { perguntar } = require("../services/assistenteService");
 const { listarLacunas } = require("../services/assistenteLacunasService");
 const { normalizarPergunta } = require("../domain/assistente");
@@ -22,7 +23,10 @@ const limitePerguntas = rateLimit({
   handler: (req, res) => res.status(429).json({ erro: "Você fez muitas perguntas seguidas. Aguarde alguns minutos." }),
 });
 
-router.post("/perguntar", authMiddleware, limitePerguntas, async (req, res) => {
+// O assistente usa IA paga por pergunta: só o plano que inclui o recurso chega até ela.
+const comAssistente = exigirRecurso(RECURSOS.ASSISTENTE_IA);
+
+router.post("/perguntar", authMiddleware, comAssistente, limitePerguntas, async (req, res) => {
   const pergunta = normalizarPergunta(req.body?.pergunta);
   if (pergunta.length < 3) return res.status(400).json({ erro: "Escreva sua dúvida." });
   try {
@@ -34,7 +38,7 @@ router.post("/perguntar", authMiddleware, limitePerguntas, async (req, res) => {
 });
 
 // Painel da equipe: o que o assistente não respondeu, para virar artigo.
-router.get("/sem-resposta", authMiddleware, exigirPermissao("gerenciar_base"), async (req, res) => {
+router.get("/sem-resposta", authMiddleware, comAssistente, exigirPermissao("gerenciar_base"), async (req, res) => {
   try {
     return res.json(await listarLacunas());
   } catch (error) {

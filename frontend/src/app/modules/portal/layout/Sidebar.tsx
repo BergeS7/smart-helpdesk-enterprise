@@ -6,7 +6,7 @@ import { UsuarioSidebarButton } from "../PortalComponents";
 import type { PainelPortal } from "../useUserPortal";
 
 export function SidebarUsuario({ portal }: { portal: PainelPortal }) {
-  const { onLogout, tab, setTab, setNotificacoesAberta, setMostrarPerfil, temaEscuroUsuario, setTemaEscuroUsuario, permissoesUsuario, usuarioAtual, sistemaNome, sistemaLogo1, suporteEmail, fotoPerfil, inicialPerfil, podeAcessarRelatorios, abrirSuporteUsuario } = portal;
+  const { onLogout, tab, setTab, setNotificacoesAberta, setMostrarPerfil, temaEscuroUsuario, setTemaEscuroUsuario, permissoesUsuario, usuarioAtual, temBase, sistemaNome, sistemaLogo1, suporteEmail, fotoPerfil, inicialPerfil, podeAcessarRelatorios, abrirSuporteUsuario } = portal;
   return (
     <aside className="hidden w-14 shrink-0 flex-col border-r border-white/5 bg-gradient-to-b from-[#101c29] via-[#0d1925] to-[#08131d] text-white shadow-2xl lg:flex">
       <button type="button" onClick={() => setTab("home")} aria-label={`${sistemaNome} — Início`} title="Ir para Início" className="grid h-14 shrink-0 cursor-pointer place-items-center border-b border-white/8 focus-visible:outline-2 focus-visible:outline-blue-500">
@@ -39,16 +39,18 @@ export function SidebarUsuario({ portal }: { portal: PainelPortal }) {
             setNotificacoesAberta(false);
           }}
         />
-        <UsuarioSidebarButton
-          compact
-          ativo={tab === "base"}
-          icon={<BookOpen size={22} />}
-          label="Base de Conhecimento"
-          onClick={() => {
-            setTab("base");
-            setNotificacoesAberta(false);
-          }}
-        />
+        {temBase && (
+          <UsuarioSidebarButton
+            compact
+            ativo={tab === "base"}
+            icon={<BookOpen size={22} />}
+            label="Base de Conhecimento"
+            onClick={() => {
+              setTab("base");
+              setNotificacoesAberta(false);
+            }}
+          />
+        )}
         {permissoesUsuario.includes("visualizar_ranking_satisfacao") && (
           <UsuarioSidebarButton
             compact

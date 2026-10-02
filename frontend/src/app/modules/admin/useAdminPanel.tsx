@@ -10,7 +10,7 @@ import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus"
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
 import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, listarProblemasRecorrentes, listarLacunasAssistente, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type ProblemaRecorrente, type LacunaAssistente, type LacunasAssistente, type StatusArtigo, type VisibilidadeArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
-import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDonoPlataformaApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, ticketFiltersFromUrl } from "../comum/appShared";
+import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDonoPlataformaApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, temRecursoApp, ticketFiltersFromUrl } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 
 export type AdminPanelProps = {
@@ -1063,6 +1063,7 @@ export function useAdminPanel({
     plataforma,
     tecnico,
     permissions: permissoesAtuais,
+    baseConhecimento: temRecursoApp(usuario, "base_conhecimento"),
   });
   const activeArea = navigationAreas.find((area) => area.tabs.includes(tab));
 
