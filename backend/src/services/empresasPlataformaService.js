@@ -8,6 +8,10 @@ const pool = require("../config/database");
 const { ehEmailDonoPlataforma } = require("../utils/permissoes");
 const { EMPRESA_PRINCIPAL } = require("../config/tenantContext");
 const { CONVITE_VALIDADE_DIAS, gerarSlug, proximoSlugLivre, validarEmpresa } = require("../domain/empresa");
+const { enviarEmail } = require("./emailService");
+const { emailLiberacao } = require("./emailModelos");
+const { configuracoesDaEmpresa } = require("./emailMarcaEmpresa");
+const { urlBasePortal } = require("./ticketRatingEmailService");
 
 const hash = (valor) => crypto.createHash("sha256").update(String(valor)).digest("hex");
 const RETORNO_EMPRESA = "id, nome, slug, cnpj, plano, status, email_responsavel, criado_em, atualizado_em";
@@ -123,8 +127,37 @@ async function gerarNovoConvite(id, autor) {
     if (!empresa.email_responsavel) throw erroHttp(400, "Cadastre o e-mail do responsável antes de gerar o link.");
     const convite = await emitirConvite(client, empresa);
     await auditar(client, autor, empresa.id, "convite_gerado", `Novo link de liberação para ${empresa.email_responsavel}.`);
-    return { convite };
+    return { empresa, convite };
   });
 }
 
-module.exports = { criarEmpresa, atualizarEmpresa, gerarNovoConvite };
+/**
+ * Endereço do portal para o link: o pedido pode sugerir um (o console manda o dele), mas só vale se
+ * for uma das origens liberadas no CORS; senão, o endereço padrão do portal.
+ */
+function basePortal(sugerida, env = process.env) {
+  const liberadas = String(env.ALLOWED_ORIGINS || "").split(",").map((o) => o.trim()).filter(Boolean);
+  try {
+    const origem = new URL(String(sugerida)).origin;
+    if (liberadas.includes(origem)) return origem;
+  } catch {
+    // sugestão inválida: cai no padrão
+  }
+  return urlBasePortal(env);
+}
+
+/** Manda o link de liberação ao responsável. Falha de envio não desfaz o cadastro: o link segue na resposta. */
+async function enviarLinkLiberacao({ empresa, convite, linkBase }) {
+  const base = basePortal(linkBase);
+  if (!base) return { enviado: false, motivo: "Endereço do portal não configurado." };
+  try {
+    const config = await configuracoesDaEmpresa(empresa.id);
+    const email = emailLiberacao({ empresa: empresa.nome, link: `${base}/ativar/${convite.token}`, expiraEm: convite.expira_em, config });
+    return await enviarEmail({ para: convite.email, ...email });
+  } catch (error) {
+    console.error("Erro ao enviar o link de liberação:", error.message);
+    return { enviado: false, motivo: error.message };
+  }
+}
+
+module.exports = { criarEmpresa, atualizarEmpresa, gerarNovoConvite, enviarLinkLiberacao, basePortal };

@@ -3,8 +3,7 @@
  */
 const pool = require("../../config/database");
 const { decidirPrioridadeChamado } = require("../../services/prioridadeIAService");
-const { enviarEmail } = require("../../services/emailService");
-const { enviarEmailAvaliacao } = require("../../services/ticketRatingEmailService");
+const { enviarEmailAvaliacao, enviarEmailChamado } = require("../../services/ticketRatingEmailService");
 const { usuarioPodeAvaliarChamado } = require("../../services/ticketEvaluationAccessService");
 const { normalizarPerfil, ehAdmin, ehEquipe } = require("../../utils/permissoes");
 const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../../services/distributionService");
@@ -161,7 +160,7 @@ const criarChamado = async (req, res) => {
     if (!tipoDesenvolvimento && chamado.responsavel_id == null) {
       await notificarNovoChamadoNaFila(chamado, criarNotificacao);
     }
-    enviarEmail({ para: usuario.email, assunto: `Chamado criado ${chamado.numero_chamado}`, texto: `Seu chamado foi criado. Prioridade: ${chamado.prioridade}` }).catch(() => {});
+    void enviarEmailChamado({ evento: "criado", chamado: { ...chamado, solicitante: usuario.nome }, para: usuario.email });
 
     return res.status(201).json({ ...(await carregarDetalhesChamado(req, chamado)), ia: analiseIA });
   } catch (error) {
@@ -381,7 +380,7 @@ const atualizarChamado = async (req, res) => {
         void enviarEmailAvaliacao(atualizado);
         await notificarUsuarioVinculadoAoAtivo(atualizado);
       } else {
-        enviarEmail({ para: atualizado.email_solicitante, assunto: `Status alterado ${atualizado.numero_chamado}`, texto: `Seu chamado agora está como ${statusLabel(statusResultante)}.` }).catch(() => {});
+        void enviarEmailChamado({ evento: "status", chamado: atualizado, para: atualizado.email_solicitante, status: statusLabel(statusResultante) });
       }
     }
     if (prioridadeAlterada) {
@@ -470,7 +469,7 @@ const reabrirChamado = async (req, res) => {
     const chamadoReaberto = result.rows[0];
     await registrarMovimentacao(id, req, "reabertura", motivo ? `Chamado reaberto e voltou para "Em andamento". Motivo: ${normalizarTexto(motivo)}` : "Chamado reaberto e voltou para \"Em andamento\".");
     await criarNotificacao(chamadoReaberto.responsavel_id, "Chamado reaberto", `${chamadoReaberto.numero_chamado} voltou para o seu trabalho.`, "warning", `/chamados/${chamadoReaberto.id}`);
-    enviarEmail({ para: chamadoReaberto.email_solicitante, assunto: `Chamado reaberto ${chamadoReaberto.numero_chamado}`, texto: `Seu chamado foi reaberto e voltou para atendimento. Motivo: ${normalizarTexto(motivo)}` }).catch(() => {});
+    void enviarEmailChamado({ evento: "reaberto", chamado: chamadoReaberto, para: chamadoReaberto.email_solicitante, motivo: motivo ? normalizarTexto(motivo) : null });
     return res.json(await carregarDetalhesChamado(req, chamadoReaberto));
   } catch (error) {
     console.error(error);

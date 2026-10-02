@@ -6,6 +6,8 @@ const pool = require("../config/database");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { enviarEmail } = require("../services/emailService");
+const { emailRecuperacaoSenha } = require("../services/emailModelos");
+const { configuracoesDaEmpresa } = require("../services/emailMarcaEmpresa");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
 const { normalizarPerfil, ehDonoPlataforma } = require("../utils/permissoes");
 const { dadosPlanoPublico } = require("../domain/planos");
@@ -260,7 +262,7 @@ const solicitarRecuperacaoSenha = async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT id, nome, email, perfil
+      `SELECT id, nome, email, perfil, empresa_id
        FROM usuarios
        WHERE LOWER(email) = LOWER($1)
          AND email_verificado_em IS NOT NULL`,
@@ -290,11 +292,8 @@ const solicitarRecuperacaoSenha = async (req, res) => {
       [codigoHash, usuario.id]
     );
 
-    const entrega = await enviarEmail({
-      para: usuario.email,
-      assunto: "Recuperação de senha - Smart HelpDesk",
-      texto: `Seu código de recuperação é: ${codigo}. Ele expira em 20 minutos.`,
-    });
+    const config = await configuracoesDaEmpresa(usuario.empresa_id);
+    const entrega = await enviarEmail({ para: usuario.email, ...emailRecuperacaoSenha({ nome: usuario.nome, codigo, config }) });
     if (!entrega.enviado) {
       await pool.query("UPDATE usuarios SET reset_token_hash=NULL,reset_expira_em=NULL WHERE id=$1", [usuario.id]);
       return res.status(503).json({ erro: "O serviço de e-mail ainda não está configurado. Contate o suporte." });

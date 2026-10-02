@@ -7,6 +7,8 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const pool = require("../config/database");
 const { emailConfigurado, enviarEmail } = require("../services/emailService");
+const { emailVerificacao } = require("../services/emailModelos");
+const { configuracoesDaEmpresa } = require("../services/emailMarcaEmpresa");
 const { montarUrlFotoPerfil, limparFotosPerfil, enviarAvatar, removerAvatar, arquivoTemAssinaturaValida } = require("../utils/profilePhoto");
 const { recordLegalAcceptance } = require("../services/privacyComplianceService");
 const { localidadeValida, localidadeAceitaParaUsuario } = require("../services/localidadesService");
@@ -33,13 +35,9 @@ function novoCodigoEmail() {
   return crypto.randomInt(100000, 1000000).toString();
 }
 
-async function enviarCodigoVerificacao({ nome, email, codigo }) {
-  return enviarEmail({
-    para: email,
-    assunto: "Confirme seu e-mail - Smart HelpDesk",
-    texto: `Olá, ${nome}. Seu código de confirmação é ${codigo}. Ele expira em 20 minutos. Se você não solicitou este cadastro, ignore esta mensagem.`,
-    html: `<p>Olá, <strong>${String(nome).replace(/[<>&]/g, "")}</strong>.</p><p>Seu código de confirmação é:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${codigo}</p><p>O código expira em 20 minutos.</p>`,
-  });
+async function enviarCodigoVerificacao({ nome, email, codigo, empresaId }) {
+  const config = await configuracoesDaEmpresa(empresaId);
+  return enviarEmail({ para: email, ...emailVerificacao({ nome, codigo, config }) });
 }
 
 const normalizarPerfilUsuario = normalizarPerfil;
@@ -290,7 +288,7 @@ async function cadastrarUsuarioPublico(req, res) {
     );
 
     try {
-      await enviarCodigoVerificacao({ nome: result.rows[0].nome, email: result.rows[0].email, codigo });
+      await enviarCodigoVerificacao({ nome: result.rows[0].nome, email: result.rows[0].email, codigo, empresaId });
     } catch (emailError) {
       await pool.query("DELETE FROM usuarios WHERE id=$1", [result.rows[0].id]);
       console.error("Erro ao enviar verificação:", emailError.message);
@@ -340,7 +338,7 @@ async function reenviarVerificacaoEmail(req, res) {
   try {
     const email = normalizarEmail(req.body?.email);
     if (!email) return res.status(400).json({ erro: "Informe o e-mail." });
-    const result = await pool.query(`SELECT id,nome,email,email_verificado_em,email_verificacao_enviado_em FROM usuarios WHERE LOWER(email)=LOWER($1)`, [email]);
+    const result = await pool.query(`SELECT id,nome,email,empresa_id,email_verificado_em,email_verificacao_enviado_em FROM usuarios WHERE LOWER(email)=LOWER($1)`, [email]);
     const usuario = result.rows[0];
     const mensagem = "Se o cadastro existir e ainda não estiver confirmado, enviaremos um novo código.";
     if (!usuario || usuario.email_verificado_em) return res.json({ mensagem });
@@ -348,7 +346,7 @@ async function reenviarVerificacaoEmail(req, res) {
     if (!emailConfigurado()) return res.status(503).json({ erro: "O envio de e-mail ainda não está configurado." });
     const codigo = novoCodigoEmail();
     await pool.query(`UPDATE usuarios SET email_verificacao_hash=$1,email_verificacao_expira_em=CURRENT_TIMESTAMP+INTERVAL '20 minutes',email_verificacao_tentativas=0,email_verificacao_enviado_em=CURRENT_TIMESTAMP WHERE id=$2`, [hashCodigoEmail(email, codigo), usuario.id]);
-    await enviarCodigoVerificacao({ nome: usuario.nome, email: usuario.email, codigo });
+    await enviarCodigoVerificacao({ nome: usuario.nome, email: usuario.email, codigo, empresaId: usuario.empresa_id });
     return res.json({ mensagem });
   } catch (error) {
     console.error(error);

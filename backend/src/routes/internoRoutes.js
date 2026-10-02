@@ -69,9 +69,15 @@ function responder(acao, status = 200) {
 
 router.use(exigirChaveDoConsole, modoSistema);
 router.get("/empresas", listarEmpresas);
-router.post("/empresas", responder((req) => empresas.criarEmpresa(req.body || {}, AUTOR), 201));
+// Depois de gravar, o link vai por e-mail ao responsável; a resposta diz se o envio deu certo.
+async function comEmail(resultado, linkBase) {
+  const entrega = await empresas.enviarLinkLiberacao({ empresa: resultado.empresa, convite: resultado.convite, linkBase });
+  return { ...resultado, email_enviado: Boolean(entrega?.enviado) };
+}
+
+router.post("/empresas", responder(async (req) => comEmail(await empresas.criarEmpresa(req.body || {}, AUTOR), req.body?.link_base), 201));
 router.patch("/empresas/:id", responder((req) => empresas.atualizarEmpresa(req.params.id, req.body || {}, AUTOR)));
-router.post("/empresas/:id/convite", responder((req) => empresas.gerarNovoConvite(req.params.id, AUTOR), 201));
+router.post("/empresas/:id/convite", responder(async (req) => comEmail(await empresas.gerarNovoConvite(req.params.id, AUTOR), req.body?.link_base), 201));
 
 module.exports = router;
 module.exports.exigirChaveDoConsole = exigirChaveDoConsole;
