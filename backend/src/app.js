@@ -24,6 +24,7 @@ const systemRoutes = require("./routes/systemRoutes");
 const developmentRoutes = require("./routes/developmentRoutes");
 const assistenteRoutes = require("./routes/assistenteRoutes");
 const plataformaRoutes = require("./routes/plataformaRoutes");
+const internoRoutes = require("./routes/internoRoutes");
 const empresaRoutes = require("./routes/empresaRoutes");
 const { startPrivacyRetentionSchedule } = require("./services/privacyComplianceService");
 
@@ -88,6 +89,7 @@ app.use("/api/development", developmentRoutes);
 app.use("/api/assistente", assistenteRoutes);
 app.use("/api/plataforma", plataformaRoutes);
 app.use("/api/empresas", empresaRoutes);
+app.use("/api/interno", internoRoutes);
 app.use(notFound);
 app.use(errorHandler);
 

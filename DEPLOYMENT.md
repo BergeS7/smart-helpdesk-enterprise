@@ -49,6 +49,16 @@ PLATFORM_OWNER_EMAIL=dono@seudominio.com.br
 
 Sem a variável, ninguém tem acesso de plataforma. Essa conta não pode ser alterada nem excluída por admins das empresas, e o e-mail dela não pode ser usado em outro cadastro.
 
+## Conector do Console Berges7
+
+O Console Berges7 (`admin.berges7.com.br`, sistema separado) lê de `GET /api/interno/empresas` o resumo de cada empresa: cadastro, plano, situação, técnicos cobrados, mensalidade calculada e último acesso. Nenhum chamado, usuário ou ativo sai por essa rota. Ela exige a chave de serviço no cabeçalho `Authorization: Bearer <chave>`:
+
+```env
+CONSOLE_API_KEY=uma-chave-longa-e-aleatoria
+```
+
+Sem a variável, a rota responde 404. Use a mesma chave em `HELPDESK_API_KEY` no Console.
+
 ## Isolamento entre empresas
 
 Os dados de cada empresa são separados pelo próprio PostgreSQL (Row Level Security). Em toda requisição de um usuário logado, a conexão assume o papel `helpdesk_empresa` e grava a empresa em `app.empresa_id`; o banco só mostra e só aceita linhas dessa empresa. Login, rotas públicas, o agente antes de se identificar, rotinas agendadas e migrations rodam como o usuário dono do banco.
