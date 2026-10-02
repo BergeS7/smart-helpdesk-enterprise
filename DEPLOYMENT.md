@@ -51,7 +51,7 @@ Sem a variável, ninguém tem acesso de plataforma. Essa conta não pode ser alt
 
 ## Conector do Console Berges7
 
-O Console Berges7 (`admin.berges7.com.br`, sistema separado) lê de `GET /api/interno/empresas` o resumo de cada empresa: cadastro, plano, situação, técnicos cobrados, mensalidade calculada e último acesso. Nenhum chamado, usuário ou ativo sai por essa rota. Ela exige a chave de serviço no cabeçalho `Authorization: Bearer <chave>`:
+O Console Berges7 (`admin.berges7.com.br`, sistema separado) é onde as empresas clientes são geridas. Pela API interna ele lê o resumo de cada empresa (`GET /api/interno/empresas`: cadastro, plano, situação, técnicos cobrados, mensalidade calculada, último acesso e se já tem administrador) e faz a gestão: cadastrar empresa com link de liberação (`POST /api/interno/empresas`), alterar plano, situação ou dados (`PATCH /api/interno/empresas/:id`) e gerar novo link (`POST /api/interno/empresas/:id/convite`). As alterações ficam na auditoria da empresa com o autor "Console BergeS7". Nenhum chamado, usuário ou ativo sai por essas rotas. Elas exigem a chave de serviço no cabeçalho `Authorization: Bearer <chave>`:
 
 ```env
 CONSOLE_API_KEY=uma-chave-longa-e-aleatoria

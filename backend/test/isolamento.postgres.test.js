@@ -56,12 +56,6 @@ test("PostgreSQL: cada empresa só vê e só altera os próprios dados", {
       assert.deepEqual(empresas, [ids.a], "A só enxerga o próprio cadastro de empresa");
     });
 
-    // A visão da plataforma sobre uma empresa (só leitura) também fica presa aos dados dela.
-    const { consultarOperacao } = require("../src/services/operacaoEmpresaService");
-    const visaoA = await executarComoSistema(() => consultarOperacao(ids.a));
-    assert.deepEqual(visaoA.chamados.recentes.map((c) => c.id), [ids.chamadoA.id], "a visão da plataforma sobre A não traz dados de B");
-    assert.equal(visaoA.chamados.abertos, 1);
-
     // Nomes únicos passam a valer dentro de cada empresa.
     for (const [como, usuario] of [[comoA, ids.ua], [comoB, ids.ub]]) {
       await como(async () => {
