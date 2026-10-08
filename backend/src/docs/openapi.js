@@ -62,7 +62,6 @@ const openapiDocument = {
   paths: {
     "/health": { get: op("Health check", { auth: false, tags: ["Sistema"] }) },
     "/system/health": { get: op("Health check (namespace system)", { auth: false, tags: ["Sistema"] }) },
-    "/system/diagnostics": { get: op("Diagnóstico administrativo (dono da plataforma)", { tags: ["Sistema"] }) },
     "/system/errors/frontend": { post: op("Registrar erro reportado pelo frontend", { tags: ["Sistema"] }) },
 
     "/auth/login": { post: op("Login genérico", { auth: false, tags: ["Auth"] }) },

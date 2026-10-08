@@ -4,14 +4,10 @@
 const { diagnostics, recordError } = require("../services/systemDiagnosticsService");
 
 // Rota pública: só diz se a API e o banco respondem. Agentes, processo e volume de
-// requisições ficam no diagnóstico, restrito ao dono da plataforma.
+// requisições ficam no diagnóstico do Console BergeS7 (GET /api/interno/diagnostico).
 async function health(_req, res) {
   const result = await diagnostics();
   res.status(result.ok ? 200 : 503).json({ ok: result.ok, status: result.ok ? "operational" : "unavailable", timestamp: result.api?.timestamp });
-}
-
-async function adminDiagnostics(_req, res) {
-  res.json(await diagnostics());
 }
 
 function frontendError(req, res) {
@@ -29,5 +25,5 @@ function frontendError(req, res) {
   res.status(202).json({ ok: true, requestId: req.id });
 }
 
-module.exports = { health, adminDiagnostics, frontendError };
+module.exports = { health, frontendError };
 // (👉ﾟヮﾟ)👉 👈(ﾟヮﾟ👈)

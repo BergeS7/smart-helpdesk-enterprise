@@ -4,7 +4,7 @@
 import { usePushNavigation } from "../../hooks/usePushNavigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Activity, AlertTriangle, BarChart3, Bell, BookOpen, BrainCircuit, Building2, Clock3, Download, History, LayoutDashboard, ListChecks, MapPinned, Settings, ShieldCheck, Star, Ticket, Users } from "lucide-react";
+import { AlertTriangle, BarChart3, Bell, BookOpen, BrainCircuit, Building2, Clock3, Download, History, LayoutDashboard, ListChecks, MapPinned, Settings, ShieldCheck, Star, Ticket, Users } from "lucide-react";
 import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { useModuleRoute } from "../../routes/useModuleRoute";
@@ -376,7 +376,7 @@ export function useAdminPanel({
     if(!permissoesCarregadas)return;
     const teamTabs:AdminTab[]=["usuarios","acessos","carteira","teams"];
     const adminTabs:AdminTab[]=["configuracoes","config_sla","unidades"];
-    const platformTabs:AdminTab[]=["config_integracoes","manutencao","diagnostico"];
+    const platformTabs:AdminTab[]=["config_integracoes","manutencao"];
     const analyticsTabs:AdminTab[]=["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos","relatorios"];
     const deniedDashboard=tab==="dashboard"&&!permissoesAtuais.includes("visualizar_dashboard");
     const deniedTeam=teamTabs.includes(tab)&&!administrador;
@@ -1006,13 +1006,6 @@ export function useAdminPanel({
       label: "Ativos",
       title: "Monitoramento de ativos",
       show: permissoesAtuais.includes("visualizar_patrimonio"),
-    },
-    {
-      key: "diagnostico" as AdminTab,
-      icon: Activity,
-      label: "Diagnóstico",
-      title: "Saúde do sistema",
-      show: plataforma,
     },
     {
       key: "configuracoes" as AdminTab,

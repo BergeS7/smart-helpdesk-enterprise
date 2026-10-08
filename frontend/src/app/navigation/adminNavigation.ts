@@ -9,7 +9,7 @@ export type AdminRouteKey =
   | "historico" | "usuarios" | "acessos" | "teams" | "catalogos" | "base"
   | "indicadores_operacao" | "indicadores_sla" | "indicadores_tecnicos" | "indicadores_ativos"
   | "desenvolvimento" | "projetos"
-  | "relatorios" | "patrimonio" | "diagnostico" | "configuracoes" | "config_sla" | "config_integracoes" | "manutencao"
+  | "relatorios" | "patrimonio" | "configuracoes" | "config_sla" | "config_integracoes" | "manutencao"
   | "unidades";
 
 export const ADMIN_ROUTES: Record<AdminRouteKey, readonly string[]> = {
@@ -35,9 +35,8 @@ export const ADMIN_ROUTES: Record<AdminRouteKey, readonly string[]> = {
   config_sla: ["/admin/configuracoes/sla"],
   unidades: ["/admin/configuracoes/unidades"],
   config_integracoes: ["/admin/plataforma/integracoes", "/admin/configuracoes/integracoes"],
-  manutencao: ["/admin/plataforma/manutencao", "/admin/configuracoes/manutencao", "/admin/manutencao"],
-  // Endereços antigos da aba Empresas (agora no Console) caem no diagnóstico.
-  diagnostico: ["/admin/plataforma/diagnostico", "/admin/configuracoes/diagnostico", "/admin/diagnostico", "/admin/plataforma", "/admin/plataforma/empresas"],
+  // Endereços antigos das abas Empresas e Diagnóstico (agora no Console BergeS7) caem na manutenção.
+  manutencao: ["/admin/plataforma/manutencao", "/admin/configuracoes/manutencao", "/admin/manutencao", "/admin/plataforma", "/admin/plataforma/diagnostico", "/admin/configuracoes/diagnostico", "/admin/diagnostico", "/admin/plataforma/empresas"],
   desenvolvimento: ["/admin/desenvolvimento"],
   projetos: ["/admin/desenvolvimento/projetos"],
 };
@@ -56,7 +55,7 @@ export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
     {id:"knowledge",label:"Base",title:"Base de Conhecimento",description:"Centralize orientações e soluções reutilizáveis para a equipe.",icon:BookOpen,defaultTab:"base",tabs:["base"],visible:ctx.baseConhecimento!==false&&ctx.permissions.includes("gerenciar_base")},
     {id:"assets",label:"Ativos",title:"Monitoramento de Ativos",description:"Acompanhe equipamentos, disponibilidade e alertas da operação.",icon:MapPinned,defaultTab:"patrimonio",tabs:["patrimonio"],visible:ctx.permissions.includes("visualizar_patrimonio")},
     {id:"admin",label:"Ajustes",title:"Ajustes",description:"Configure as regras, o SLA e os catálogos da sua empresa.",icon:Settings,defaultTab:"configuracoes",tabs:["configuracoes","config_sla","unidades","catalogos"],visible:ctx.administrador},
-    {id:"platform",label:"Plataforma",title:"Plataforma",description:"Saúde do sistema, avisos de manutenção e integrações. As empresas clientes são geridas no Console BergeS7.",icon:Building2,defaultTab:"diagnostico",tabs:["diagnostico","manutencao","config_integracoes"],visible:ctx.plataforma},
+    {id:"platform",label:"Plataforma",title:"Plataforma",description:"Avisos de manutenção e integrações. As empresas clientes e a saúde do sistema ficam no Console BergeS7.",icon:Building2,defaultTab:"manutencao",tabs:["manutencao","config_integracoes"],visible:ctx.plataforma},
   ];
   return areas.filter(area=>area.visible);
 }
@@ -67,7 +66,7 @@ export const TAB_LABELS:Record<AdminRouteKey,string>={
   indicadores_operacao:"Operação",indicadores_sla:"SLA",indicadores_tecnicos:"Técnicos",indicadores_ativos:"Ativos",
   satisfacao:"Satisfação",relatorios:"Exportações",base:"Artigos",patrimonio:"Equipamentos",
   desenvolvimento:"Demandas",projetos:"Projetos",
-  configuracoes:"Sistema",config_sla:"SLA e prioridades",catalogos:"Catálogos",config_integracoes:"Integrações",manutencao:"Manutenção",diagnostico:"Diagnóstico",
+  configuracoes:"Sistema",config_sla:"SLA e prioridades",catalogos:"Catálogos",config_integracoes:"Integrações",manutencao:"Manutenção",
   unidades:"Unidades",
 };
 

@@ -1,7 +1,8 @@
 /**
  * Responsabilidade: API interna para o Console Berges7 (outro sistema, servidor a servidor).
- * Lê só números de cadastro e cobrança (nenhum chamado, usuário ou ativo sai daqui) e faz a gestão
- * das empresas: cadastrar, alterar plano/situação/dados e gerar o link de liberação.
+ * Lê só números de cadastro e cobrança (nenhum chamado, usuário ou ativo sai daqui), faz a gestão
+ * das empresas (cadastrar, alterar plano/situação/dados e gerar o link de liberação) e entrega o
+ * diagnóstico técnico do sistema (saúde da API, banco, Redis, agentes e erros recentes).
  * Protegida pela chave CONSOLE_API_KEY; sem a variável, a rota nem existe (404).
  */
 const crypto = require("crypto");
@@ -10,6 +11,7 @@ const pool = require("../config/database");
 const { modoSistema } = require("../middlewares/authMiddleware");
 const { PERFIS_COBRADOS, calcularMensalidade, dadosPlano } = require("../domain/planos");
 const empresas = require("../services/empresasPlataformaService");
+const { diagnostics } = require("../services/systemDiagnosticsService");
 
 const AUTOR = "Console BergeS7";
 
@@ -54,6 +56,20 @@ async function listarEmpresas(req, res) {
   }
 }
 
+// Os erros vão sem o contexto (pilha, usuário, navegador): o console precisa da falha, não da operação.
+async function diagnostico(req, res) {
+  try {
+    const dados = await diagnostics();
+    return res.json({
+      ...dados,
+      recentErrors: dados.recentErrors.map(({ id, timestamp, source, level, message, requestId, path }) => ({ id, timestamp, source, level, message, requestId, path })),
+    });
+  } catch (error) {
+    console.error("Erro ao montar o diagnóstico para o console:", error);
+    return res.status(500).json({ erro: "Erro ao montar o diagnóstico." });
+  }
+}
+
 // Erros com status (validação, conflito, não encontrada) voltam com a mensagem; o resto vira 500.
 function responder(acao, status = 200) {
   return async (req, res) => {
@@ -69,6 +85,7 @@ function responder(acao, status = 200) {
 
 router.use(exigirChaveDoConsole, modoSistema);
 router.get("/empresas", listarEmpresas);
+router.get("/diagnostico", diagnostico);
 // Depois de gravar, o link vai por e-mail ao responsável; a resposta diz se o envio deu certo.
 async function comEmail(resultado, linkBase) {
   const entrega = await empresas.enviarLinkLiberacao({ empresa: resultado.empresa, convite: resultado.convite, linkBase });
@@ -82,3 +99,4 @@ router.post("/empresas/:id/convite", responder(async (req) => comEmail(await emp
 module.exports = router;
 module.exports.exigirChaveDoConsole = exigirChaveDoConsole;
 module.exports.listarEmpresas = listarEmpresas;
+module.exports.diagnostico = diagnostico;

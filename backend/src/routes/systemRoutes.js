@@ -3,11 +3,9 @@
  */
 const router = require("express").Router();
 const auth = require("../middlewares/authMiddleware");
-const { exigirDonoPlataforma } = require("../middlewares/authMiddleware");
 const controller = require("../controllers/systemController");
 
 router.get("/health", controller.health);
-router.get("/diagnostics", auth, exigirDonoPlataforma, controller.adminDiagnostics);
 router.post("/errors/frontend", auth, controller.frontendError);
 
 module.exports = router;

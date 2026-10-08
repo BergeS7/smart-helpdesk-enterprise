@@ -47,9 +47,6 @@ export const IndicatorsWorkspace = lazy(() => import("../../modules/indicadores/
 
 export const DevelopmentWorkspace = lazy(() => import("../../modules/desenvolvimento/DevelopmentWorkspace").then(module => ({ default:module.DevelopmentWorkspace })));
 
-export const SystemDiagnosticsPage = lazy(() =>
-  import("../../components/SystemDiagnosticsPage").then((module) => ({ default: module.SystemDiagnosticsPage })),
-);
 
 export type LoginMode = "usuario" | "admin";
 

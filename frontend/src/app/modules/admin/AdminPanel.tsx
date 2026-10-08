@@ -12,7 +12,7 @@ import { WorkspaceNavigation } from "../../components/WorkspaceNavigation";
 import { TicketWorkspaceToolbar } from "../../components/TicketWorkspaceToolbar";
 import { ModuleBoundary } from "../../components/ModuleBoundary";
 import { aprovarUsuario, atualizarChamado, baixarRelatorio, buscarChamado, excluirUsuarioAdmin, rejeitarUsuario, type ApiUsuario } from "../../services/api";
-import { AvisosSistemaBanner, ChamadosListModule, DevelopmentWorkspace, FilaChamadosView, IndicatorsWorkspace, KanbanWorkspace, MySatisfactionPage, OperationalDashboard, PatrimonioMapPage, ReportsWorkspace, SatisfactionAnalyticsPage, SettingsWorkspace, SystemDiagnosticsPage, SystemThemeStyle, UsersModule, chamadoIdFromNotification, formatDate, normalizeStatus, notificacaoClass, notificacaoIcone, variaveisTemaSistema } from "../comum/appShared";
+import { AvisosSistemaBanner, ChamadosListModule, DevelopmentWorkspace, FilaChamadosView, IndicatorsWorkspace, KanbanWorkspace, MySatisfactionPage, OperationalDashboard, PatrimonioMapPage, ReportsWorkspace, SatisfactionAnalyticsPage, SettingsWorkspace, SystemThemeStyle, UsersModule, chamadoIdFromNotification, formatDate, normalizeStatus, notificacaoClass, notificacaoIcone, variaveisTemaSistema } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 import { AbaUnidades } from "./abas/Unidades";
 import { MobileMoreAction, MobileMoreSheet, MobileNavButton } from "../portal/PortalComponents";
@@ -666,7 +666,6 @@ export function AdminPanel(props: AdminPanelProps) {
                 }
               /></ModuleBoundary>
             )}
-            {tab === "diagnostico" && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando diagnóstico…</strong></div>}><SystemDiagnosticsPage dark={dark} /></ModuleBoundary>}
           </main>
         </div>
       </div>
@@ -752,7 +751,6 @@ export function AdminPanel(props: AdminPanelProps) {
                 "config_sla",
                 "config_integracoes",
                 "manutencao",
-                "diagnostico",
               ].includes(tab)
             }
             dark={dark}
@@ -810,7 +808,7 @@ export function AdminPanel(props: AdminPanelProps) {
               icon={<Building2 size={18} />}
               label="Plataforma"
               onClick={() => {
-                setTab("diagnostico");
+                setTab("manutencao");
                 setMenuMaisAdmin(false);
               }}
             />

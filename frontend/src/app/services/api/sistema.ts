@@ -1,5 +1,5 @@
 /**
- * Responsabilidade: configurações, logos, avisos, notificações, push e diagnóstico do sistema.
+ * Responsabilidade: configurações, logos, avisos, notificações, push e registro de erros do frontend.
  */
 import { getToken, request } from "./http";
 import type { ApiAvisoSistema, ConfiguracoesSistema, Notificacao } from "./types";
@@ -13,19 +13,6 @@ export const registrarPush = (subscription: PushSubscriptionJSON) => request("/n
 export const removerPush = (endpoint: string) => request("/notificacoes/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) });
 
 export const testarPush = (endpoint: string) => request<{ mensagem: string }>("/notificacoes/push/test", { method: "POST", body: JSON.stringify({ endpoint }) });
-
-export type SystemDiagnostics = {
-  ok:boolean;
-  api:{status:string;uptimeSeconds:number;timestamp:string};
-  database:{status:string;latencyMs:number};
-  redis?:{status:string;latencyMs:number};
-  agent:{status:string;total:number;current:number;stale:number;lastHeartbeat?:string|null};
-  process?:{node:string;rssMb:number;heapUsedMb:number};
-  requests?:{totalRequests:number;errors5xx:number;last5Minutes:{requests:number;errors5xx:number;latencyP50Ms:number;latencyP95Ms:number}};
-  recentErrors:Array<{id:string;timestamp:string;source:string;level:string;message:string;requestId?:string|null;path?:string|null}>;
-};
-
-export function getSystemDiagnostics() { return request<SystemDiagnostics>("/system/diagnostics"); }
 
 export async function reportFrontendError(error: Error, componentStack?: string) {
   if (!getToken()) return;
