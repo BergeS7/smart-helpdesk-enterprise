@@ -71,7 +71,7 @@ function modoSistema(req, res, next) {
   executarComoSistema(next);
 }
 
-// Callbacks de upload (multer) perdem o contexto assíncrono; reaplica a empresa já autenticada.
+// Callbacks de upload (multer até 2.3) perdiam o contexto assíncrono; reaplica a empresa já autenticada.
 function manterEmpresa(req, res, next) {
   if (!req.user?.empresaId) return next();
   executarComoEmpresa(req.user.empresaId, next);

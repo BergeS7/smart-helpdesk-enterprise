@@ -33,6 +33,8 @@ test("upload com manterEmpresa mantém a empresa do usuário no controlador", as
   assert.equal(await empresaNoControlador(manterEmpresa), 7);
 });
 
-test("sem manterEmpresa o multer perde a empresa (por isso as rotas de upload o usam)", async () => {
-  assert.equal(await empresaNoControlador(), null);
+// Até o multer 2.3 o callback do upload perdia o contexto; desde o 2.4 ele é mantido,
+// e o manterEmpresa continua nas rotas como garantia.
+test("upload sem manterEmpresa também mantém a empresa (multer 2.4+)", async () => {
+  assert.equal(await empresaNoControlador(), 7);
 });
