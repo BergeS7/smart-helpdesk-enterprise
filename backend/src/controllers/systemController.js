@@ -3,9 +3,11 @@
  */
 const { diagnostics, recordError } = require("../services/systemDiagnosticsService");
 
+// Rota pública: só diz se a API e o banco respondem. Agentes, processo e volume de
+// requisições ficam no diagnóstico, restrito ao dono da plataforma.
 async function health(_req, res) {
   const result = await diagnostics();
-  res.status(result.ok ? 200 : 503).json({ ...result, recentErrors: undefined });
+  res.status(result.ok ? 200 : 503).json({ ok: result.ok, status: result.ok ? "operational" : "unavailable", timestamp: result.api?.timestamp });
 }
 
 async function adminDiagnostics(_req, res) {
