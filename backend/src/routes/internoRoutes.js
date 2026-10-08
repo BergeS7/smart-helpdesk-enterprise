@@ -9,6 +9,7 @@ const crypto = require("crypto");
 const router = require("express").Router();
 const pool = require("../config/database");
 const { modoSistema } = require("../middlewares/authMiddleware");
+const { EMPRESA_PRINCIPAL } = require("../config/tenantContext");
 const { PERFIS_COBRADOS, calcularMensalidade, dadosPlano } = require("../domain/planos");
 const empresas = require("../services/empresasPlataformaService");
 const { diagnostics } = require("../services/systemDiagnosticsService");
@@ -46,6 +47,8 @@ async function listarEmpresas(req, res) {
       gerado_em: new Date().toISOString(),
       empresas: result.rows.map((empresa) => ({
         ...empresa,
+        // A principal não pode ser suspensa: o console usa isto para nem tentar.
+        principal: Number(empresa.id) === EMPRESA_PRINCIPAL,
         plano_nome: dadosPlano(empresa.plano)?.nome || null,
         mensalidade: calcularMensalidade(empresa.plano, empresa.tecnicos_cobrados),
       })),

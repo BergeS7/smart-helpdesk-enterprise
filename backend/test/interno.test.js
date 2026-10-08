@@ -64,6 +64,8 @@ test("resumo traz plano, técnicos cobrados e mensalidade calculada, sem dados d
   assert.equal(principal.mensalidade.total, 749 + 2 * 89, "10 técnicos no Pro: 8 incluídos + 2 extras");
   assert.equal(acme.mensalidade.total, 399);
   assert.equal(acme.status, "suspensa");
+  assert.equal(principal.principal, true);
+  assert.equal(acme.principal, false);
   for (const campo of ["chamados_abertos", "ativos", "chamados", "usuarios"]) assert.equal(campo in principal, false, `${campo} não sai do HelpDesk`);
   assert.match(res.body.gerado_em, /^\d{4}-\d{2}-\d{2}T/);
 });
