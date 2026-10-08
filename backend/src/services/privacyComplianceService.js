@@ -28,16 +28,26 @@ async function recordLegalAcceptance({ userId, req }) {
   );
 }
 
+// Inventários completos com mais de 180 dias saem, menos o mais recente de cada máquina e os que
+// têm alteração registrada (troca de memória, disco...): o histórico de mudanças fica inteiro.
 async function applyPrivacyRetention() {
   const result = await pool.query(`
     WITH deleted_metrics AS (
       DELETE FROM ativo_metricas WHERE coletado_em < NOW() - INTERVAL '90 days' RETURNING 1
+    ), deleted_snapshots AS (
+      DELETE FROM ativo_snapshots s
+       WHERE s.coletado_em < NOW() - INTERVAL '180 days'
+         AND NOT EXISTS (SELECT 1 FROM ativo_alteracoes al WHERE al.snapshot_id = s.id)
+         AND s.id <> (SELECT recente.id FROM ativo_snapshots recente WHERE recente.ativo_id = s.ativo_id
+                       ORDER BY recente.coletado_em DESC, recente.id DESC LIMIT 1)
+      RETURNING 1
     ), cleared_reset_tokens AS (
       UPDATE usuarios SET reset_token=NULL, reset_expira_em=NULL
       WHERE reset_expira_em < NOW() RETURNING 1
     )
     SELECT
       (SELECT COUNT(*) FROM deleted_metrics)::int AS metricas_removidas,
+      (SELECT COUNT(*) FROM deleted_snapshots)::int AS inventarios_removidos,
       (SELECT COUNT(*) FROM cleared_reset_tokens)::int AS tokens_expirados_removidos;
   `);
   return result.rows[0];
