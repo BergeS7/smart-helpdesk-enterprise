@@ -87,7 +87,7 @@ export function TicketWorkspaceToolbar({
             <div>
               <b className="text-sm">Filtrar atendimento</b>
               <p className="text-xs text-slate-400">
-                Segmente pelas 27 áreas de atuação.
+                Segmente por município e unidade da empresa.
               </p>
             </div>
             <button

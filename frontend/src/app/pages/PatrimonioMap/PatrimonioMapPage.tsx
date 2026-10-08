@@ -331,7 +331,7 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
               </div>
               <footer className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t px-4 py-2">
                 <b className="text-[11px] text-slate-700">
-                  {filters.municipio || "27 áreas de atuação"} ·{" "}
+                  {filters.municipio || `${municipiosEmpresa.length} ${municipiosEmpresa.length === 1 ? "área" : "áreas"} de atuação`} ·{" "}
                   {filtered.length} ativos visíveis
                 </b>
                 <div className="flex gap-3 text-[10px] font-bold text-slate-500">
