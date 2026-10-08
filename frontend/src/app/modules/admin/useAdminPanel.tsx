@@ -263,8 +263,10 @@ export function useAdminPanel({
         return;
       }
       if (["kanban", "chamados"].includes(aba)) {
+        // "Meu trabalho" (kanban) mostra só os chamados de quem está logado; "Todos" mostra tudo o que
+        // o perfil pode ver (o backend já limita o técnico aos próprios chamados).
         const [lista, salvos] = await Promise.all([
-          listarChamados({ ...filtrosAtuais, meus: true }),
+          listarChamados({ ...filtrosAtuais, ...(aba === "kanban" ? { meus: true } : {}) }),
           listarFiltrosSalvos().catch(() => []),
         ]);
         setChamados(lista); setFiltrosSalvos(salvos);
@@ -462,7 +464,7 @@ export function useAdminPanel({
   async function aplicarFiltroSalvo(filtro: FiltroSalvo) {
     const filtrosDoBanco = filtro.filtros || {};
     setFiltros(filtrosDoBanco);
-    setChamados(await listarChamados({ ...filtrosDoBanco, meus: true }));
+    setChamados(await listarChamados({ ...filtrosDoBanco, ...(tab === "kanban" ? { meus: true } : {}) }));
     setMostrarFiltros(false);
     toast.success(`Filtro aplicado: ${filtro.nome}`);
   }
