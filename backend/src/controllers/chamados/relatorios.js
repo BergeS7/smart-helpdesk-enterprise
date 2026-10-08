@@ -6,6 +6,7 @@ const { generateExcelReport, generatePdfReport } = require("../../services/repor
 const { buildReportMetrics } = require("../../domain/reportMetrics");
 const { registrarAuditoria } = require("./registro");
 const { consultarChamados, usuarioEhEquipe } = require("./comum");
+const { celulaCsv } = require("../../utils/csv");
 
 const exportarRelatorio = async (req, res) => {
   try {
@@ -51,7 +52,7 @@ const exportarRelatorio = async (req, res) => {
 
     if (formato === "csv") {
       const headers = Object.keys(linhas[0] || { Número: "" });
-      const csv = [headers.join(";"), ...linhas.map((r) => headers.map((h) => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(";"))].join("\n");
+      const csv = [headers.join(";"), ...linhas.map((r) => headers.map((h) => celulaCsv(r[h])).join(";"))].join("\n");
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="${nomeBase}.csv"`);
       return res.send("\ufeff" + csv);

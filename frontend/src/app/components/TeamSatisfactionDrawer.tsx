@@ -21,6 +21,7 @@ import {
   type PerformanceCompanyDashboard,
   type PerformanceScore,
 } from "../services/api";
+import { celulaCsv } from "../utils/csv";
 
 type Props = {
   open: boolean;
@@ -135,7 +136,7 @@ export function TeamSatisfactionDrawer({
       rows
         .map((row) =>
           row
-            .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+            .map(celulaCsv)
             .join(";"),
         )
         .join("\n");
