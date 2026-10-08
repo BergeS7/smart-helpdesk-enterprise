@@ -93,7 +93,7 @@ function normalizarListaPerfis(perfisPermitidos = []) {
 
 function loginEhDeEquipe(perfisPermitidosNormalizados = []) {
   return perfisPermitidosNormalizados.some((perfil) =>
-    ["tecnico", "admin"].includes(perfil)
+    ["tecnico", "supervisor", "admin"].includes(perfil)
   );
 }
 
@@ -246,17 +246,17 @@ const loginUsuario = (req, res) =>
 
 /**
  * Login do painel administrativo/equipe.
- * Permite técnico e administrador (perfis legados de desenvolvedor já chegam normalizados como admin).
+ * Permite técnico, supervisor e administrador (perfis legados de desenvolvedor já chegam normalizados como admin).
  */
 const loginAdmin = (req, res) =>
-  executarLogin(req, res, ["tecnico", "admin"]);
+  executarLogin(req, res, ["tecnico", "supervisor", "admin"]);
 
 /**
  * Login genérico.
  * Permite qualquer perfil ativo entrar e o frontend decide para qual painel enviar.
  */
 const login = (req, res) =>
-  executarLogin(req, res, ["usuario", "tecnico", "admin"]);
+  executarLogin(req, res, ["usuario", "tecnico", "supervisor", "admin"]);
 
 // Responde igual exista ou não o e-mail, e o envio sai depois da resposta: nem a mensagem nem o
 // tempo revelam quem tem conta. Pedir outro código não zera o bloqueio por tentativas erradas.

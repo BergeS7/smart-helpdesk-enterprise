@@ -32,7 +32,9 @@ simular("../src/services/emailMarcaEmpresa", { configuracoesDaEmpresa: async () 
 simular("../src/utils/profilePhoto", { montarUrlFotoPerfil: async () => null });
 simular("../src/services/systemDiagnosticsService", { recordError: () => {}, diagnostics: async () => ({}) });
 
-const { login, solicitarRecuperacaoSenha } = require("../src/controllers/authController");
+process.env.JWT_SECRET = process.env.JWT_SECRET || "segredo-de-teste-com-tamanho-suficiente";
+const bcrypt = require("bcrypt");
+const { login, loginAdmin, solicitarRecuperacaoSenha } = require("../src/controllers/authController");
 
 function resposta() {
   return {
@@ -95,4 +97,16 @@ test("sem serviço de e-mail a recuperação avisa para todos, sem consultar o u
   await solicitarRecuperacaoSenha({ body: { email: "ana@exemplo.com" } }, res);
   assert.equal(res.statusCode, 503);
   assert.equal(consultas.length, 0);
+});
+
+test("supervisor entra pelo login geral e pelo da equipe", async () => {
+  const senha = await bcrypt.hash("senha-do-supervisor", 4);
+  usuarios = [{ id: 9, nome: "Paula", email: "paula@exemplo.com", senha, perfil: "supervisor", status: "ativo", email_verificado_em: "2026-10-01", empresa_status: "ativa", empresa_plano: "pro", token_version: 1 }];
+  for (const rota of [login, loginAdmin]) {
+    const res = resposta();
+    await rota({ body: { email: "paula@exemplo.com", senha: "senha-do-supervisor" } }, res);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(res.body.usuario.perfil, "supervisor");
+    assert.ok(res.body.token);
+  }
 });

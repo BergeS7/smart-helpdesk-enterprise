@@ -157,8 +157,8 @@ export function useAdminPanel({
   const plataforma = isDonoPlataformaApp(usuario);
   const administrador = isAdminApp(usuario.perfil);
   const tecnico = perfilAtual === "tecnico";
-  // Mesma regra do backend. normalizarPerfilApp não reconhece "supervisor", por isso o perfil bruto.
-  const podePublicarBase = administrador || String(usuario.perfil).toLowerCase() === "supervisor";
+  // Mesma regra do backend: admin e supervisor publicam artigos.
+  const podePublicarBase = administrador || perfilAtual === "supervisor";
 
   const equipe = useMemo(
     () => usuarios.filter((u) => isEquipeApp(u.perfil) && u.status === "ativo"),

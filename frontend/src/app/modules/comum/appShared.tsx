@@ -133,6 +133,7 @@ export const PERFIS = ["usuario", "tecnico", "admin"];
 export const PERFIL_LABEL: Record<string, string> = {
   usuario: "Usuário comum",
   tecnico: "Técnico",
+  supervisor: "Supervisor",
   admin: "Administrador",
 };
 
@@ -143,7 +144,8 @@ export function normalizarPerfilApp(perfil?: string) {
   // O antigo perfil desenvolvedor virou o admin da empresa (sessões salvas antes da mudança).
   if (["desenvolvedor", "super_admin", "dev", "developer", "administrador"].includes(valor))
     return "admin";
-  if (["usuario", "tecnico", "admin"].includes(valor))
+  // Supervisor é da equipe: entra no painel, e as permissões a mais vêm do backend.
+  if (["usuario", "tecnico", "supervisor", "admin"].includes(valor))
     return valor;
   return "usuario";
 }
@@ -153,7 +155,7 @@ export function perfilLabel(perfil?: string) {
 }
 
 export function isEquipeApp(perfil?: string) {
-  return ["tecnico", "admin"].includes(normalizarPerfilApp(perfil));
+  return ["tecnico", "supervisor", "admin"].includes(normalizarPerfilApp(perfil));
 }
 
 export function isAdminApp(perfil?: string) {
