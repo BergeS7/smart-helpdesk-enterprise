@@ -67,19 +67,35 @@ function buildStore(prefix) {
   });
 }
 
-function limiter({ windowMs, limit, prefix }) {
+// porIp: conta só pelo IP. Sem ele a chave inclui o e-mail/dispositivo do corpo,
+// e quem troca o e-mail a cada tentativa nunca atinge o limite.
+function limiter({ windowMs, limit, prefix, porIp = false, soFalhas = false }) {
   return rateLimit({
     windowMs, limit, standardHeaders: "draft-7", legacyHeaders: false,
     store: buildStore(prefix),
     passOnStoreError: true,
-    keyGenerator: (req) => `${prefix}:${ipKeyGenerator(req.ip)}:${String(req.body?.email || req.body?.deviceId || "-").trim().toLowerCase().slice(0, 160)}`,
+    skipSuccessfulRequests: soFalhas,
+    keyGenerator: porIp
+      ? (req) => `${prefix}:${ipKeyGenerator(req.ip)}`
+      : (req) => `${prefix}:${ipKeyGenerator(req.ip)}:${String(req.body?.email || req.body?.deviceId || "-").trim().toLowerCase().slice(0, 160)}`,
     handler: (req, res) => res.status(429).json({ erro: "Muitas tentativas. Aguarde antes de tentar novamente.", requestId: req.id }),
   });
 }
 
-const authLimiter = limiter({ windowMs: 15 * 60 * 1000, limit: 12, prefix: "auth" });
-const recoveryLimiter = limiter({ windowMs: 20 * 60 * 1000, limit: 6, prefix: "recovery" });
-const registrationLimiter = limiter({ windowMs: 60 * 60 * 1000, limit: 8, prefix: "registration" });
+// Cada limite sensível tem duas camadas: por conta (IP + e-mail) e por IP. O de login
+// por IP conta só falhas, para um escritório inteiro atrás do mesmo IP poder entrar.
+const authLimiter = [
+  limiter({ windowMs: 15 * 60 * 1000, limit: 30, prefix: "auth-ip", porIp: true, soFalhas: true }),
+  limiter({ windowMs: 15 * 60 * 1000, limit: 12, prefix: "auth" }),
+];
+const recoveryLimiter = [
+  limiter({ windowMs: 20 * 60 * 1000, limit: 20, prefix: "recovery-ip", porIp: true }),
+  limiter({ windowMs: 20 * 60 * 1000, limit: 6, prefix: "recovery" }),
+];
+const registrationLimiter = [
+  limiter({ windowMs: 60 * 60 * 1000, limit: 30, prefix: "registration-ip", porIp: true }),
+  limiter({ windowMs: 60 * 60 * 1000, limit: 8, prefix: "registration" }),
+];
 const uploadLimiter = limiter({ windowMs: 15 * 60 * 1000, limit: 30, prefix: "upload" });
 const agentEnrollmentLimiter = limiter({ windowMs: 60 * 60 * 1000, limit: 15, prefix: "agent" });
 const apiLimiter = limiter({ windowMs: 60 * 1000, limit: 300, prefix: "api" });
