@@ -5,13 +5,19 @@ const crypto = require("crypto");
 const pool = require("../config/database");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { enviarEmail } = require("../services/emailService");
+const { enviarEmail, emailConfigurado } = require("../services/emailService");
 const { emailRecuperacaoSenha } = require("../services/emailModelos");
 const { configuracoesDaEmpresa } = require("../services/emailMarcaEmpresa");
 const { montarUrlFotoPerfil } = require("../utils/profilePhoto");
 const { normalizarPerfil, ehDonoPlataforma } = require("../utils/permissoes");
 const { dadosPlanoPublico } = require("../domain/planos");
 const { senhaValida } = require("../utils/passwordPolicy");
+const { recordError } = require("../services/systemDiagnosticsService");
+
+// Hash de uma senha qualquer: e-mail inexistente também passa por uma conferência do bcrypt,
+// para o tempo da resposta não revelar quais e-mails têm conta.
+const HASH_FICTICIO = bcrypt.hashSync(crypto.randomBytes(16).toString("hex"), 10);
+const MENSAGEM_RECUPERACAO = "Se o e-mail estiver cadastrado, enviaremos as instruções de recuperação.";
 
 function gerarToken(usuario) {
   const perfilNormalizado = normalizarPerfil(usuario.perfil);
@@ -125,6 +131,7 @@ async function executarLogin(req, res, perfisPermitidos) {
     );
 
     if (result.rows.length === 0) {
+      await bcrypt.compare(String(senha), HASH_FICTICIO);
       return res.status(401).json({
         erro: "Credenciais inválidas",
       });
@@ -251,6 +258,8 @@ const loginAdmin = (req, res) =>
 const login = (req, res) =>
   executarLogin(req, res, ["usuario", "tecnico", "admin"]);
 
+// Responde igual exista ou não o e-mail, e o envio sai depois da resposta: nem a mensagem nem o
+// tempo revelam quem tem conta. Pedir outro código não zera o bloqueio por tentativas erradas.
 const solicitarRecuperacaoSenha = async (req, res) => {
   try {
     const { email } = req.body;
@@ -261,55 +270,26 @@ const solicitarRecuperacaoSenha = async (req, res) => {
       });
     }
 
+    if (!emailConfigurado()) {
+      return res.status(503).json({ erro: "O serviço de e-mail ainda não está configurado. Contate o suporte." });
+    }
+
     const result = await pool.query(
-      `SELECT id, nome, email, perfil, empresa_id
+      `SELECT id, nome, email, perfil, empresa_id, reset_bloqueado_ate
        FROM usuarios
        WHERE LOWER(email) = LOWER($1)
          AND email_verificado_em IS NOT NULL`,
       [String(email).trim()]
     );
 
-    if (result.rows.length === 0) {
-      return res.json({
-        mensagem: "Se o e-mail existir, enviaremos as instruções de recuperação.",
-      });
-    }
-
     const usuario = result.rows[0];
-    const codigo = crypto.randomInt(100000, 999999).toString();
-    const codigoHash = crypto.createHash("sha256").update(codigo).digest("hex");
+    res.json({ mensagem: MENSAGEM_RECUPERACAO });
 
-    await pool.query(
-      `UPDATE usuarios
-       SET
-        reset_token = NULL,
-        reset_token_hash = $1,
-        reset_expira_em = CURRENT_TIMESTAMP + INTERVAL '20 minutes',
-        reset_tentativas = 0,
-        reset_bloqueado_ate = NULL,
-        reset_solicitado_em = CURRENT_TIMESTAMP
-       WHERE id = $2`,
-      [codigoHash, usuario.id]
-    );
-
-    const config = await configuracoesDaEmpresa(usuario.empresa_id);
-    const entrega = await enviarEmail({ para: usuario.email, ...emailRecuperacaoSenha({ nome: usuario.nome, codigo, config }) });
-    if (!entrega.enviado) {
-      await pool.query("UPDATE usuarios SET reset_token_hash=NULL,reset_expira_em=NULL WHERE id=$1", [usuario.id]);
-      return res.status(503).json({ erro: "O serviço de e-mail ainda não está configurado. Contate o suporte." });
-    }
-
-    await registrarAuditoria(
-      usuario,
-      "recuperacao_senha",
-      "Código de recuperação solicitado"
-    );
-
-    return res.json({
-      mensagem: "Se o e-mail estiver cadastrado, enviaremos as instruções de recuperação.",
-    });
+    if (!usuario || (usuario.reset_bloqueado_ate && new Date(usuario.reset_bloqueado_ate) > new Date())) return;
+    await enviarCodigoRecuperacao(usuario);
   } catch (error) {
     console.error(error);
+    if (res.headersSent) return;
 
     return res.status(500).json({
       erro: "Erro ao solicitar recuperação",
@@ -317,6 +297,45 @@ const solicitarRecuperacaoSenha = async (req, res) => {
     });
   }
 };
+
+async function enviarCodigoRecuperacao(usuario) {
+  const codigo = crypto.randomInt(100000, 999999).toString();
+  const codigoHash = crypto.createHash("sha256").update(codigo).digest("hex");
+
+  await pool.query(
+    `UPDATE usuarios
+     SET
+      reset_token = NULL,
+      reset_token_hash = $1,
+      reset_expira_em = CURRENT_TIMESTAMP + INTERVAL '20 minutes',
+      -- Erros seguem contando entre um código e outro; zeram quando o bloqueio vence
+      -- ou depois de 30 minutos sem pedido.
+      reset_tentativas = CASE
+        WHEN reset_bloqueado_ate <= CURRENT_TIMESTAMP
+          OR reset_solicitado_em IS NULL
+          OR reset_solicitado_em < CURRENT_TIMESTAMP - INTERVAL '30 minutes' THEN 0
+        ELSE COALESCE(reset_tentativas, 0)
+      END,
+      reset_bloqueado_ate = CASE WHEN reset_bloqueado_ate <= CURRENT_TIMESTAMP THEN NULL ELSE reset_bloqueado_ate END,
+      reset_solicitado_em = CURRENT_TIMESTAMP
+     WHERE id = $2`,
+    [codigoHash, usuario.id]
+  );
+
+  const config = await configuracoesDaEmpresa(usuario.empresa_id);
+  const entrega = await enviarEmail({ para: usuario.email, ...emailRecuperacaoSenha({ nome: usuario.nome, codigo, config }) });
+  if (!entrega.enviado) {
+    await pool.query("UPDATE usuarios SET reset_token_hash=NULL,reset_expira_em=NULL WHERE id=$1", [usuario.id]);
+    recordError({ source: "email", message: "Código de recuperação de senha não foi entregue", context: { usuarioId: usuario.id } });
+    return;
+  }
+
+  await registrarAuditoria(
+    usuario,
+    "recuperacao_senha",
+    "Código de recuperação solicitado"
+  );
+}
 
 const redefinirSenha = async (req, res) => {
   try {
@@ -353,10 +372,11 @@ const redefinirSenha = async (req, res) => {
     const usuario = result.rows[0];
 
     const codigoHash = crypto.createHash("sha256").update(String(codigo)).digest("hex");
+    const codigoConfere = Boolean(usuario.reset_token_hash) && usuario.reset_token_hash.length === codigoHash.length
+      && crypto.timingSafeEqual(Buffer.from(usuario.reset_token_hash), Buffer.from(codigoHash));
     if (usuario.reset_bloqueado_ate && new Date(usuario.reset_bloqueado_ate) > new Date()) return res.status(429).json({ erro: "Muitas tentativas. Solicite um novo código mais tarde." });
     if (
-      !usuario.reset_token_hash ||
-      usuario.reset_token_hash !== codigoHash ||
+      !codigoConfere ||
       !usuario.reset_expira_em ||
       new Date(usuario.reset_expira_em) < new Date()
     ) {
