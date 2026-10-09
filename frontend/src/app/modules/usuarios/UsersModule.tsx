@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { MapPin, Search, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { criarUsuarioAdmin, type ApiUsuario, type PerfilUsuario } from "../../services/api";
+import { comConfirmacaoDeTecnicoExtra, criarUsuarioAdmin, obterUsoPlano, type ApiUsuario, type PerfilUsuario, type UsoPlano } from "../../services/api";
 import { PermissionMatrixPage } from "../../components/PermissionMatrixPage";
 import { SeletorUnidade } from "../../components/shared/SeletorUnidade";
 import { useLocalidades } from "../../hooks/useLocalidades";
@@ -36,6 +36,21 @@ const locationLabel = (municipio?: string | null, unidade?: string | null) => {
   if (unit.toLocaleLowerCase("pt-BR") === city.toLocaleLowerCase("pt-BR")) unit = "";
   return unit ? `${city} · ${unit}` : city;
 };
+const reais = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+/** Faixa de técnicos do plano: quanto já foi usado e quanto os extras somam na mensalidade. */
+function UsoDoPlano({ uso }: { uso: Extract<UsoPlano, { isenta: false }> }) {
+  const acima = uso.tecnicos_extras > 0;
+  return (
+    <p className={`mt-1 text-xs font-bold ${acima ? "text-amber-700" : "text-slate-600"}`}>
+      Plano {uso.plano_nome}: {uso.tecnicos} de {uso.tecnicos_incluidos} técnicos incluídos
+      {acima
+        ? ` · ${uso.tecnicos_extras} extra(s), +${reais(uso.tecnicos_extras * uso.valor_tecnico_extra)}/mês`
+        : ` · técnico extra custa ${reais(uso.valor_tecnico_extra)}/mês`}
+    </p>
+  );
+}
+
 type Props = {
   users: ApiUsuario[];
   currentUser: ApiUsuario;
@@ -47,7 +62,8 @@ type Props = {
   onRefresh: () => Promise<void> | void;
   onEdit: (u: ApiUsuario) => void;
   onPermissions: (u: ApiUsuario) => void;
-  onApprove: (id: number) => Promise<void>;
+  /** false quando o admin desistiu (ex.: não confirmou o técnico extra). */
+  onApprove: (id: number) => Promise<boolean | void>;
   onReject: (id: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 };
@@ -71,6 +87,14 @@ export function UsersModule({
     [saving, setSaving] = useState(false),
     [query, setQuery] = useState(""),
     [municipio, setMunicipio] = useState("");
+  const [usoPlano, setUsoPlano] = useState<UsoPlano | null>(null);
+  // Recarrega junto com a lista: criar, aprovar ou editar alguém pode mudar a contagem.
+  useEffect(() => {
+    if (!admin) return;
+    let ativo = true;
+    obterUsoPlano().then((uso) => ativo && setUsoPlano(uso)).catch(() => ativo && setUsoPlano(null));
+    return () => { ativo = false; };
+  }, [admin, users]);
   const pendingActions = useRef(new Set<number>());
   const [actions, setActions] = useState<Record<number, "approve" | "reject">>({});
   async function changeStatus(id: number, action: "approve" | "reject") {
@@ -78,8 +102,8 @@ export function UsersModule({
     pendingActions.current.add(id);
     setActions((current) => ({ ...current, [id]: action }));
     try {
-      await (action === "approve" ? onApprove(id) : onReject(id));
-      toast.success(action === "approve" ? "Usuário aprovado com sucesso." : "Usuário rejeitado.");
+      const concluido = await (action === "approve" ? onApprove(id) : onReject(id));
+      if (concluido !== false) toast.success(action === "approve" ? "Usuário aprovado com sucesso." : "Usuário rejeitado.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o usuário. Tente novamente.");
     } finally {
@@ -109,7 +133,8 @@ export function UsersModule({
     e.preventDefault();
     setSaving(true);
     try {
-      await criarUsuarioAdmin(form);
+      const criado = await comConfirmacaoDeTecnicoExtra((confirmar) => criarUsuarioAdmin(form, confirmar));
+      if (!criado) return;
       setForm(initial);
       await onRefresh();
       toast.success("Usuário criado com sucesso.");
@@ -196,6 +221,7 @@ export function UsersModule({
                   <p className="text-xs text-slate-500">
                     {visibleUsers.length} de {users.length} registro(s)
                   </p>
+                  {usoPlano?.isenta === false ? <UsoDoPlano uso={usoPlano} /> : null}
                 </div>
                 <div className="flex gap-2">
                   <label className="ds-search flex items-center gap-2 rounded-xl border px-3">

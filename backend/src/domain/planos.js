@@ -67,7 +67,33 @@ function calcularMensalidade(plano, tecnicos) {
   };
 }
 
+/** Conta na cobrança quem é da equipe e está ativo (mesma regra do resumo enviado ao Console). */
+function contaComoTecnico(usuario) {
+  return Boolean(usuario) && PERFIS_COBRADOS.includes(usuario.perfil) && usuario.status === "ativo";
+}
+
+/**
+ * Efeito de ativar mais um técnico: null se ainda cabe na faixa do plano; senão, quanto a mensalidade sobe.
+ * Não bloqueia: o plano prevê o técnico extra, o admin só precisa saber que vai pagar por ele.
+ */
+function impactoNovoTecnico(plano, tecnicosAtuais) {
+  const antes = calcularMensalidade(plano, tecnicosAtuais);
+  if (!antes) return null;
+  const depois = calcularMensalidade(plano, antes.tecnicos + 1);
+  if (depois.tecnicosExtras === 0) return null;
+  return {
+    plano,
+    plano_nome: dadosPlano(plano).nome,
+    tecnicos_incluidos: depois.tecnicosIncluidos,
+    tecnicos_depois: depois.tecnicos,
+    valor_tecnico_extra: dadosPlano(plano).valorTecnicoExtra,
+    mensalidade_atual: antes.total,
+    mensalidade_nova: depois.total,
+  };
+}
+
 module.exports = {
   RECURSOS, CATALOGO, PLANOS, PLANO_PADRAO, PERFIS_COBRADOS,
   dadosPlano, dadosPlanoPublico, recursosDoPlano, planoTemRecurso, planoMinimoPara, calcularMensalidade,
+  contaComoTecnico, impactoNovoTecnico,
 };

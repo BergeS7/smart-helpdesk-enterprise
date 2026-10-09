@@ -20,6 +20,7 @@ const {
   aprovarUsuario,
   rejeitarUsuario,
   atualizarUsuarioAdmin,
+  obterUsoPlano,
   obterMeuPerfil,
   atualizarMeuPerfil,
   atualizarMinhaFotoPerfil,
@@ -85,6 +86,8 @@ router.get(
   exigirPerfisLocais(["tecnico", "admin"]),
   listarUsuarios
 );
+
+router.get("/uso-plano", authMiddleware, exigirPerfisLocais(["admin"]), obterUsoPlano);
 
 router.post(
   "/",

@@ -3,7 +3,7 @@
  */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { RECURSOS, PLANOS, calcularMensalidade, planoTemRecurso, planoMinimoPara, dadosPlanoPublico } = require("../src/domain/planos");
+const { RECURSOS, PLANOS, calcularMensalidade, planoTemRecurso, planoMinimoPara, dadosPlanoPublico, contaComoTecnico, impactoNovoTecnico } = require("../src/domain/planos");
 const { exigirRecurso, recursoOuVazio } = require("../src/middlewares/authMiddleware");
 
 test("planos em ordem de preço, do Base ao Pro", () => {
@@ -68,4 +68,22 @@ test("lista de recurso fora do plano responde vazia em vez de erro", () => {
   assert.equal(seguiu, false);
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body, []);
+});
+
+test("só equipe ativa conta como técnico na cobrança", () => {
+  assert.equal(contaComoTecnico({ perfil: "tecnico", status: "ativo" }), true);
+  assert.equal(contaComoTecnico({ perfil: "admin", status: "ativo" }), true);
+  assert.equal(contaComoTecnico({ perfil: "tecnico", status: "pendente" }), false);
+  assert.equal(contaComoTecnico({ perfil: "usuario", status: "ativo" }), false);
+  assert.equal(contaComoTecnico(null), false);
+});
+
+test("novo técnico dentro da faixa não tem impacto; acima dela mostra a mensalidade nova", () => {
+  assert.equal(impactoNovoTecnico("plus", 4), null);
+  assert.deepEqual(impactoNovoTecnico("plus", 5), {
+    plano: "plus", plano_nome: "Plus", tecnicos_incluidos: 5, tecnicos_depois: 6,
+    valor_tecnico_extra: 69, mensalidade_atual: 549, mensalidade_nova: 618,
+  });
+  assert.equal(impactoNovoTecnico("base", 4).mensalidade_atual, 399 + 49);
+  assert.equal(impactoNovoTecnico("enterprise", 9), null);
 });

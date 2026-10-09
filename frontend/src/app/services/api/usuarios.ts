@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: usuários, perfil próprio e permissões.
  */
-import { request } from "./http";
+import { ApiError, request } from "./http";
 import type { ApiUsuario } from "./http";
 import type { PermissionDefinition, PermissionKey } from "./types";
 
@@ -13,29 +13,66 @@ export function listarUsuariosAdmin(
   return request<ApiUsuario[]>(`/usuarios${qs.toString() ? `?${qs}` : ""}`);
 }
 
+/** Quanto da faixa de técnicos do plano a empresa usa; a empresa principal vem como isenta. */
+export type UsoPlano =
+  | { isenta: true }
+  | {
+      isenta: false;
+      plano: string;
+      plano_nome: string;
+      tecnicos: number;
+      tecnicos_incluidos: number;
+      tecnicos_extras: number;
+      valor_tecnico_extra: number;
+      mensalidade: number;
+    };
+
+export function obterUsoPlano() {
+  return request<UsoPlano>("/usuarios/uso-plano");
+}
+
+/**
+ * Executa a ação e, se o servidor avisar que ela cria um técnico além da faixa do plano (cobrado à parte),
+ * pergunta ao admin e repete com a confirmação. Recusou: devolve null e nada muda.
+ */
+export async function comConfirmacaoDeTecnicoExtra<T>(
+  acao: (confirmarExtra: boolean) => Promise<T>,
+): Promise<T | null> {
+  try {
+    return await acao(false);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.dados?.codigo !== "TECNICO_EXTRA") throw error;
+    const aviso = String(error.dados.erro ?? error.message);
+    if (!window.confirm(`${aviso}\n\nO técnico extra entra na próxima cobrança. Confirmar?`)) return null;
+    return acao(true);
+  }
+}
+
 export function criarUsuarioAdmin(
   dados: Partial<ApiUsuario> & { senha: string },
+  confirmarExtra = false,
 ) {
   return request<ApiUsuario>("/usuarios", {
     method: "POST",
-    body: JSON.stringify(dados),
+    body: JSON.stringify({ ...dados, confirmar_extra: confirmarExtra }),
   });
 }
 
 export function atualizarUsuarioAdmin(
   id: number | string,
   dados: Partial<ApiUsuario>,
+  confirmarExtra = false,
 ) {
   return request<ApiUsuario>(`/usuarios/${id}`, {
     method: "PUT",
-    body: JSON.stringify(dados),
+    body: JSON.stringify({ ...dados, confirmar_extra: confirmarExtra }),
   });
 }
 
-export function aprovarUsuario(id: number) {
+export function aprovarUsuario(id: number, confirmarExtra = false) {
   return request<{ mensagem: string; usuario: ApiUsuario }>(
     `/usuarios/${id}/aprovar`,
-    { method: "PATCH" },
+    { method: "PATCH", body: JSON.stringify({ confirmar_extra: confirmarExtra }) },
   );
 }
 

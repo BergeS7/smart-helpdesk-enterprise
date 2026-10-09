@@ -15,6 +15,7 @@ const { localidadeValida, localidadeAceitaParaUsuario } = require("../services/l
 const { senhaValida } = require("../utils/passwordPolicy");
 const { normalizarPerfil, ehAdmin, ehDonoPlataforma, ehEmailDonoPlataforma } = require("../utils/permissoes");
 const { dadosPlanoPublico } = require("../domain/planos");
+const { usoDoPlano, tecnicoExtra, confirmouExtra, avisoTecnicoExtra, descricaoTecnicoExtra } = require("../services/usoPlanoService");
 const { EMPRESA_PRINCIPAL, executarComoEmpresa } = require("../config/tenantContext");
 const { empresaAtivaPorSlug } = require("./empresaController");
 
@@ -64,6 +65,12 @@ function perfilDoRequest(req) {
 
 function usuarioIdDoRequest(req) {
   return req.user?.id || req.usuario?.id || null;
+}
+
+// Perfil e situação de agora, para saber se a mudança acrescenta um técnico cobrado.
+async function situacaoDoUsuario(id) {
+  const result = await pool.query("SELECT COALESCE(perfil, 'usuario') AS perfil, COALESCE(status, 'ativo') AS status FROM usuarios WHERE id = $1", [id]);
+  return result.rows[0] || null;
 }
 
 // Produz o contrato seguro devolvido ao frontend e resolve a foto de perfil.
@@ -385,6 +392,10 @@ async function createUser(req, res) {
       });
     }
 
+    const statusNovo = normalizarStatusUsuario(status || "ativo");
+    const extra = await tecnicoExtra(req, null, { perfil: perfilNovo, status: statusNovo });
+    if (extra && !confirmouExtra(req)) return res.status(409).json(avisoTecnicoExtra(extra));
+
     const senhaHash = await bcrypt.hash(String(senha), 10);
 
     const result = await pool.query(
@@ -413,7 +424,7 @@ async function createUser(req, res) {
         normalizarEmail(email),
         senhaHash,
         perfilNovo,
-        normalizarStatusUsuario(status || "ativo"),
+        statusNovo,
         normalizarTexto(telefone),
         normalizarTexto(departamento),
         normalizarTexto(municipio),
@@ -424,6 +435,7 @@ async function createUser(req, res) {
     );
 
     await registrarAuditoria(req, result.rows[0].id, "criado", `Usuário ${result.rows[0].email} criado.`);
+    if (extra) await registrarAuditoria(req, result.rows[0].id, "tecnico_extra", descricaoTecnicoExtra(extra));
 
     return res.status(201).json(await montarUsuarioPublico(result.rows[0], req));
   } catch (error) {
@@ -496,6 +508,9 @@ async function listarUsuarios(req, res) {
 async function aprovarUsuario(req, res) {
   try {
     const { id } = req.params;
+    const atual = await situacaoDoUsuario(id);
+    const extra = atual && await tecnicoExtra(req, atual, { ...atual, status: "ativo" });
+    if (extra && !confirmouExtra(req)) return res.status(409).json(avisoTecnicoExtra(extra));
 
     const result = await pool.query(
       `UPDATE usuarios
@@ -530,6 +545,7 @@ async function aprovarUsuario(req, res) {
     }
 
     await registrarAuditoria(req, id, "aprovado", `Usuário ${result.rows[0].email} aprovado.`);
+    if (extra) await registrarAuditoria(req, id, "tecnico_extra", descricaoTecnicoExtra(extra));
 
     return res.json({
       mensagem: "Usuário aprovado com sucesso.",
@@ -634,6 +650,13 @@ async function atualizarUsuarioAdmin(req, res) {
       });
     }
 
+    const atual = await situacaoDoUsuario(id);
+    const extra = atual && await tecnicoExtra(req, atual, {
+      perfil: dados.perfil !== undefined ? normalizarPerfilUsuario(dados.perfil) : atual.perfil,
+      status: dados.status !== undefined ? normalizarStatusUsuario(dados.status) : atual.status,
+    });
+    if (extra && !confirmouExtra(req)) return res.status(409).json(avisoTecnicoExtra(extra));
+
     function adicionarCampo(nomeColuna, valor) {
       valores.push(valor);
       camposPermitidos.push(`${nomeColuna} = $${valores.length}`);
@@ -701,6 +724,7 @@ async function atualizarUsuarioAdmin(req, res) {
     }
 
     await registrarAuditoria(req, id, "atualizado", `Dados do usuário ${result.rows[0].email} atualizados.`);
+    if (extra) await registrarAuditoria(req, id, "tecnico_extra", descricaoTecnicoExtra(extra));
 
     return res.json(await montarUsuarioPublico(result.rows[0], req));
   } catch (error) {
@@ -710,6 +734,15 @@ async function atualizarUsuarioAdmin(req, res) {
       erro: "Erro ao atualizar usuário",
       detalhe: error.message,
     });
+  }
+}
+
+async function obterUsoPlano(req, res) {
+  try {
+    return res.json(await usoDoPlano(req));
+  } catch (error) {
+    console.error("Erro ao consultar uso do plano:", error);
+    return res.status(500).json({ erro: "Erro ao consultar o uso do plano." });
   }
 }
 
@@ -994,6 +1027,7 @@ module.exports = {
   aprovarUsuario,
   rejeitarUsuario,
   atualizarUsuarioAdmin,
+  obterUsoPlano,
   obterMeuPerfil,
   atualizarMeuPerfil,
   atualizarMinhaFotoPerfil,

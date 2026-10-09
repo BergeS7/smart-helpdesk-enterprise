@@ -11,7 +11,7 @@ import { TICKET_STATUS } from "../../domain/ticketStatus";
 import { WorkspaceNavigation } from "../../components/WorkspaceNavigation";
 import { TicketWorkspaceToolbar } from "../../components/TicketWorkspaceToolbar";
 import { ModuleBoundary } from "../../components/ModuleBoundary";
-import { aprovarUsuario, atualizarChamado, baixarRelatorio, buscarChamado, excluirUsuarioAdmin, rejeitarUsuario, type ApiUsuario } from "../../services/api";
+import { aprovarUsuario, atualizarChamado, comConfirmacaoDeTecnicoExtra, baixarRelatorio, buscarChamado, excluirUsuarioAdmin, rejeitarUsuario, type ApiUsuario } from "../../services/api";
 import { AvisosSistemaBanner, ChamadosListModule, DevelopmentWorkspace, FilaChamadosView, IndicatorsWorkspace, KanbanWorkspace, MySatisfactionPage, OperationalDashboard, PatrimonioMapPage, ReportsWorkspace, SatisfactionAnalyticsPage, SettingsWorkspace, SystemThemeStyle, UsersModule, chamadoIdFromNotification, formatDate, normalizeStatus, notificacaoClass, notificacaoIcone, variaveisTemaSistema } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 import { AbaUnidades } from "./abas/Unidades";
@@ -624,7 +624,7 @@ export function AdminPanel(props: AdminPanelProps) {
               />
             )}
 
-            {["usuarios","acessos"].includes(tab) && administrador && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando usuários…</strong></div>}><UsersModule users={usuarios} currentUser={usuario} admin={administrador} platformOwner={plataforma} initialMode={tab==="acessos"?"access":"list"} onModeChange={mode=>setTab(mode==="access"?"acessos":"usuarios")} onRefresh={carregar} onEdit={abrirEdicaoUsuario} onPermissions={setUsuarioPermissoes} onApprove={async id=>{await aprovarUsuario(id);await carregar()}} onReject={async id=>{await rejeitarUsuario(id);await carregar()}} onDelete={async id=>{await excluirUsuarioAdmin(id);await carregar();toast.success("Usuário apagado.")}}/></ModuleBoundary>}
+            {["usuarios","acessos"].includes(tab) && administrador && <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando usuários…</strong></div>}><UsersModule users={usuarios} currentUser={usuario} admin={administrador} platformOwner={plataforma} initialMode={tab==="acessos"?"access":"list"} onModeChange={mode=>setTab(mode==="access"?"acessos":"usuarios")} onRefresh={carregar} onEdit={abrirEdicaoUsuario} onPermissions={setUsuarioPermissoes} onApprove={async id=>{const aprovado=await comConfirmacaoDeTecnicoExtra(confirmar=>aprovarUsuario(id,confirmar));await carregar();return Boolean(aprovado)}} onReject={async id=>{await rejeitarUsuario(id);await carregar()}} onDelete={async id=>{await excluirUsuarioAdmin(id);await carregar();toast.success("Usuário apagado.")}}/></ModuleBoundary>}
             {tab === "catalogos" && <AbaCatalogos painel={painel} />}
 
             {tab === "base" && <AbaBaseConhecimento painel={painel} />}

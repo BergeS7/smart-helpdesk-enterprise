@@ -90,6 +90,7 @@ const openapiDocument = {
       put: op("Atualizar usuário (admin)", { tags: ["Usuários"], params: ["id"] }),
       delete: op("Remover usuário", { tags: ["Usuários"], params: ["id"] }),
     },
+    "/usuarios/uso-plano": { get: op("Uso da faixa de técnicos do plano", { tags: ["Usuários"] }) },
     "/usuarios/{id}/aprovar": { patch: op("Aprovar usuário", { tags: ["Usuários"], params: ["id"] }) },
     "/usuarios/{id}/rejeitar": { patch: op("Rejeitar usuário", { tags: ["Usuários"], params: ["id"] }) },
 

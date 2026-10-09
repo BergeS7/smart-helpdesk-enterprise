@@ -97,6 +97,18 @@ export function getSessaoPersistida(): LoginResposta | null {
   return { token, usuario };
 }
 
+/** Falha da API com o status e o corpo da resposta, para quem precisa reagir a um código específico. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly dados: { codigo?: string; [chave: string]: unknown } | null,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 // Executa JSON autenticado, normaliza falhas e encerra sessões expiradas.
 export async function request<T>(
   path: string,
@@ -134,8 +146,10 @@ export async function request<T>(
       ? ` ${data.detalhes.join(" | ")}`
       : "";
     const codigo = data?.requestId ? ` Código: ${data.requestId}` : "";
-    throw new Error(
+    throw new ApiError(
       `${data?.erro ?? "Erro ao comunicar com a API"}${detalhe}${extras}${codigo}`,
+      response.status,
+      data,
     );
   }
   return data as T;
