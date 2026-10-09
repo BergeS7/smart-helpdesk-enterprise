@@ -11,7 +11,8 @@ import { TICKET_STATUS } from "../../domain/ticketStatus";
 import { WorkspaceNavigation } from "../../components/WorkspaceNavigation";
 import { TicketWorkspaceToolbar } from "../../components/TicketWorkspaceToolbar";
 import { ModuleBoundary } from "../../components/ModuleBoundary";
-import { aprovarUsuario, atualizarChamado, comConfirmacaoDeTecnicoExtra, baixarRelatorio, buscarChamado, excluirUsuarioAdmin, rejeitarUsuario, type ApiUsuario } from "../../services/api";
+import { aprovarUsuario, atualizarChamado, baixarRelatorio, buscarChamado, excluirUsuarioAdmin, rejeitarUsuario, type ApiUsuario } from "../../services/api";
+import { ConfirmacaoTecnicoExtraHost, comConfirmacaoDeTecnicoExtra } from "../../components/shared/ConfirmacaoTecnicoExtra";
 import { AvisosSistemaBanner, ChamadosListModule, DevelopmentWorkspace, FilaChamadosView, IndicatorsWorkspace, KanbanWorkspace, MySatisfactionPage, OperationalDashboard, PatrimonioMapPage, ReportsWorkspace, SatisfactionAnalyticsPage, SettingsWorkspace, SystemThemeStyle, UsersModule, chamadoIdFromNotification, formatDate, normalizeStatus, notificacaoClass, notificacaoIcone, variaveisTemaSistema } from "../comum/appShared";
 import type { AdminTab } from "../comum/appShared";
 import { AbaUnidades } from "./abas/Unidades";
@@ -125,6 +126,7 @@ export function AdminPanel(props: AdminPanelProps) {
     >
       <SystemThemeStyle />
       <Toaster position="top-right" richColors />
+      <ConfirmacaoTecnicoExtraHost />
       <GlobalCommandPalette
         open={buscaGlobalAberta}
         onClose={() => setBuscaGlobalAberta(false)}

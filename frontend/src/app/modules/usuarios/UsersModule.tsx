@@ -4,9 +4,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { MapPin, Search, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { comConfirmacaoDeTecnicoExtra, criarUsuarioAdmin, obterUsoPlano, type ApiUsuario, type PerfilUsuario, type UsoPlano } from "../../services/api";
+import { criarUsuarioAdmin, obterUsoPlano, type ApiUsuario, type PerfilUsuario, type UsoPlano } from "../../services/api";
 import { PermissionMatrixPage } from "../../components/PermissionMatrixPage";
 import { SeletorUnidade } from "../../components/shared/SeletorUnidade";
+import { comConfirmacaoDeTecnicoExtra } from "../../components/shared/ConfirmacaoTecnicoExtra";
 import { useLocalidades } from "../../hooks/useLocalidades";
 
 const initial = {

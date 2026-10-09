@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: usuários, perfil próprio e permissões.
  */
-import { ApiError, request } from "./http";
+import { request } from "./http";
 import type { ApiUsuario } from "./http";
 import type { PermissionDefinition, PermissionKey } from "./types";
 
@@ -29,23 +29,6 @@ export type UsoPlano =
 
 export function obterUsoPlano() {
   return request<UsoPlano>("/usuarios/uso-plano");
-}
-
-/**
- * Executa a ação e, se o servidor avisar que ela cria um técnico além da faixa do plano (cobrado à parte),
- * pergunta ao admin e repete com a confirmação. Recusou: devolve null e nada muda.
- */
-export async function comConfirmacaoDeTecnicoExtra<T>(
-  acao: (confirmarExtra: boolean) => Promise<T>,
-): Promise<T | null> {
-  try {
-    return await acao(false);
-  } catch (error) {
-    if (!(error instanceof ApiError) || error.dados?.codigo !== "TECNICO_EXTRA") throw error;
-    const aviso = String(error.dados.erro ?? error.message);
-    if (!window.confirm(`${aviso}\n\nO técnico extra entra na próxima cobrança. Confirmar?`)) return null;
-    return acao(true);
-  }
 }
 
 export function criarUsuarioAdmin(
