@@ -133,8 +133,8 @@ async function adicionarFotosParticipantes(req, chamado) {
   };
 }
 
-async function notificarUsuarioVinculadoAoAtivo(chamado) {
-  if (!chamado?.ativo_id) return;
+// Usuário ativo dono do equipamento: pelo vínculo direto ou pelo login/nome que o agente coletou.
+async function buscarUsuarioVinculadoAoAtivo(ativoId, ignorarUsuarioId = null) {
   const vinculado = await pool.query(
     `SELECT u.id
        FROM ativos a
@@ -147,10 +147,16 @@ async function notificarUsuarioVinculadoAoAtivo(chamado) {
       WHERE a.id = $1 AND u.id <> COALESCE($2, 0)
         AND COALESCE(u.status, 'ativo') = 'ativo'
       LIMIT 1`,
-    [chamado.ativo_id, chamado.usuario_id]
+    [ativoId, ignorarUsuarioId]
   );
-  if (vinculado.rows[0]) {
-    await criarNotificacao(vinculado.rows[0].id, "Chamado do seu ativo concluído", `${chamado.numero_chamado} foi concluído. Avalie o atendimento.`, "success", `/chamados/${chamado.id}?action=avaliar`);
+  return vinculado.rows[0] || null;
+}
+
+async function notificarUsuarioVinculadoAoAtivo(chamado) {
+  if (!chamado?.ativo_id) return;
+  const vinculado = await buscarUsuarioVinculadoAoAtivo(chamado.ativo_id, chamado.usuario_id);
+  if (vinculado) {
+    await criarNotificacao(vinculado.id, "Chamado do seu ativo concluído", `${chamado.numero_chamado} foi concluído. Avalie o atendimento.`, "success", `/chamados/${chamado.id}?action=avaliar`);
   }
 }
 
@@ -163,6 +169,43 @@ async function obterUsuarioAtual(req) {
     [req.user.id]
   );
   return result.rows[0] || null;
+}
+
+const CANAIS_ABERTURA = ["portal", "telefone", "presencial", "email", "whatsapp", "monitoramento", "outro"];
+
+// Solicitante do novo chamado: quem está logado ou, para a equipe, o usuário atendido da mesma empresa.
+async function resolverSolicitante(req, autor, { solicitanteId, ativoId, solicitanteDoAtivo } = {}) {
+  let alvoId = solicitanteId !== undefined && solicitanteId !== null && solicitanteId !== "" ? Number(solicitanteId) : null;
+  if (alvoId !== null && !Number.isInteger(alvoId)) return { status: 400, erro: "Solicitante inválido" };
+  if (alvoId !== null && alvoId !== Number(autor.id) && !usuarioEhEquipe(req)) {
+    return { status: 403, erro: "Somente a equipe de atendimento pode abrir chamado em nome de outro usuário" };
+  }
+  // Pelo patrimônio, o chamado fica com o dono do equipamento quando ele é identificado.
+  if (alvoId === null && solicitanteDoAtivo && ativoId && usuarioEhEquipe(req)) {
+    const vinculado = await buscarUsuarioVinculadoAoAtivo(ativoId);
+    if (vinculado) alvoId = Number(vinculado.id);
+  }
+  if (alvoId === null || alvoId === Number(autor.id)) return { usuario: autor, emNomeDe: false };
+
+  // A RLS já limita à empresa da requisição; a comparação explícita protege rotinas sem contexto.
+  const result = await pool.query(
+    `SELECT u.id, u.nome, u.email, COALESCE(u.perfil, 'usuario') AS perfil, COALESCE(u.status, 'ativo') AS status,
+            u.telefone, u.departamento, u.municipio, u.unidade, u.cargo
+       FROM usuarios u
+      WHERE u.id = $1
+        AND u.empresa_id IS NOT DISTINCT FROM (SELECT empresa_id FROM usuarios WHERE id = $2)`,
+    [alvoId, autor.id]
+  );
+  const usuario = result.rows[0];
+  if (!usuario) return { status: 404, erro: "Solicitante não encontrado nesta empresa" };
+  if (normalizarTexto(usuario.status).toLowerCase() !== "ativo") return { status: 400, erro: "O solicitante está inativo" };
+  return { usuario, emNomeDe: true };
+}
+
+function normalizarCanalAbertura(canal, emNomeDe) {
+  const valor = normalizarTexto(canal).toLowerCase();
+  if (CANAIS_ABERTURA.includes(valor)) return valor;
+  return emNomeDe ? "outro" : "portal";
 }
 
 async function podeAcessarChamado(req, chamado) {
@@ -262,13 +305,17 @@ async function carregarDetalhesChamado(req, chamado) {
   };
 }
 
-function validarCamposCriacao({ titulo, descricao, usuario }) {
+function validarCamposCriacao({ titulo, descricao, usuario, emNomeDe = false }) {
   const erros = [];
   if (!titulo || !normalizarTexto(titulo)) erros.push("Título é obrigatório");
   if (!descricao || !normalizarTexto(descricao)) erros.push("Descrição é obrigatória");
   if (!usuario?.nome) erros.push("Nome do usuário não encontrado");
   if (!usuario?.email) erros.push("E-mail do usuário não encontrado");
-  if (!usuario?.departamento) erros.push("Atualize seu perfil com o departamento antes de abrir chamado");
+  if (!usuario?.departamento) {
+    erros.push(emNomeDe
+      ? `Cadastre o departamento de ${usuario?.nome || "o solicitante"} antes de abrir chamado em nome dele`
+      : "Atualize seu perfil com o departamento antes de abrir chamado");
+  }
   return erros;
 }
 
@@ -436,6 +483,10 @@ module.exports = {
   escolherResponsavelAutomatico,
   adicionarFotosParticipantes,
   notificarUsuarioVinculadoAoAtivo,
+  buscarUsuarioVinculadoAoAtivo,
+  resolverSolicitante,
+  normalizarCanalAbertura,
+  CANAIS_ABERTURA,
   obterUsuarioAtual,
   podeAcessarChamado,
   buscarChamadoAutorizado,

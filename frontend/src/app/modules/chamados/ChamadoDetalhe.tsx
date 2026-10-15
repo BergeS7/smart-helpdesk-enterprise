@@ -217,6 +217,11 @@ export function ChamadoDetalhe({
                   <b className="mt-1 block text-zinc-800">
                     {chamado.solicitante}
                   </b>
+                  {chamado.aberto_por_nome && (
+                    <span className="mt-0.5 block text-xs text-zinc-500">
+                      Aberto por {chamado.aberto_por_nome}{chamado.canal_abertura ? ` · ${chamado.canal_abertura}` : ""}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">

@@ -13,18 +13,23 @@ const { registrarAuditoria, registrarMovimentacao } = require("./registro");
 const { vincularChamado } = require("../../services/knowledgeRecommendationService");
 const { notificarNovoChamadoNaFila } = require("../../services/queueNotificationService");
 const { calcularSLAConfiguravel, sincronizarSlaChamadosAtivosUmaVez, verificarAlertasSla } = require("./sla");
-const { adicionarFotosParticipantes, bloquearMutacaoNaoAutorizada, buscarChamadoAutorizado, carregarDetalhesChamado, consultarChamados, detectarDuplicidade, escolherResponsavelAutomatico, gerarNumeroChamado, normalizarEmail, normalizarTexto, notificarUsuarioVinculadoAoAtivo, obterUsuarioAtual, usuarioEhAdmin, usuarioEhEquipe, validarCamposCriacao } = require("./comum");
+const { adicionarFotosParticipantes, bloquearMutacaoNaoAutorizada, buscarChamadoAutorizado, carregarDetalhesChamado, consultarChamados, detectarDuplicidade, escolherResponsavelAutomatico, gerarNumeroChamado, normalizarEmail, normalizarTexto, normalizarCanalAbertura, notificarUsuarioVinculadoAoAtivo, obterUsuarioAtual, resolverSolicitante, usuarioEhAdmin, usuarioEhEquipe, validarCamposCriacao } = require("./comum");
 
 // Criação transacional: classifica, calcula SLA, detecta duplicidade e distribui.
+// A equipe pode abrir em nome do usuário atendido: ele vira o solicitante e o roteamento usa o setor dele.
 const criarChamado = async (req, res) => {
   let chamadoCriado = null;
   try {
-    const { titulo, descricao, tipo_chamado, ativo_id } = req.body;
+    const { titulo, descricao, tipo_chamado, ativo_id, solicitante_id, solicitante_do_ativo, canal_abertura } = req.body;
     const tipoDesenvolvimento = ["bug", "melhoria", "automação", "automacao", "integração", "integracao", "dashboard / relatório", "dashboard / relatorio", "novo sistema"].includes(normalizarTexto(tipo_chamado).toLowerCase());
-    const usuario = await obterUsuarioAtual(req);
-    if (!usuario) return res.status(404).json({ erro: "Usuário não encontrado" });
+    const autor = await obterUsuarioAtual(req);
+    if (!autor) return res.status(404).json({ erro: "Usuário não encontrado" });
+    const solicitante = await resolverSolicitante(req, autor, { solicitanteId: solicitante_id, ativoId: ativo_id, solicitanteDoAtivo: solicitante_do_ativo === true });
+    if (solicitante.erro) return res.status(solicitante.status).json({ erro: solicitante.erro });
+    const { usuario, emNomeDe } = solicitante;
+    const canal = normalizarCanalAbertura(canal_abertura, emNomeDe);
 
-    const erros = validarCamposCriacao({ titulo, descricao, usuario });
+    const erros = validarCamposCriacao({ titulo, descricao, usuario, emNomeDe });
     if (erros.length > 0) {
       return res.status(400).json({ erro: "Preencha todos os campos obrigatórios", detalhes: erros });
     }
@@ -62,14 +67,15 @@ const criarChamado = async (req, res) => {
         responsavel_id, responsavel, ia_responsavel_sugerido, ia_resposta_inicial,
         ia_duplicado_de, ia_duplicidade_motivo, sla, sla_resposta_minutos, sla_resolucao_minutos,
         sla_limite_resposta, sla_limite_resolucao,
-        ativo_id, ativo_hostname, ativo_patrimonio, ativo_municipio, ativo_unidade)
+        ativo_id, ativo_hostname, ativo_patrimonio, ativo_municipio, ativo_unidade,
+        aberto_por_id, aberto_por_nome, canal_abertura)
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $7, $8, 'OPEN',
         $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25,
         sla_add_business_seconds(CURRENT_TIMESTAMP::timestamp, $24::integer * 60.0),
         sla_add_business_seconds(CURRENT_TIMESTAMP::timestamp, $25::integer * 60.0),
-        $26, $27, $28, $29, $30
+        $26, $27, $28, $29, $30, $31, $32, $33
       )
       RETURNING *`,
       [
@@ -103,6 +109,9 @@ const criarChamado = async (req, res) => {
         ativo?.patrimonio || null,
         ativo?.municipio || null,
         ativo?.unidade || null,
+        emNomeDe ? autor.id : null,
+        emNomeDe ? autor.nome : null,
+        canal,
       ]
     );
 
@@ -144,7 +153,13 @@ const criarChamado = async (req, res) => {
       chamadoCriado = chamado;
       await registrarMovimentacao(chamado.id, { user: { id: null, nome: "Roteamento", perfil: "sistema" } }, "equipe_atribuida", `Chamado enviado para a equipe ${team.id}.`);
     }
-    await registrarMovimentacao(chamado.id, req, "criacao", `Chamado ${chamado.numero_chamado} criado por ${usuario.nome}.`);
+    const descricaoCriacao = emNomeDe
+      ? `Chamado ${chamado.numero_chamado} aberto por ${autor.nome} em nome de ${usuario.nome} (canal: ${canal}).`
+      : `Chamado ${chamado.numero_chamado} criado por ${usuario.nome}.`;
+    await registrarMovimentacao(chamado.id, req, "criacao", descricaoCriacao);
+    if (emNomeDe) {
+      await criarNotificacao(usuario.id, "Chamado aberto em seu nome", `${chamado.titulo} — ${chamado.numero_chamado}, registrado por ${autor.nome}.`, "info", `/chamados/${chamado.id}`);
+    }
     await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "ia_prioridade", `Prioridade IA: ${analiseIA.prioridade}. Categoria: ${analiseIA.categoria}. Responsável sugerido: ${analiseIA.responsavel_sugerido}. Motivo: ${analiseIA.motivo}`);
     if (duplicidade) {
       await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "ia_duplicidade", duplicidade.motivo);
@@ -155,7 +170,7 @@ const criarChamado = async (req, res) => {
       await criarNotificacao(chamado.usuario_id, "Chamado assumido", `${chamado.titulo} — Seu atendimento ficará com ${responsavelAutomatico.nome}.`, "info", `/chamados/${chamado.id}`);
     }
     // Recomendações da base vistas no formulário: o chamado aberto mesmo assim entra nas métricas.
-    await vincularChamado({ chamadoId: chamado.id, usuarioId: usuario.id, ids: req.body.recomendacoes_ids })
+    await vincularChamado({ chamadoId: chamado.id, usuarioId: autor.id, ids: req.body.recomendacoes_ids })
       .catch((error) => console.error("Erro ao vincular recomendações ao chamado:", error.message));
     if (!tipoDesenvolvimento && chamado.responsavel_id == null) {
       await notificarNovoChamadoNaFila(chamado, criarNotificacao);

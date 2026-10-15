@@ -80,6 +80,9 @@ export type ApiChamado = {
   status: string;
   usuario_id?: number | null;
   solicitante?: string;
+  aberto_por_id?: number | null;
+  aberto_por_nome?: string | null;
+  canal_abertura?: string | null;
   solicitante_nome?: string;
   solicitante_email?: string;
   solicitante_foto_url?: string;
@@ -168,6 +171,11 @@ export type NovoChamado = {
   ativo_id?: string | number;
   // Recomendações da base vistas no formulário, para ligar o chamado às métricas.
   recomendacoes_ids?: number[];
+  // Só a equipe: abre em nome do usuário atendido, que vira o solicitante.
+  solicitante_id?: number;
+  // Pelo patrimônio: o dono do equipamento vira o solicitante quando identificado.
+  solicitante_do_ativo?: boolean;
+  canal_abertura?: string;
 };
 
 export type NovoCadastroUsuario = {

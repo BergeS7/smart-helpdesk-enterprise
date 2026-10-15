@@ -1,11 +1,12 @@
 /**
  * Responsabilidade: painel da equipe: layout, navegação e abas (estado em useAdminPanel, abas grandes em ./abas).
  */
+import { useState } from "react";
 import { GlobalCommandPalette } from "../../components/GlobalCommandPalette";
 import { ProfileCenter } from "../../components/ProfileCenter";
 import { PushNotificationOnboarding } from "../../components/PushNotificationSettings";
 import { PermissionDialog } from "../../components/PermissionDialog";
-import { BarChart3, Bell, BookOpen, Building2, Filter, Headphones, LayoutDashboard, ListChecks, LogOut, MapPinned, Menu, Moon, RefreshCw, Search, Settings, Star, Sun, User, Users, X } from "lucide-react";
+import { BarChart3, Bell, BookOpen, Building2, Filter, Headphones, LayoutDashboard, ListChecks, LogOut, MapPinned, Menu, Moon, Plus, RefreshCw, Search, Settings, Star, Sun, User, Users, X } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { TICKET_STATUS } from "../../domain/ticketStatus";
 import { WorkspaceNavigation } from "../../components/WorkspaceNavigation";
@@ -28,10 +29,12 @@ import { AbaConfiguracoesGerais } from "./abas/ConfiguracoesGerais";
 import { AbaManutencao } from "./abas/Manutencao";
 import { ModalFiltros } from "./modais/Filtros";
 import { ModalEdicaoUsuario } from "./modais/EdicaoUsuario";
+import { ModalNovoChamadoEquipe } from "./modais/NovoChamadoEquipe";
 
 // Shell autenticado da equipe, responsável por navegação e dados operacionais.
 export function AdminPanel(props: AdminPanelProps) {
   const painel = useAdminPanel(props);
+  const [novoChamadoAberto, setNovoChamadoAberto] = useState(false);
   const {
     usuario,
     onLogout,
@@ -442,7 +445,7 @@ export function AdminPanel(props: AdminPanelProps) {
                 current={tab}
                 onNavigate={setTab}
                 onRefresh={activeArea.id === "service" ? ()=>void carregar() : undefined}
-                tools={activeArea.id === "service" ? <TicketWorkspaceToolbar filters={filtros} onChange={setFiltros} onApply={next=>void aplicarFiltros(undefined,next)} dark={dark} embedded/> : activeArea.id === "assets" ? <div className="flex items-center justify-end gap-2"><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-invite"))} className="ds-button ds-button--primary whitespace-nowrap">Gerar convite do agente</button>{plataforma && <button type="button" onClick={()=>window.dispatchEvent(new Event("assets-agent-updates"))} className="ds-button ds-button--secondary whitespace-nowrap">Atualizações do agente</button>}<button type="button" onClick={()=>window.dispatchEvent(new Event("assets-filters"))} className="ds-button ds-button--secondary inline-flex items-center gap-2 whitespace-nowrap"><Filter size={16}/>Filtros</button><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-refresh"))} className="ds-button ds-button--secondary grid !w-10 place-items-center !px-0" title="Atualizar ativos" aria-label="Atualizar ativos"><RefreshCw size={16}/></button></div> : undefined}
+                tools={activeArea.id === "service" ? <div className="flex items-center gap-2"><div className="min-w-0 flex-1"><TicketWorkspaceToolbar filters={filtros} onChange={setFiltros} onApply={next=>void aplicarFiltros(undefined,next)} dark={dark} embedded/></div><button type="button" onClick={()=>setNovoChamadoAberto(true)} className="ds-button ds-button--primary inline-flex !h-11 shrink-0 items-center gap-2 whitespace-nowrap" title="Abrir chamado em nome de um usuário"><Plus size={16}/><span className="hidden sm:inline">Novo chamado</span></button></div> : activeArea.id === "assets" ? <div className="flex items-center justify-end gap-2"><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-invite"))} className="ds-button ds-button--primary whitespace-nowrap">Gerar convite do agente</button>{plataforma && <button type="button" onClick={()=>window.dispatchEvent(new Event("assets-agent-updates"))} className="ds-button ds-button--secondary whitespace-nowrap">Atualizações do agente</button>}<button type="button" onClick={()=>window.dispatchEvent(new Event("assets-filters"))} className="ds-button ds-button--secondary inline-flex items-center gap-2 whitespace-nowrap"><Filter size={16}/>Filtros</button><button type="button" onClick={()=>window.dispatchEvent(new Event("assets-refresh"))} className="ds-button ds-button--secondary grid !w-10 place-items-center !px-0" title="Atualizar ativos" aria-label="Atualizar ativos"><RefreshCw size={16}/></button></div> : undefined}
                 dark={dark}
               />
             )}
@@ -889,6 +892,19 @@ export function AdminPanel(props: AdminPanelProps) {
       )}
 
       {usuarioEditando && administrador && <ModalEdicaoUsuario painel={painel} />}
+
+      {novoChamadoAberto && (
+        <ModalNovoChamadoEquipe
+          usuarioLogado={usuario}
+          onClose={() => setNovoChamadoAberto(false)}
+          onCriado={(chamado) => {
+            setNovoChamadoAberto(false);
+            toast.success(`Chamado ${chamado.numero_chamado || `#${chamado.id}`} aberto em nome de ${chamado.solicitante || "o usuário"}.`);
+            void carregar();
+            void abrirDetalhe(chamado.id);
+          }}
+        />
+      )}
 
       {selecionado && (
         <ChamadoDetalhe
