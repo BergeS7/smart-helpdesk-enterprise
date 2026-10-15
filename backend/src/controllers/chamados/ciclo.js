@@ -16,7 +16,8 @@ const { calcularSLAConfiguravel, sincronizarSlaChamadosAtivosUmaVez, verificarAl
 const { adicionarFotosParticipantes, bloquearMutacaoNaoAutorizada, buscarChamadoAutorizado, carregarDetalhesChamado, consultarChamados, detectarDuplicidade, escolherResponsavelAutomatico, gerarNumeroChamado, normalizarEmail, normalizarTexto, normalizarCanalAbertura, notificarUsuarioVinculadoAoAtivo, obterUsuarioAtual, resolverSolicitante, usuarioEhAdmin, usuarioEhEquipe, validarCamposCriacao } = require("./comum");
 
 // Criação transacional: classifica, calcula SLA, detecta duplicidade e distribui.
-// A equipe pode abrir em nome do usuário atendido: ele vira o solicitante e o roteamento usa o setor dele.
+// A equipe pode abrir em nome do usuário atendido: ele vira o solicitante, a equipe segue o setor dele
+// e o chamado fica delegado a quem o registrou, sem passar pela distribuição automática.
 const criarChamado = async (req, res) => {
   let chamadoCriado = null;
   try {
@@ -46,10 +47,12 @@ const criarChamado = async (req, res) => {
     }
 
     const analiseIA = decidirPrioridadeChamado({ setor: usuario.departamento, titulo, descricao });
-    let responsavelAutomatico = await escolherResponsavelAutomatico({
-      departamento: usuario.departamento,
-      categoria: analiseIA.categoria,
-    });
+    let responsavelAutomatico = emNomeDe
+      ? { id: autor.id, nome: autor.nome }
+      : await escolherResponsavelAutomatico({
+        departamento: usuario.departamento,
+        categoria: analiseIA.categoria,
+      });
     const sla = await calcularSLAConfiguravel(analiseIA.prioridade);
     const duplicidade = await detectarDuplicidade({
       setor: usuario.departamento,
@@ -143,7 +146,7 @@ const criarChamado = async (req, res) => {
     );
     const team = teamResult.rows[0];
     if (team && !tipoDesenvolvimento) {
-      responsavelAutomatico = await distributeTicket({ teamId: team.id, distributionMode: team.distribution_mode });
+      if (!emNomeDe) responsavelAutomatico = await distributeTicket({ teamId: team.id, distributionMode: team.distribution_mode });
       const routed = await pool.query(
         `UPDATE chamados SET team_id=$1, responsavel_id=$2, responsavel=$3, atualizado_em=CURRENT_TIMESTAMP
          WHERE id=$4 RETURNING *`,
@@ -158,13 +161,14 @@ const criarChamado = async (req, res) => {
       : `Chamado ${chamado.numero_chamado} criado por ${usuario.nome}.`;
     await registrarMovimentacao(chamado.id, req, "criacao", descricaoCriacao);
     if (emNomeDe) {
-      await criarNotificacao(usuario.id, "Chamado aberto em seu nome", `${chamado.titulo} — ${chamado.numero_chamado}, registrado por ${autor.nome}.`, "info", `/chamados/${chamado.id}`);
+      await registrarMovimentacao(chamado.id, req, "atribuicao_automatica", `Chamado delegado a ${autor.nome}, que o abriu em nome de ${usuario.nome}.`);
+      await criarNotificacao(usuario.id, "Chamado aberto em seu nome", `${chamado.titulo} — ${chamado.numero_chamado}, registrado por ${autor.nome}, que cuidará do seu atendimento.`, "info", `/chamados/${chamado.id}`);
     }
     await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "ia_prioridade", `Prioridade IA: ${analiseIA.prioridade}. Categoria: ${analiseIA.categoria}. Responsável sugerido: ${analiseIA.responsavel_sugerido}. Motivo: ${analiseIA.motivo}`);
     if (duplicidade) {
       await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "ia_duplicidade", duplicidade.motivo);
     }
-    if (responsavelAutomatico) {
+    if (responsavelAutomatico && !emNomeDe) {
       await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "atribuicao_automatica", `Responsável atribuído automaticamente para ${responsavelAutomatico.nome}.`);
       await criarNotificacao(responsavelAutomatico.id, "Chamado atribuído a você", `${chamado.titulo} — ${chamado.numero_chamado}`, "info", `/chamados/${chamado.id}`);
       await criarNotificacao(chamado.usuario_id, "Chamado assumido", `${chamado.titulo} — Seu atendimento ficará com ${responsavelAutomatico.nome}.`, "info", `/chamados/${chamado.id}`);

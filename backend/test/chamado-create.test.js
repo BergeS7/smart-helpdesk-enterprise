@@ -7,21 +7,26 @@ const BRUNO_INATIVO = { id: 9, nome: 'Bruno', email: 'bruno@x.test', perfil: 'us
 
 // Carrega o controller com banco, fila e e-mail falsos para observar o que criarChamado dispara.
 // `logado` é quem faz a requisição; `outros` são os usuários da mesma empresa que podem ser solicitantes.
-function controller({ logado = ANA, outros = [], donoDoAtivo = null } = {}) {
-  const calls = { fila: [], emails: [], insert: null, setores: [], notificacoes: [], movimentacoes: [] };
+function controller({ logado = ANA, outros = [], donoDoAtivo = null, equipe = null } = {}) {
+  const calls = { fila: [], emails: [], insert: null, setores: [], notificacoes: [], movimentacoes: [], roteamento: null, distribuicoes: 0 };
   const ticket = { id: 99, numero_chamado: '#HD-2026-0099', titulo: 'Impressora parada', usuario_id: logado.id, responsavel_id: null, status: 'OPEN', prioridade: 'Media' };
   const query = async (sql, params = []) => {
     if (/FROM usuarios\s+WHERE id = \$1/.test(sql)) return { rows: [logado] };
     if (/FROM usuarios u\s+WHERE u\.id = \$1/.test(sql)) return { rows: outros.filter((u) => u.id === params[0]) };
     if (/FROM ativos a\s+JOIN usuarios/.test(sql)) return { rows: donoDoAtivo ? [{ id: donoDoAtivo.id }] : [] };
     if (/FROM ativos WHERE id=\$1/.test(sql)) return { rows: [{ id: params[0], hostname: 'PC-01', patrimonio: 'PAT-1' }] };
-    if (/FROM teams/.test(sql)) { calls.setores.push(params[0]); return { rows: [] }; }
+    if (/FROM teams/.test(sql)) { calls.setores.push(params[0]); return { rows: equipe ? [equipe] : [] }; }
+    if (/UPDATE chamados SET team_id/.test(sql)) {
+      calls.roteamento = params;
+      Object.assign(ticket, { team_id: params[0], responsavel_id: params[1], responsavel: params[2] });
+      return { rows: [ticket] };
+    }
     if (/INSERT INTO notificacoes/.test(sql)) { calls.notificacoes.push({ usuario: params[0], titulo: params[1] }); return { rows: [] }; }
     if (/INSERT INTO chamado_movimentacoes/.test(sql)) { calls.movimentacoes.push(params[5]); return { rows: [] }; }
     if (/nextval/.test(sql)) return { rows: [{ proximo: 99 }] };
     if (/^\s*INSERT INTO chamados/.test(sql)) {
       calls.insert = params;
-      Object.assign(ticket, { usuario_id: params[8], solicitante: params[9], setor: params[11], aberto_por_id: params[30], canal_abertura: params[32] });
+      Object.assign(ticket, { usuario_id: params[8], solicitante: params[9], setor: params[11], responsavel_id: params[16], responsavel: params[17], aberto_por_id: params[30], canal_abertura: params[32] });
       return { rows: [ticket] };
     }
     if (/^\s*UPDATE chamados[\s\S]*RETURNING \*/.test(sql)) return { rows: [ticket] };
@@ -34,6 +39,9 @@ function controller({ logado = ANA, outros = [], donoDoAtivo = null } = {}) {
   stub('../src/config/database', { query, connect: async () => ({ query, release() {} }) });
   stub('../src/services/queueNotificationService', { notificarNovoChamadoNaFila: async (chamado) => { calls.fila.push(chamado); } });
   stub('../src/services/emailService', { enviarEmail: async (email) => { calls.emails.push(email); } });
+  // Distribuição automática falsa: devolve sempre outro técnico, para provar quando ela é ignorada.
+  const distribuicao = require('../src/services/distributionService');
+  stub('../src/services/distributionService', { ...distribuicao, distributeTicket: async () => { calls.distribuicoes += 1; return { id: 8, nome: 'Outro Técnico' }; } });
   for (const key of Object.keys(require.cache)) if (/controllers[\/\\]chamado|ticketNotificationService|ticketRatingEmailService/.test(key)) delete require.cache[key];
   return { c: require('../src/controllers/chamadoController'), calls };
 }
@@ -68,7 +76,12 @@ test('técnico abre em nome do usuário: solicitante, setor, e-mail e aviso fica
   assert.equal(calls.insert[32], 'telefone');
   assert.deepEqual(calls.setores, ['Financeiro'], 'roteamento por equipe usa o setor do solicitante');
   assert.deepEqual(calls.emails.map((email) => email.para), ['ana@x.test']);
+  assert.equal(calls.insert[16], 7, 'o chamado já nasce delegado ao técnico que o abriu');
+  assert.equal(calls.insert[17], 'Tiago');
+  assert.deepEqual(calls.fila, [], 'delegado não vai para a fila da equipe');
   assert.ok(calls.notificacoes.some((n) => n.usuario === 5 && n.titulo === 'Chamado aberto em seu nome'));
+  assert.ok(!calls.notificacoes.some((n) => n.usuario === 7), 'quem abriu não recebe aviso do próprio chamado');
+  assert.ok(calls.movimentacoes.some((m) => /delegado a Tiago/.test(m)));
   assert.ok(calls.movimentacoes.some((m) => /aberto por Tiago em nome de Ana \(canal: telefone\)/.test(m)));
 });
 
@@ -131,4 +144,22 @@ test('pelo patrimônio sem dono identificado, o técnico continua como solicitan
   assert.equal(calls.insert[8], 7);
   assert.equal(calls.insert[30], null);
   assert.equal(calls.insert[32], 'monitoramento');
+});
+
+test('em nome do usuário, a equipe do setor é registrada mas a distribuição automática não troca o responsável', async () => {
+  const { c, calls } = controller({ logado: TECNICO, outros: [ANA], equipe: { id: 3, distribution_mode: 'round_robin' } });
+  const res = response();
+  await c.criarChamado(request(TECNICO, { solicitante_id: 5, canal_abertura: 'telefone' }), res);
+  assert.equal(res.code, 201);
+  assert.equal(calls.distribuicoes, 0);
+  assert.deepEqual(calls.roteamento.slice(0, 3), [3, 7, 'Tiago']);
+});
+
+test('aberto pelo próprio usuário continua passando pela distribuição da equipe', async () => {
+  const { c, calls } = controller({ equipe: { id: 3, distribution_mode: 'round_robin' } });
+  const res = response();
+  await c.criarChamado(request(ANA), res);
+  assert.equal(res.code, 201);
+  assert.equal(calls.distribuicoes, 1);
+  assert.deepEqual(calls.roteamento.slice(0, 3), [3, 8, 'Outro Técnico']);
 });

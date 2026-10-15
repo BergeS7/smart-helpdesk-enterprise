@@ -167,7 +167,10 @@ export function ModalNovoChamadoEquipe({
 
         {erro && <p className="text-sm font-bold text-red-600" role="alert">{erro}</p>}
 
-        <div className="flex items-center justify-end gap-3 border-t border-zinc-100 pt-4">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-zinc-100 pt-4">
+          {solicitante && Number(solicitante.id) !== Number(usuarioLogado.id) && (
+            <p className="mr-auto text-xs text-zinc-500">O chamado ficará delegado a você.</p>
+          )}
           <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button disabled={enviando || !solicitante || semDepartamento}>
             {enviando ? "Abrindo..." : "Abrir chamado"}
