@@ -901,7 +901,6 @@ export function AdminPanel(props: AdminPanelProps) {
             setNovoChamadoAberto(false);
             toast.success(`Chamado ${chamado.numero_chamado || `#${chamado.id}`} aberto em nome de ${chamado.solicitante || "o usuário"}.`);
             void carregar();
-            void abrirDetalhe(chamado.id);
           }}
         />
       )}
