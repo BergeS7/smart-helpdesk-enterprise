@@ -11,6 +11,9 @@ type Section="operation"|"sla"|"technicians"|"assets";
 type MetricFilter="all"|"open"|"resolved"|"unassigned"|"critical"|"risk"|"violated"|"paused"|"assets";
 type Metric={label:string;value:string|number;hint:string;icon:typeof Ticket;tone:string;filter:MetricFilter};
 const finalStatus=(c:ApiChamado)=>[TICKET_STATUS.CLOSED,TICKET_STATUS.RESOLVED,TICKET_STATUS.CANCELED].includes(canonicalTicketStatus(c.status) as typeof TICKET_STATUS.CLOSED);
+// Compara sem acento: o banco grava "Media" e o filtro exibe "Média".
+const plainPriority=(p?:string|null)=>String(p||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const samePriority=(a?:string|null,b?:string|null)=>plainPriority(a)===plainPriority(b);
 const critical=(c:ApiChamado)=>["crítica","critica"].includes(String(c.prioridade||"").toLowerCase());
 const atRisk=(c:ApiChamado)=>c.sla_status==="alerta";
 const violated=(c:ApiChamado)=>c.sla_status==="vencido"||Boolean(c.vencido)||Boolean(c.finalizado_em&&c.sla_limite_resolucao&&new Date(c.finalizado_em)>new Date(c.sla_limite_resolucao));
@@ -28,8 +31,8 @@ function filterTickets(items:ApiChamado[],filter:MetricFilter){if(filter==="open
 export function IndicatorsWorkspace({section,chamados,onOpen}:{section:Section;chamados:ApiChamado[];onOpen?:(id:number)=>void}){
  const [period,setPeriod]=useState(30),[municipality,setMunicipality]=useState(""),[priority,setPriority]=useState(""),[detail,setDetail]=useState<MetricFilter>("all");
  const municipalities=useMemo(()=>Array.from(new Set(chamados.map(city).filter(v=>v!=="Não informado"))).sort((a,b)=>a.localeCompare(b,"pt-BR")),[chamados]);
- const base=useMemo(()=>{const since=Date.now()-period*86400000;return chamados.filter(c=>{const opened=openedAt(c);return (!opened||opened.getTime()>=since)&&(!municipality||city(c)===municipality)&&(!priority||c.prioridade===priority)})},[chamados,period,municipality,priority]);
- const previous=useMemo(()=>{const end=Date.now()-period*86400000,start=end-period*86400000;return chamados.filter(c=>{const opened=openedAt(c)?.getTime();return opened!=null&&opened>=start&&opened<end&&(!municipality||city(c)===municipality)&&(!priority||c.prioridade===priority)})},[chamados,period,municipality,priority]);
+ const base=useMemo(()=>{const since=Date.now()-period*86400000;return chamados.filter(c=>{const opened=openedAt(c);return (!opened||opened.getTime()>=since)&&(!municipality||city(c)===municipality)&&(!priority||samePriority(c.prioridade,priority))})},[chamados,period,municipality,priority]);
+ const previous=useMemo(()=>{const end=Date.now()-period*86400000,start=end-period*86400000;return chamados.filter(c=>{const opened=openedAt(c)?.getTime();return opened!=null&&opened>=start&&opened<end&&(!municipality||city(c)===municipality)&&(!priority||samePriority(c.prioridade,priority))})},[chamados,period,municipality,priority]);
  const open=base.filter(c=>!finalStatus(c)),resolved=base.filter(finalStatus),unassigned=open.filter(c=>!c.responsavel_id&&!c.responsavel),risks=base.filter(atRisk),violations=base.filter(violated),pauses=base.filter(paused),assetTickets=base.filter(c=>Boolean(c.ativo_id)),criticals=open.filter(critical);
  const complianceBase=resolved.filter(c=>c.finalizado_em&&c.sla_limite_resolucao),compliant=complianceBase.filter(c=>!violated(c)),compliance=percent(compliant.length,complianceBase.length);
  const responseAvg=average(base.map(c=>minutes(c.criado_em,c.primeira_resposta_em))),resolutionAvg=average(resolved.map(c=>minutes(c.criado_em,c.finalizado_em)));

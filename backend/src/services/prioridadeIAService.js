@@ -11,11 +11,31 @@ function normalizarTexto(valor) {
     .trim();
 }
 
+function escaparRegex(valor) {
+  return valor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const regexPorTermo = new Map();
+
+// Casa o termo como palavra inteira (aceitando plural com "s"): "rede" não casa com "parede".
 function contemTermo(texto, termo) {
-  return texto.includes(normalizarTexto(termo));
+  const alvo = normalizarTexto(termo);
+  if (!alvo) return false;
+  let regex = regexPorTermo.get(alvo);
+  if (!regex) {
+    regex = new RegExp(`(^|[^a-z0-9])${escaparRegex(alvo)}s?(?=[^a-z0-9]|$)`);
+    regexPorTermo.set(alvo, regex);
+  }
+  return regex.test(texto);
 }
 
 const categoriasIA = [
+  {
+    categoria: "Segurança da informação",
+    tipo: "Incidente",
+    responsavel: "Segurança da Informação / TI",
+    termos: ["virus", "malware", "ransomware", "phishing", "invasao", "invadida", "invadido", "hackeado", "hackeada", "vazamento", "senha vazada", "senha exposta", "acesso indevido"],
+  },
   {
     categoria: "Problema de acesso",
     tipo: "Acesso",
@@ -76,7 +96,7 @@ const casosEmpresariais = [
     prioridade: "Alta",
     peso: 95,
     departamentos: ["ti", "seguranca", "juridico", "compliance", "sistemas", "tecnologia"],
-    termos: ["vazamento", "dados vazados", "lgpd", "senha exposta", "senha vazada", "invasao", "hackeado", "hacker", "virus", "malware", "ransomware", "phishing", "acesso indevido", "conta invadida"],
+    termos: ["vazamento", "dados vazados", "lgpd", "senha exposta", "senha vazada", "invasao", "invadida", "invadido", "hackeado", "hackeada", "hacker", "virus", "malware", "ransomware", "phishing", "acesso indevido", "conta invadida"],
     motivo: "O chamado possui indícios de risco de segurança, vazamento de dados ou acesso indevido.",
   },
   {
@@ -94,7 +114,7 @@ const casosEmpresariais = [
     prioridade: "Alta",
     peso: 75,
     departamentos: ["diretoria", "presidencia", "executivo", "gerencia", "administrativo"],
-    termos: ["diretor", "diretoria", "presidente", "presidencia", "ceo", "gestor", "gerente", "urgente diretoria", "reuniao importante", "apresentacao para diretoria"],
+    termos: ["diretor", "diretoria", "presidente", "presidencia", "ceo", "urgente diretoria", "reuniao importante", "apresentacao para diretoria"],
     motivo: "O chamado envolve área executiva ou situação com impacto institucional.",
   },
   {
@@ -203,29 +223,56 @@ const pesosPorDepartamento = [
   { departamento: "marketing", peso: -5, motivo: "Departamento marketing tende a ter menor urgência técnica, salvo casos críticos." },
 ];
 
-// Reconhece situações conhecidas que elevam impacto ou urgência operacional.
-function analisarCasosEmpresariais({ setor, titulo, descricao }) {
-  const textoSetor = normalizarTexto(setor);
-  const textoGeral = normalizarTexto(`${setor} ${titulo} ${descricao}`);
+const NIVEIS = ["Baixa", "Media", "Alta", "Crítica"];
+// Faixa de pontuação de cada nível: a pontuação exibida sempre condiz com a prioridade final.
+const FAIXAS = { Baixa: [0, 29], Media: [30, 64], Alta: [65, 84], "Crítica": [85, 100] };
 
+// Trechos negados são removidos antes da análise para não disparar os termos que negam.
+const negacoes = ["nao esta fora do ar", "nao caiu", "nao parou", "nao esta parado", "nao esta parada", "sem impacto", "nao e urgente", "nao tem urgencia", "sem urgencia", "nao e critico"];
+const termosBaixaUrgencia = ["sem urgencia", "quando puder", "nao e urgente", "nao tem urgencia", "pode ser depois", "sem pressa"];
+const termosUrgencia = ["urgente", "urgencia", "imediato", "emergencia", "critico", "critica", "agora"];
+const termosParada = ["fora do ar", "parado", "parada", "parou", "caiu", "indisponivel", "nao funciona", "sem acesso", "sem internet", "sem rede", "producao parada"];
+const termosColetivo = ["todos", "todas", "toda unidade", "toda a unidade", "empresa toda", "toda empresa", "toda a empresa", "varias pessoas", "varios usuarios", "equipe inteira", "setor inteiro", "filial inteira", "ninguem"];
+const termosIndividual = ["somente eu", "so eu", "apenas eu", "um usuario", "apenas meu", "apenas minha", "somente meu", "somente minha"];
+const termosAlternativa = ["sem alternativa", "sem contingencia", "nao ha alternativa", "nao tem como trabalhar", "nao temos como trabalhar"];
+const termosFinanceiro = ["faturamento parado", "nao consigo emitir nota", "pagamento parado", "venda parada", "perdendo venda", "sem emitir", "erro ao faturar"];
+const termosTempo = ["desde", "ha horas", "hoje", "ontem", "minutos"];
+const termosSeguranca = ["ransomware", "vazamento", "dados vazados", "invasao", "invadida", "invadido", "malware", "virus", "phishing", "lgpd", "conta invadida", "senha vazada", "senha exposta", "hackeado", "hackeada", "hacker", "acesso indevido"];
+// Indicam que o incidente de segurança já aconteceu, mesmo que o texto também traga uma dúvida.
+const termosComprometimento = ["invadida", "invadido", "hackeado", "hackeada", "dados vazados", "senha vazada", "senha exposta", "acesso indevido", "cliquei", "infectado", "infectada", "criptografados", "ransomware"];
+const termosSegurancaGrave = ["ransomware", "vazamento", "dados vazados", "invasao", "criptografados"];
+// Pedidos de informação sobre segurança (política, treinamento) não são incidentes.
+const termosInformativos = ["duvida", "gostaria de saber", "politica", "treinamento", "palestra", "orientacao", "como faco", "como fazer", "manual", "curso"];
+
+function removerNegacoes(texto) {
+  let resultado = texto;
+  const encontradas = [];
+  for (const negacao of negacoes) {
+    if (!contemTermo(resultado, negacao)) continue;
+    encontradas.push(negacao);
+    resultado = resultado.replace(new RegExp(`${escaparRegex(negacao)}s?`, "g"), " ");
+  }
+  return { texto: resultado, negacoes: encontradas };
+}
+
+// Reconhece situações conhecidas que elevam impacto ou urgência operacional.
+function analisarCasosEmpresariais({ setor, texto, segurancaReal }) {
+  const textoSetor = normalizarTexto(setor);
   const casosEncontrados = [];
 
   for (const caso of casosEmpresariais) {
-    const termosEncontrados = caso.termos.filter((termo) => contemTermo(textoGeral, termo));
+    if (caso.codigo === "SEGURANCA_DADOS_LGPD" && !segurancaReal) continue;
+    const termosEncontrados = caso.termos.filter((termo) => contemTermo(texto, termo));
+    if (termosEncontrados.length === 0) continue;
     const departamentoEncontrado = caso.departamentos.some((departamento) => contemTermo(textoSetor, departamento));
-
-    if (termosEncontrados.length > 0) {
-      let pesoFinal = caso.peso;
-      if (departamentoEncontrado) pesoFinal += 10;
-      casosEncontrados.push({
-        codigo: caso.codigo,
-        nome: caso.nome,
-        prioridade: caso.prioridade,
-        peso: pesoFinal,
-        termos: termosEncontrados.slice(0, 5),
-        motivo: caso.motivo,
-      });
-    }
+    casosEncontrados.push({
+      codigo: caso.codigo,
+      nome: caso.nome,
+      prioridade: caso.prioridade,
+      peso: caso.peso + (departamentoEncontrado ? 10 : 0),
+      termos: termosEncontrados.slice(0, 5),
+      motivo: caso.motivo,
+    });
   }
 
   return casosEncontrados.sort((a, b) => b.peso - a.peso);
@@ -266,6 +313,9 @@ function classificarCategoria({ setor, titulo, descricao }) {
 
 function gerarRespostaInicial({ titulo, setor, categoria, prioridade }) {
   const area = setor || "sua área";
+  if (categoria === "Segurança da informação") {
+    return `Olá, recebemos seu chamado sobre segurança. Evite usar o equipamento ou a conta afetada até nossa orientação; vamos analisar o incidente com prioridade.`;
+  }
   if (categoria === "Problema financeiro") {
     return `Olá, recebemos seu chamado sobre ${titulo}. Como envolve financeiro/faturamento, vamos priorizar a análise e verificar o impacto na emissão, cobrança ou pagamento.`;
   }
@@ -281,63 +331,28 @@ function gerarRespostaInicial({ titulo, setor, categoria, prioridade }) {
   return `Olá, recebemos seu chamado da área ${area}. A prioridade inicial foi classificada como ${prioridade} e o suporte iniciará a triagem.`;
 }
 
-// Pontua impacto e urgência separadamente antes da prioridade final.
-function analisarDimensoes({ titulo, descricao, setor, casos }) {
-  const texto=normalizarTexto(`${titulo} ${descricao}`), tem=(termos)=>termos.filter(t=>contemTermo(texto,t));
-  const negacoes=["nao esta fora do ar","nao parou","sem impacto","nao e urgente","sem urgencia"];
-  const negado=negacoes.some(t=>contemTermo(texto,t));
-  const coletivo=tem(["todos","toda unidade","empresa toda","varias pessoas","equipe inteira","filial inteira"]);
-  const individual=tem(["somente eu","so eu","um usuario","apenas meu"]);
-  const parada=tem(["fora do ar","parado","indisponivel","nao funciona","sem acesso","producao parada"]);
-  const alternativa=tem(["sem alternativa","sem contingencia","nao tem como trabalhar"]);
-  const seguranca=tem(["ransomware","vazamento","dados vazados","invasao","malware","phishing","lgpd","conta invadida"]);
-  const financeiro=tem(["faturamento parado","nao consigo emitir nota","pagamento parado","venda parada","perdendo venda"]);
-  const urgente=tem(["urgente","imediato","emergencia","critico","agora"]);
-  let impacto=Math.min(40,(parada.length?20:0)+(coletivo.length?15:0)+(financeiro.length?12:0)+(casos.some(c=>c.prioridade==="Alta")?8:0));
-  let urgencia=Math.min(25,(urgente.length?8:0)+(alternativa.length?10:0)+(parada.length?7:0));
-  let abrangencia=Math.min(20,(coletivo.length?20:individual.length?3:8));
-  let risco=Math.min(25,(seguranca.length?25:0)+(financeiro.length?10:0));
-  if(negado){impacto=Math.max(0,impacto-15);urgencia=Math.max(0,urgencia-10)}
-  const pontuacao=Math.min(100,impacto+urgencia+abrangencia+risco);
-  const sinais=[...new Set([...parada,...coletivo,...alternativa,...seguranca,...financeiro])].slice(0,8);
-  const perguntas=[];if(!coletivo.length&&!individual.length)perguntas.push("Quantas pessoas ou unidades estão afetadas?");if(!alternativa.length)perguntas.push("Existe alternativa temporária ou contingência?");if(!tem(["desde","ha horas","hoje","minutos"]).length)perguntas.push("Há quanto tempo o problema começou?");
-  let confianca=45+Math.min(20,sinais.length*4)+(String(descricao||"").length>=80?15:0)+(setor?10:0)+(perguntas.length===0?10:0);confianca=Math.min(98,confianca);
-  const critico=seguranca.length>0||(parada.length>0&&coletivo.length>0&&(alternativa.length>0||financeiro.length>0));
-  let prioridade=critico?"Crítica":pontuacao>=65?"Alta":pontuacao>=30?"Media":"Baixa";
-  if(confianca<60&&prioridade==="Crítica")prioridade="Alta";
-  const decisivo=seguranca.length?"Risco de segurança, dados ou LGPD.":parada.length&&coletivo.length?"Indisponibilidade com impacto coletivo.":financeiro.length?"Impacto financeiro ou comercial identificado.":parada.length?"Interrupção operacional identificada.":"Impacto limitado ou informações ainda incompletas.";
-  return {prioridade,pontuacao,confianca,dimensoes:{impacto,urgencia,abrangencia,risco},sinais,negacao_detectada:negado,perguntas_pendentes:perguntas,regra_decisiva:decisivo,requer_triagem:confianca<65};
+function calcularConfianca({ sinais, descricao, setor, perguntas }) {
+  const confianca = 45
+    + Math.min(20, sinais.length * 4)
+    + (String(descricao || "").length >= 80 ? 15 : 0)
+    + (setor ? 10 : 0)
+    + (perguntas.length === 0 ? 10 : 0);
+  return Math.min(98, confianca);
 }
 
 // Ponto de entrada público da classificação, com decisão e explicações.
+// A prioridade parte do caso empresarial mais forte (ou Média) e cada regra abaixo
+// sobe ou desce o nível, registrando o motivo; a pontuação apenas detalha a decisão.
 function decidirPrioridadeChamado({ setor, titulo, descricao }) {
-  const motivos = [];
-  const casos = analisarCasosEmpresariais({ setor, titulo, descricao });
-  const departamentos = calcularPesoDepartamento(setor);
   const classificacao = classificarCategoria({ setor, titulo, descricao });
-  let pontuacao = 0;
 
-  for (const caso of casos) {
-    pontuacao += caso.peso;
-    motivos.push(`Caso empresarial identificado: ${caso.nome}. Termos encontrados: ${caso.termos.join(", ")}. ${caso.motivo}`);
-  }
-
-  for (const departamento of departamentos) {
-    pontuacao += departamento.peso;
-    motivos.push(departamento.motivo);
-  }
-
-  const textoDescricao = normalizarTexto(descricao);
-  const textoTitulo = normalizarTexto(titulo);
-  const textoCompleto = normalizarTexto(`${titulo} ${descricao}`);
-
-  if (!titulo || !descricao || !setor) {
-    const explicavelInsuficiente = analisarDimensoes({ titulo, descricao, setor, casos });
+  if (!normalizarTexto(titulo) || !normalizarTexto(descricao)) {
+    const perguntas = ["Descreva o problema com mais detalhes."];
     return {
       prioridade: "Media",
       pontuacao: 0,
-      confianca: Math.min(55, explicavelInsuficiente.confianca),
-      analise_explicavel: { ...explicavelInsuficiente, prioridade: "Media", requer_triagem: true },
+      confianca: 45,
+      analise_explicavel: { prioridade: "Media", pontuacao: 0, confianca: 45, dimensoes: { impacto: 0, urgencia: 0, abrangencia: 0, risco: 0 }, sinais: [], negacao_detectada: false, perguntas_pendentes: perguntas, regra_decisiva: "Informações insuficientes para análise completa.", requer_triagem: true },
       categoria: classificacao.categoria,
       tipo_sugerido: classificacao.tipo,
       responsavel_sugerido: classificacao.responsavel_sugerido,
@@ -348,59 +363,119 @@ function decidirPrioridadeChamado({ setor, titulo, descricao }) {
     };
   }
 
-  if (textoTitulo.length < 5 || textoDescricao.length < 15) {
-    pontuacao -= 5;
-    motivos.push("Título ou descrição muito curtos. A IA manteve cautela na classificação.");
-  }
+  const textoOriginal = normalizarTexto(`${titulo} ${descricao}`);
+  const { texto, negacoes: negacoesEncontradas } = removerNegacoes(textoOriginal);
+  const tem = (termos) => termos.filter((termo) => contemTermo(texto, termo));
 
-  if (textoDescricao.length > 350) {
-    pontuacao += 8;
-    motivos.push("Descrição longa e detalhada pode indicar maior complexidade do chamado.");
-  }
+  const parada = tem(termosParada);
+  const coletivo = tem(termosColetivo);
+  const individual = tem(termosIndividual);
+  const alternativa = tem(termosAlternativa);
+  const financeiro = tem(termosFinanceiro);
+  const urgente = tem(termosUrgencia);
+  const baixaUrgencia = termosBaixaUrgencia.filter((termo) => contemTermo(textoOriginal, termo));
+  const seguranca = tem(termosSeguranca);
+  const segurancaGrave = tem(termosSegurancaGrave);
+  const segurancaReal = seguranca.length > 0 && (tem(termosInformativos).length === 0 || tem(termosComprometimento).length > 0);
 
-  const termosUrgencia = ["urgente", "urgencia", "imediato", "emergencia", "critico", "critica", "agora", "rapido", "prioridade"];
-  const encontrouUrgencia = termosUrgencia.filter((termo) => contemTermo(textoCompleto, termo));
-  const termosBaixaUrgencia = ["sem urgencia", "quando puder", "nao e urgente", "pode ser depois", "melhoria", "sugestao"];
-  const encontrouBaixaUrgencia = termosBaixaUrgencia.filter((termo) => contemTermo(textoCompleto, termo));
-
-  if (encontrouUrgencia.length > 0) {
-    pontuacao += 20;
-    motivos.push(`Usuário indicou urgência: ${encontrouUrgencia.slice(0, 3).join(", ")}.`);
-  }
-
-  if (encontrouBaixaUrgencia.length > 0) {
-    pontuacao -= 25;
-    motivos.push(`Usuário indicou baixa urgência: ${encontrouBaixaUrgencia.slice(0, 3).join(", ")}.`);
-  }
-
-  let prioridade = "Media";
-  if (pontuacao >= 70) prioridade = "Alta";
-  else if (pontuacao <= 10) prioridade = "Baixa";
-
+  const casos = analisarCasosEmpresariais({ setor, texto, segurancaReal });
+  const departamentos = calcularPesoDepartamento(setor);
+  const casoPrincipal = casos[0];
   const existeCasoAlta = casos.some((caso) => caso.prioridade === "Alta");
-  const existeCasoBaixa = casos.some((caso) => caso.prioridade === "Baixa");
-  if (existeCasoAlta && pontuacao >= 60) prioridade = "Alta";
-  if (!existeCasoAlta && existeCasoBaixa && pontuacao <= 20) prioridade = "Baixa";
+  const temParada = parada.length > 0;
+  const temColetivo = coletivo.length > 0;
+  const motivos = [];
 
-  const urgenciaExagerada = encontrouUrgencia.length > 0 && !existeCasoAlta && pontuacao <= 45;
-  if (urgenciaExagerada) {
-    motivos.push("A IA detectou possível urgência exagerada: o texto usa termos urgentes, mas os casos empresariais indicam impacto moderado/baixo.");
-    if (prioridade === "Alta") prioridade = "Media";
+  let nivel = casoPrincipal ? NIVEIS.indexOf(casoPrincipal.prioridade) : 1;
+  let regra = casoPrincipal ? `Caso empresarial: ${casoPrincipal.nome}.` : "Nenhum caso empresarial específico; prioridade média como ponto de partida.";
+  for (const caso of casos) {
+    motivos.push(`Caso empresarial identificado: ${caso.nome}. Termos encontrados: ${caso.termos.join(", ")}. ${caso.motivo}`);
   }
 
-  if (casos.length === 0 && motivos.length === 0) {
-    prioridade = "Media";
-    motivos.push("Nenhum caso empresarial específico foi identificado. Classificação mantida como prioridade média.");
+  if (segurancaReal && nivel < 2) {
+    nivel = 2;
+    regra = "Risco de segurança, dados ou LGPD.";
+  }
+  if (temParada && temColetivo && nivel < 2) {
+    nivel = 2;
+    regra = "Indisponibilidade com impacto coletivo.";
+    motivos.push(`Parada com impacto coletivo: ${[...parada, ...coletivo].slice(0, 4).join(", ")}.`);
+  }
+  const departamentoSensivel = departamentos.find((item) => item.peso >= 18);
+  if (temParada && departamentoSensivel && nivel === 1) {
+    nivel = 2;
+    regra = "Interrupção operacional em departamento sensível.";
+    motivos.push(departamentoSensivel.motivo);
+  }
+  if (individual.length > 0 && !temColetivo && !temParada && !segurancaReal && nivel === 1) {
+    nivel = 0;
+    regra = "Impacto individual sem interrupção operacional.";
+    motivos.push(`Impacto individual informado: ${individual.join(", ")}.`);
+  }
+  if (baixaUrgencia.length > 0 && !temParada && !segurancaReal && nivel > 0) {
+    nivel = 0;
+    regra = "Solicitante indicou que não há urgência.";
+    motivos.push(`Usuário indicou baixa urgência: ${baixaUrgencia.slice(0, 3).join(", ")}.`);
+  }
+  if (negacoesEncontradas.length > 0 && !temParada && !segurancaReal && nivel > 0) {
+    nivel -= 1;
+    regra = "Solicitante negou indisponibilidade ou impacto.";
+    motivos.push(`Negação detectada: ${negacoesEncontradas.join(", ")}.`);
   }
 
-  const explicavel=analisarDimensoes({titulo,descricao,setor,casos});
-  prioridade=explicavel.prioridade;
-  pontuacao=explicavel.pontuacao;
-  motivos.unshift(`Regra decisiva: ${explicavel.regra_decisiva} Confiança: ${explicavel.confianca}%. Dimensões — impacto ${explicavel.dimensoes.impacto}, urgência ${explicavel.dimensoes.urgencia}, abrangência ${explicavel.dimensoes.abrangencia}, risco ${explicavel.dimensoes.risco}.`);
+  const critico = (segurancaReal && (segurancaGrave.length > 0 || temColetivo))
+    || (temParada && temColetivo && (alternativa.length > 0 || financeiro.length > 0));
+  if (critico) {
+    nivel = 3;
+    regra = segurancaReal ? "Incidente de segurança grave ou com impacto coletivo." : "Indisponibilidade coletiva sem alternativa ou com impacto financeiro.";
+  }
+
+  // Urgência declarada só reforça o prazo quando há impacto real; sozinha, não muda o nível.
+  const urgenciaExagerada = urgente.length > 0 && !temParada && !segurancaReal && !existeCasoAlta;
+  if (urgente.length > 0) {
+    motivos.push(urgenciaExagerada
+      ? `Usuário indicou urgência (${urgente.slice(0, 3).join(", ")}), mas não há impacto que a justifique; nível mantido.`
+      : `Usuário indicou urgência: ${urgente.slice(0, 3).join(", ")}.`);
+  }
+
+  const impacto = Math.min(40, (temParada ? 20 : 0) + (temColetivo ? 15 : 0) + (financeiro.length ? 12 : 0) + (existeCasoAlta ? 8 : 0));
+  const urgencia = Math.min(25, (urgente.length && !urgenciaExagerada ? 8 : 0) + (alternativa.length ? 10 : 0) + (temParada ? 7 : 0));
+  const abrangencia = temColetivo ? 20 : individual.length ? 3 : 8;
+  const risco = Math.min(25, (segurancaReal ? 25 : 0) + (financeiro.length ? 10 : 0));
+  const sinais = [...new Set([...parada, ...coletivo, ...alternativa, ...(segurancaReal ? seguranca : []), ...financeiro])].slice(0, 8);
+
+  const perguntas = [];
+  if (!temColetivo && individual.length === 0) perguntas.push("Quantas pessoas ou unidades estão afetadas?");
+  if (alternativa.length === 0) perguntas.push("Existe alternativa temporária ou contingência?");
+  if (tem(termosTempo).length === 0) perguntas.push("Há quanto tempo o problema começou?");
+  const confianca = calcularConfianca({ sinais, descricao, setor, perguntas });
+
+  if (nivel === 3 && confianca < 60) {
+    nivel = 2;
+    motivos.push("Indícios críticos com confiança baixa: mantida como Alta até a triagem.");
+  }
+
+  const prioridade = NIVEIS[nivel];
+  const [minimo, maximo] = FAIXAS[prioridade];
+  const pontuacao = Math.max(minimo, Math.min(maximo, impacto + urgencia + abrangencia + risco));
+  const dimensoes = { impacto, urgencia, abrangencia, risco };
+  const explicavel = {
+    prioridade,
+    pontuacao,
+    confianca,
+    dimensoes,
+    sinais,
+    negacao_detectada: negacoesEncontradas.length > 0,
+    perguntas_pendentes: perguntas,
+    regra_decisiva: regra,
+    requer_triagem: confianca < 65,
+  };
+
+  motivos.unshift(`Regra decisiva: ${regra} Confiança: ${confianca}%. Dimensões — impacto ${impacto}, urgência ${urgencia}, abrangência ${abrangencia}, risco ${risco}.`);
   return {
     prioridade,
     pontuacao,
-    confianca: explicavel.confianca,
+    confianca,
     analise_explicavel: explicavel,
     categoria: classificacao.categoria,
     tipo_sugerido: classificacao.tipo,
@@ -412,16 +487,8 @@ function decidirPrioridadeChamado({ setor, titulo, descricao }) {
   };
 }
 
-function calcularSLA(prioridade) {
-  if (prioridade === "Crítica") return { respostaMinutos: 15, resolucaoMinutos: 120, label: "Responder em até 15min / resolver em até 2h" };
-  if (prioridade === "Alta") return { respostaMinutos: 60, resolucaoMinutos: 480, label: "Responder em até 1h / resolver em até 8h" };
-  if (prioridade === "Baixa") return { respostaMinutos: 1440, resolucaoMinutos: 2880, label: "Responder em até 24h / resolver em até 48h" };
-  return { respostaMinutos: 240, resolucaoMinutos: 1440, label: "Responder em até 4h / resolver em até 24h" };
-}
-
 module.exports = {
   decidirPrioridadeChamado,
-  calcularSLA,
   casosEmpresariais,
   categoriasIA,
 };

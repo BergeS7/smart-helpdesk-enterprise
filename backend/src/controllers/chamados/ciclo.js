@@ -406,7 +406,7 @@ const atualizarChamado = async (req, res) => {
       await registrarMovimentacao(id, req, "alteracao_prioridade", `Prioridade final alterada de ${anterior.prioridade} para ${prioridade}. Motivo: ${prioridade_manual_motivo || "não informado"}`);
     }
     if (prioridadeAlterada) {
-      await pool.query(`INSERT INTO prioridade_ia_feedback(chamado_id,prioridade_sugerida,prioridade_final,motivo,corrigido_por) VALUES($1,$2,$3,$4,$5)`, [id, anterior.prioridade_ia || anterior.prioridade, prioridade, prioridade_manual_motivo || null, req.user.id]).catch(() => {});
+      await pool.query(`INSERT INTO prioridade_ia_feedback(chamado_id,prioridade_sugerida,prioridade_final,motivo,corrigido_por) VALUES($1,$2,$3,$4,$5)`, [id, anterior.prioridade_ia || anterior.prioridade, prioridade, prioridade_manual_motivo || null, req.user.id]).catch((erro) => console.error("Falha ao registrar feedback da prioridade IA:", erro.message));
     }
     if (alteraResponsavel && Number(responsavelIdFinal || 0) !== Number(anterior.responsavel_id || 0)) {
       await registrarMovimentacao(id, req, "responsavel", responsavelIdFinal ? `Responsável definido como ${responsavelNome}.` : "Chamado devolvido à fila sem responsável.");
