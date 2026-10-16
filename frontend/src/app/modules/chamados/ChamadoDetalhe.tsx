@@ -10,6 +10,7 @@ import { isFinalTicketStatus, ticketStatusLabel } from "../../domain/ticketStatu
 import { Badge, Button, Card, Field, Input, Modal, Select, Textarea } from "../../components/shared/FormPrimitives";
 import { ReopenTicketCard } from "../../components/chamados/ReopenTicketCard";
 import { SugestaoArtigoCard } from "../../components/chamados/SugestaoArtigoCard";
+import { AnaliseIAPrioridade, confiancaIA, requerTriagemIA } from "./AnaliseIAPrioridade";
 import { adicionarComentario, anexarArquivos, atualizarChamado, baixarAnexoChamado, baixarHistoricoChamadoPdf, encerrarChamado, enviarAvaliacaoPerformance, obterBlobAnexoChamado, reabrirChamado, type ApiChamado, type ApiComentario, type ApiUsuario, type RespostaRapida, type UsuarioLogado } from "../../services/api";
 import { PRIORIDADES, ResponsavelAvatar, STATUS_OPCOES, formatDate, formatarMinutos, iniciaisPessoa, isAdminApp, isEquipeApp, nomeResponsavelChamado, prioridadeClass, statusClass } from "../comum/appShared";
 
@@ -84,6 +85,8 @@ export function ChamadoDetalhe({
   });
   const isEquipe = !somenteLeitura && isEquipeApp(usuario.perfil);
   const isAdmin = isAdminApp(usuario.perfil);
+  // Dados de triagem da IA (confiança, sinais, perguntas) são da equipe, inclusive em modo leitura.
+  const verTriagemIA = isEquipeApp(usuario.perfil);
   const podeGerenciar =
     !somenteLeitura &&
     (isAdmin || Number(chamado.responsavel_id) === Number(usuario.id));
@@ -319,35 +322,17 @@ export function ChamadoDetalhe({
                 <span className="block truncate text-xs text-zinc-500">
                   Prioridade sugerida:{" "}
                   {chamado.prioridade_ia || chamado.prioridade}
+                  {verTriagemIA && confiancaIA(chamado) != null && ` · confiança ${confiancaIA(chamado)}%`}
                 </span>
+                {verTriagemIA && requerTriagemIA(chamado) && (
+                  <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-800">Requer triagem</span>
+                )}
               </span>
               <span className="text-xs font-bold text-zinc-400">
                 {mostrarIA ? "Recolher" : "Ver análise"}
               </span>
             </button>
-            {mostrarIA && (
-              <div className="space-y-3 border-t border-zinc-100 px-5 py-4 text-sm leading-6 text-zinc-600">
-                <p>
-                  <b className="text-zinc-800">Motivo:</b>{" "}
-                  {chamado.prioridade_ia_motivo || "Não disponível"}
-                </p>
-                <p>
-                  <b className="text-zinc-800">Responsável sugerido:</b>{" "}
-                  {chamado.ia_responsavel_sugerido || "Não sugerido"}
-                </p>
-                <div className="rounded-xl bg-zinc-50 p-3">
-                  <b className="text-zinc-800">Resposta sugerida:</b>
-                  <p className="mt-1">
-                    {chamado.ia_resposta_inicial || "Não disponível"}
-                  </p>
-                </div>
-                {chamado.ia_duplicidade_motivo && (
-                  <p className="rounded-xl bg-amber-50 p-3 text-amber-800">
-                    <b>Possível duplicidade:</b> {chamado.ia_duplicidade_motivo}
-                  </p>
-                )}
-              </div>
-            )}
+            {mostrarIA && <AnaliseIAPrioridade chamado={chamado} detalhada={verTriagemIA} />}
           </Card>
           <Card>
             <h3 className="mb-3 flex items-center gap-2 font-black">
