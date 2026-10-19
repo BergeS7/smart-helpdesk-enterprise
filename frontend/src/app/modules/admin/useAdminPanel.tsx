@@ -6,11 +6,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { AlertTriangle, BarChart3, Bell, BookOpen, BrainCircuit, Building2, Clock3, Download, History, LayoutDashboard, ListChecks, MapPinned, Settings, ShieldCheck, Star, Ticket, Users } from "lucide-react";
 import { toast } from "sonner";
-import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
+import { TICKET_STATUS, canonicalTicketStatus, kanbanDropStatus, ticketStatusLabel } from "../../domain/ticketStatus";
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
 import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, listarProblemasRecorrentes, listarLacunasAssistente, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type ProblemaRecorrente, type LacunaAssistente, type LacunasAssistente, type StatusArtigo, type VisibilidadeArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
-import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDonoPlataformaApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, temRecursoApp, ticketFiltersFromUrl } from "../comum/appShared";
+import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDonoPlataformaApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, normalizeStatus, temRecursoApp, ticketFiltersFromUrl } from "../comum/appShared";
 import { comConfirmacaoDeTecnicoExtra } from "../../components/shared/ConfirmacaoTecnicoExtra";
 import type { AdminTab } from "../comum/appShared";
 
@@ -615,13 +615,21 @@ export function useAdminPanel({
   }
   async function moverChamado(id: number, status: string) {
     const anterior = chamados.find((chamado) => Number(chamado.id) === Number(id));
-    if (!anterior || canonicalTicketStatus(anterior.status) === canonicalTicketStatus(status)) return;
+    const coluna = canonicalTicketStatus(status);
+    // Soltar na própria coluna não muda nada (Resolvido/Cancelado também ficam em "Concluído").
+    if (!anterior || normalizeStatus(anterior.status) === normalizeStatus(coluna)) return;
+    const destino = kanbanDropStatus(anterior.status, coluna);
+    if (!destino) {
+      toast.error(`Não é possível mover de "${ticketStatusLabel(anterior.status)}" para "${ticketStatusLabel(coluna)}".`);
+      return;
+    }
+    const statusVisivel = destino === TICKET_STATUS.REOPENED ? TICKET_STATUS.IN_PROGRESS : destino;
 
     const otimista: ApiChamado = {
       ...anterior,
-      status: canonicalTicketStatus(status),
+      status: statusVisivel,
       atualizado_em: new Date().toISOString(),
-      ...(canonicalTicketStatus(status) === TICKET_STATUS.CLOSED
+      ...(statusVisivel === TICKET_STATUS.CLOSED
         ? { finalizado_em: new Date().toISOString() }
         : {}),
     };
@@ -629,14 +637,14 @@ export function useAdminPanel({
     setSelecionado((atual) => atual && Number(atual.id) === Number(id) ? { ...atual, ...otimista } : atual);
 
     try {
-      const atualizado = await atualizarChamado(id, { status: canonicalTicketStatus(status) });
+      const atualizado = await atualizarChamado(id, { status: destino });
       setChamados((atuais) => atuais.map((chamado) => Number(chamado.id) === Number(id) ? { ...chamado, ...atualizado } : chamado));
       setSelecionado((atual) => atual && Number(atual.id) === Number(id) ? { ...atual, ...atualizado } : atual);
       toast.success("Status atualizado.");
       obterDashboard().then(setDashboard).catch(() => {});
     } catch (e) {
       setChamados((atuais) => atuais.map((chamado) =>
-        Number(chamado.id) === Number(id) && canonicalTicketStatus(chamado.status) === canonicalTicketStatus(status)
+        Number(chamado.id) === Number(id) && canonicalTicketStatus(chamado.status) === statusVisivel
           ? anterior
           : chamado,
       ));

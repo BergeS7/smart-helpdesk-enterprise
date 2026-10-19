@@ -6,7 +6,7 @@ import { LayoutGroup, MotionConfig, motion } from "motion/react";
 import { useListChanges } from "../../components/motion";
 import { AlertTriangle, ArrowRight, CheckCircle2, CircleDot, Clock3, Columns3, List, Mail, MapPin, MessageSquare, Monitor, Paperclip, PauseCircle, RefreshCw, Rows3, Ticket } from "lucide-react";
 import { type ApiChamado } from "../../services/api";
-import { TICKET_STATUS, canonicalTicketStatus, ticketStatusLabel, type TicketStatus } from "../../domain/ticketStatus";
+import { TICKET_STATUS, canonicalTicketStatus, kanbanDropStatus, ticketStatusLabel, type TicketStatus } from "../../domain/ticketStatus";
 
 type AdminStatus=TicketStatus;
 const STATUS_COLUNAS:{status:AdminStatus;titulo:string;icon:ReactNode;border:string;accent:string;tone:string;count:string}[]=[
@@ -49,6 +49,7 @@ export function KanbanWorkspace({
   // Só anima o que muda aos poucos: cartão novo entra, cartão que troca de coluna desliza até ela.
   const changes = useListChanges(chamados.map((c) => c.id));
   const [overColumn, setOverColumn] = useState<string | null>(null);
+  const arrastado = dragId == null ? null : chamados.find((c) => Number(c.id) === Number(dragId)) || null;
   // Contador da coluna "pula" quando muda, mas não na primeira exibição.
   const boardReady = useRef(false);
   useEffect(() => { boardReady.current = true; }, []);
@@ -123,17 +124,21 @@ export function KanbanWorkspace({
               const itens = chamados.filter(
                 (c) => normalizeStatus(c.status) === coluna.status,
               );
+              // Só aceita o drop onde a API aceitaria a transição; nas demais o cursor indica "proibido".
+              const aceitaDrop = Boolean(arrastado && normalizeStatus(arrastado.status) !== coluna.status && kanbanDropStatus(arrastado.status, coluna.status));
+              const bloqueada = Boolean(arrastado && !aceitaDrop && normalizeStatus(arrastado.status) !== coluna.status);
               return (
                 <section
                   key={coluna.status}
-                  onDragOver={(e) => { e.preventDefault(); if (dragId && overColumn !== coluna.status) setOverColumn(coluna.status); }}
+                  onDragOver={(e) => { if (!aceitaDrop) return; e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (overColumn !== coluna.status) setOverColumn(coluna.status); }}
                   onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOverColumn(null); }}
-                  onDrop={() => {
-                    if (dragId) onMover(dragId, coluna.status);
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragId && aceitaDrop) onMover(dragId, coluna.status);
                     setDragId(null);
                     setOverColumn(null);
                   }}
-                  className={`min-h-[610px] rounded-lg border shadow-sm transition-[box-shadow,background-color] duration-200 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"} ${overColumn === coluna.status ? (dark ? "bg-white/10 ring-2 ring-blue-400/60" : "bg-blue-50/60 ring-2 ring-blue-300") : ""}`}
+                  className={`min-h-[610px] rounded-lg border shadow-sm transition-[box-shadow,background-color,opacity] duration-200 ${dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"} ${overColumn === coluna.status ? (dark ? "bg-white/10 ring-2 ring-blue-400/60" : "bg-blue-50/60 ring-2 ring-blue-300") : ""} ${bloqueada ? "opacity-50" : ""}`}
                 >
                   <div className="overflow-hidden rounded-t-lg border-b border-zinc-200">
                     <div className={`h-1.5 ${coluna.accent}`} />
@@ -394,7 +399,12 @@ function AdminTicketCard({
   return (
     <article
       draggable
-      onDragStart={onDrag}
+      onDragStart={(e) => {
+        // O Firefox só inicia o arraste se houver dado no dataTransfer.
+        e.dataTransfer.setData("text/plain", String(chamado.id));
+        e.dataTransfer.effectAllowed = "move";
+        onDrag();
+      }}
       onDragEnd={onDragEnd}
       onClick={onOpen}
       className={`group cursor-grab rounded-md border bg-white p-3 text-[#202a33] shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md active:cursor-grabbing ${chamado.vencido ? "border-red-300 ring-2 ring-red-100" : "border-zinc-200"}`}

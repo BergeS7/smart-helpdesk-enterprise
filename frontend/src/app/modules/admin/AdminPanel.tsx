@@ -595,11 +595,15 @@ export function AdminPanel(props: AdminPanelProps) {
                 dark={dark}
                 onAbrir={abrirDetalhe}
                 onRedistribuir={async (chamadoId, tecnicoId) => {
-                  const atualizado = await atualizarChamado(chamadoId, {
-                    responsavel_id: tecnicoId,
-                  });
-                  sincronizarChamadoEquipe(atualizado);
-                  toast.success("Chamado redistribuído.");
+                  try {
+                    const atualizado = await atualizarChamado(chamadoId, {
+                      responsavel_id: tecnicoId,
+                    });
+                    sincronizarChamadoEquipe(atualizado);
+                    toast.success("Chamado redistribuído.");
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Erro ao redistribuir chamado.");
+                  }
                 }}
               />
             )}

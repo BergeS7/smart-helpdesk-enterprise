@@ -56,6 +56,31 @@ export function isFinalTicketStatus(value?: string | null) {
   return [TICKET_STATUS.RESOLVED, TICKET_STATUS.CLOSED, TICKET_STATUS.CANCELED].includes(canonicalTicketStatus(value) as typeof TICKET_STATUS.RESOLVED);
 }
 
+// Espelha TRANSITIONS do backend (src/domain/ticketStatus.js): o que ele recusa com 409.
+const TRANSITIONS: Record<TicketStatus, readonly TicketStatus[]> = {
+  OPEN: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELED"],
+  IN_PROGRESS: ["WAITING_USER", "WAITING_THIRD_PARTY", "RESOLVED", "CLOSED", "CANCELED"],
+  WAITING_USER: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELED"],
+  WAITING_THIRD_PARTY: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELED"],
+  RESOLVED: ["CLOSED", "REOPENED"],
+  CLOSED: ["REOPENED"],
+  CANCELED: ["REOPENED"],
+  REOPENED: ["IN_PROGRESS", "WAITING_USER", "WAITING_THIRD_PARTY", "RESOLVED", "CLOSED", "CANCELED"],
+};
+
+export function canTransitionTicket(from?: string | null, to?: string | null) {
+  const source = canonicalTicketStatus(from);
+  const target = canonicalTicketStatus(to);
+  return source === target || TRANSITIONS[source].includes(target);
+}
+
+// Status a enviar ao soltar um chamado na coluna `coluna` do Kanban, ou null se a API recusaria.
+// Concluído só sai para "Em andamento", via REOPENED (o backend grava IN_PROGRESS e checa o prazo).
+export function kanbanDropStatus(from: string | null | undefined, coluna: TicketStatus): TicketStatus | null {
+  if (isFinalTicketStatus(from)) return coluna === TICKET_STATUS.IN_PROGRESS ? TICKET_STATUS.REOPENED : null;
+  return canTransitionTicket(from, coluna) ? coluna : null;
+}
+
 // Espelha a janela de reabertura do backend (src/domain/ticketStatus.js): mesmo prazo, mesma regra.
 export const REOPEN_WINDOW_DAYS = 7;
 

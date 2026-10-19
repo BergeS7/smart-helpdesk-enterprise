@@ -216,7 +216,7 @@ export function CarteiraEquipeView({
   onAbrir: (id: number) => void;
   onRedistribuir: (chamadoId: number, tecnicoId: number) => Promise<void>;
 }) {
-  const [arrastando, setArrastando] = useState<number | null>(null);
+  const [arrastando, setArrastando] = useState<{ id: number; responsavel: number } | null>(null);
   const capacidade = 8;
   const cargaDe = (id: number) => chamados.filter((chamado) => Number(chamado.responsavel_id) === Number(id) && ![TICKET_STATUS.RESOLVED,TICKET_STATUS.CLOSED,TICKET_STATUS.CANCELED].some((status) => status === canonicalTicketStatus(chamado.status))).length;
 
@@ -263,14 +263,23 @@ export function CarteiraEquipeView({
           return (
             <section
               key={membro.id}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={async () => {
-                if (arrastando && itens.length >= capacidade) {
-                  toast.error(`${membro.nome} atingiu ${capacidade}/${capacidade}.${recomendado ? ` Sugestão: ${recomendado.nome} (${cargaDe(recomendado.id)}/${capacidade}).` : " Nenhum técnico disponível."}`);
-                } else if (arrastando) await onRedistribuir(arrastando, membro.id);
-                setArrastando(null);
+              onDragOver={(e) => {
+                // Soltar no próprio técnico não redistribui nada (e a API voltaria o chamado para "Em aberto").
+                if (!arrastando || arrastando.responsavel === Number(membro.id)) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
               }}
-              className={`rounded-2xl border p-4 shadow-sm transition ${excedentes ? "border-red-300 bg-red-50/30 ring-2 ring-red-100" : arrastando ? "border-blue-300 ring-2 ring-blue-100" : dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
+              onDrop={async (e) => {
+                e.preventDefault();
+                const chamadoId = arrastando?.id;
+                const mesmoTecnico = arrastando?.responsavel === Number(membro.id);
+                setArrastando(null);
+                if (!chamadoId || mesmoTecnico) return;
+                if (itens.length >= capacidade) {
+                  toast.error(`${membro.nome} atingiu ${capacidade}/${capacidade}.${recomendado ? ` Sugestão: ${recomendado.nome} (${cargaDe(recomendado.id)}/${capacidade}).` : " Nenhum técnico disponível."}`);
+                } else await onRedistribuir(chamadoId, membro.id);
+              }}
+              className={`rounded-2xl border p-4 shadow-sm transition ${excedentes ? "border-red-300 bg-red-50/30 ring-2 ring-red-100" : arrastando && arrastando.responsavel !== Number(membro.id) ? "border-blue-300 ring-2 ring-blue-100" : dark ? "border-white/10 bg-white/5" : "border-zinc-200 bg-white"}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -327,13 +336,20 @@ export function CarteiraEquipeView({
               </div>
               <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
                 {itens.map((chamado) => (
-                  <button
+                  // div em vez de button: o Firefox não arrasta <button draggable>.
+                  <div
                     draggable
-                    onDragStart={() => setArrastando(chamado.id)}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", String(chamado.id));
+                      e.dataTransfer.effectAllowed = "move";
+                      setArrastando({ id: chamado.id, responsavel: Number(membro.id) });
+                    }}
                     onDragEnd={() => setArrastando(null)}
                     key={chamado.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onAbrir(chamado.id)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(chamado.id); } }}
                     className={`flex w-full cursor-grab items-center gap-3 rounded-xl border p-3 text-left transition ${dark ? "border-white/10 hover:bg-white/10" : "border-zinc-200 hover:bg-zinc-50"}`}
                   >
                     <span className="min-w-0 flex-1">
@@ -350,7 +366,7 @@ export function CarteiraEquipeView({
                     <Badge className={statusClass(chamado.status)}>
                       {ticketStatusLabel(chamado.status)}
                     </Badge>
-                  </button>
+                  </div>
                 ))}
                 {itens.length === 0 && (
                   <p className="rounded-xl border border-dashed p-5 text-center text-sm text-zinc-500">
