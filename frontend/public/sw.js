@@ -55,7 +55,11 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).then((response) => {
-      if (response.ok) caches.open(CACHE).then((cache) => cache.put("/", response.clone()));
+      // Clonar já: o corpo é consumido pela página antes de caches.open resolver.
+      if (response.ok) {
+        const copia = response.clone();
+        caches.open(CACHE).then((cache) => cache.put("/", copia));
+      }
       return response;
     }).catch(async () => (await caches.match("/")) || caches.match("/offline.html")));
     return;
@@ -65,7 +69,10 @@ self.addEventListener("fetch", (event) => {
   // também aqui pode manter uma versão incompatível após uma implantação.
   if (!url.pathname.startsWith("/assets/") && /\.(?:png|jpg|jpeg|webp|svg|ico|woff2?)$/i.test(url.pathname)) {
     event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (response.ok) caches.open(CACHE).then((cache) => cache.put(request, response.clone()));
+      if (response.ok) {
+        const copia = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copia));
+      }
       return response;
     })));
   }
