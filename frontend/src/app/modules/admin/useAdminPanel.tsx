@@ -109,7 +109,6 @@ export function useAdminPanel({
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [selecionado, setSelecionado] = useState<ApiChamado | null>(null);
   const [detalheSomenteLeitura, setDetalheSomenteLeitura] = useState(false);
-  const [dragId, setDragId] = useState<number | null>(null);
   const [usuarioEditando, setUsuarioEditando] = useState<ApiUsuario | null>(
     null,
   );
@@ -1136,8 +1135,6 @@ export function useAdminPanel({
     setSelecionado,
     detalheSomenteLeitura,
     setDetalheSomenteLeitura,
-    dragId,
-    setDragId,
     usuarioEditando,
     setUsuarioEditando,
     usuarioForm,

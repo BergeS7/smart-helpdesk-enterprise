@@ -1,7 +1,7 @@
 /**
  * Responsabilidade: Módulo funcional de kanban workspace; reúne interface e ações do respectivo fluxo.
  */
-import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { LayoutGroup, MotionConfig, motion } from "motion/react";
 import { useListChanges } from "../../components/motion";
 import { AlertTriangle, ArrowRight, CheckCircle2, CircleDot, Clock3, Columns3, List, Mail, MapPin, MessageSquare, Monitor, Paperclip, PauseCircle, RefreshCw, Rows3, Ticket } from "lucide-react";
@@ -31,15 +31,11 @@ type KanbanViewMode = "kanban" | "list" | "detailed";
 export function KanbanWorkspace({
   chamados: todosChamados,
   dark,
-  dragId,
-  setDragId,
   onMover,
   onAbrir,
 }: {
   chamados: ApiChamado[];
   dark: boolean;
-  dragId: number | null;
-  setDragId: Dispatch<SetStateAction<number | null>>;
   onMover: (id: number, status: string) => void | Promise<void>;
   onAbrir: (id: number) => void;
 }) {
@@ -48,7 +44,16 @@ export function KanbanWorkspace({
   const chamados = todosChamados;
   // Só anima o que muda aos poucos: cartão novo entra, cartão que troca de coluna desliza até ela.
   const changes = useListChanges(chamados.map((c) => c.id));
+  // O arraste fica só aqui: no painel admin, cada início/fim de arraste re-renderizava a tela inteira
+  // e media de novo o layout animado de todos os cartões, travando o navegador com muitos chamados.
+  const [dragId, setDragId] = useState<number | null>(null);
   const [overColumn, setOverColumn] = useState<string | null>(null);
+  // Callbacks estáveis para os cartões memorizados não re-renderizarem a cada arraste.
+  const onAbrirRef = useRef(onAbrir);
+  onAbrirRef.current = onAbrir;
+  const abrir = useCallback((id: number) => onAbrirRef.current(id), []);
+  const iniciarArraste = useCallback((id: number) => setDragId(id), []);
+  const terminarArraste = useCallback(() => { setDragId(null); setOverColumn(null); }, []);
   const arrastado = dragId == null ? null : chamados.find((c) => Number(c.id) === Number(dragId)) || null;
   // Contador da coluna "pula" quando muda, mas não na primeira exibição.
   const boardReady = useRef(false);
@@ -165,21 +170,14 @@ export function KanbanWorkspace({
                   </div>
                   <div className="space-y-3 p-3">
                     {itens.map((c) => (
-                      // layoutId: ao mudar de coluna o cartão desliza da posição antiga até a nova.
-                      <motion.div
+                      <KanbanCard
                         key={c.id}
-                        layoutId={`kanban-${c.id}`}
-                        initial={changes.isNew(c.id) ? { opacity: 0, scale: 0.94, y: -8 } : false}
-                        animate={{ opacity: dragId === c.id ? 0.45 : 1, scale: 1, y: 0 }}
-                        transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                      >
-                        <AdminTicketCard
-                          chamado={c}
-                          onOpen={() => onAbrir(c.id)}
-                          onDrag={() => setDragId(c.id)}
-                          onDragEnd={() => { setDragId(null); setOverColumn(null); }}
-                        />
-                      </motion.div>
+                        chamado={c}
+                        novo={changes.isNew(c.id)}
+                        onAbrir={abrir}
+                        onDrag={iniciarArraste}
+                        onDragEnd={terminarArraste}
+                      />
                     ))}
                     {itens.length === 0 && (
                       <div
@@ -375,6 +373,38 @@ function KanbanEmpty({ dark }: { dark: boolean }) {
   );
 }
 
+// Memorizado: arrastar só muda o estado das colunas, sem re-renderizar (e remedir) os cartões.
+const KanbanCard = memo(function KanbanCard({
+  chamado,
+  novo,
+  onAbrir,
+  onDrag,
+  onDragEnd,
+}: {
+  chamado: ApiChamado;
+  novo: boolean;
+  onAbrir: (id: number) => void;
+  onDrag: (id: number) => void;
+  onDragEnd: () => void;
+}) {
+  return (
+    // layoutId: ao mudar de coluna o cartão desliza da posição antiga até a nova.
+    <motion.div
+      layoutId={`kanban-${chamado.id}`}
+      initial={novo ? { opacity: 0, scale: 0.94, y: -8 } : false}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+    >
+      <AdminTicketCard
+        chamado={chamado}
+        onOpen={() => onAbrir(chamado.id)}
+        onDrag={() => onDrag(chamado.id)}
+        onDragEnd={onDragEnd}
+      />
+    </motion.div>
+  );
+});
+
 function AdminTicketCard({
   chamado,
   onOpen,
@@ -403,9 +433,14 @@ function AdminTicketCard({
         // O Firefox só inicia o arraste se houver dado no dataTransfer.
         e.dataTransfer.setData("text/plain", String(chamado.id));
         e.dataTransfer.effectAllowed = "move";
+        // Esmaece direto no DOM: um re-render do cartão no meio do arraste custaria uma remedição do layout.
+        e.currentTarget.style.opacity = "0.45";
         onDrag();
       }}
-      onDragEnd={onDragEnd}
+      onDragEnd={(e) => {
+        e.currentTarget.style.opacity = "";
+        onDragEnd();
+      }}
       onClick={onOpen}
       className={`group cursor-grab rounded-md border bg-white p-3 text-[#202a33] shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md active:cursor-grabbing ${chamado.vencido ? "border-red-300 ring-2 ring-red-100" : "border-zinc-200"}`}
     >

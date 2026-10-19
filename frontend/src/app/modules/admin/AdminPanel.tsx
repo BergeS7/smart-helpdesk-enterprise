@@ -71,8 +71,6 @@ export function AdminPanel(props: AdminPanelProps) {
     setSelecionado,
     detalheSomenteLeitura,
     setDetalheSomenteLeitura,
-    dragId,
-    setDragId,
     usuarioEditando,
     mostrarPerfil,
     setMostrarPerfil,
@@ -614,8 +612,6 @@ export function AdminPanel(props: AdminPanelProps) {
               <ModuleBoundary fallback={<div className="ds-empty-state"><RefreshCw className="ds-empty-state__icon animate-spin"/><strong>Carregando Kanban…</strong></div>}><KanbanWorkspace
                 chamados={chamados}
                 dark={dark}
-                dragId={dragId}
-                setDragId={setDragId}
                 onMover={moverChamado}
                 onAbrir={abrirDetalhe}
               /></ModuleBoundary>
