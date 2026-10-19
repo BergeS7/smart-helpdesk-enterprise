@@ -78,32 +78,6 @@ function bloquearMutacaoNaoAutorizada(req, res, chamado) {
   return true;
 }
 
-async function escolherResponsavelAutomatico({ departamento, categoria }) {
-  const params = [];
-  const filtros = ["COALESCE(u.status, 'ativo') = 'ativo'", "COALESCE(u.perfil, 'usuario') IN ('tecnico','admin')"];
-  if (departamento) {
-    params.push(departamento);
-    filtros.push(`(LOWER(COALESCE(u.departamento,'')) = LOWER($${params.length}) OR $${params.length} = '')`);
-  }
-
-  const result = await pool.query(
-    `SELECT u.id, u.nome, u.email, u.departamento,
-            COUNT(c.id) FILTER (WHERE c.status NOT IN ('RESOLVED','CLOSED','CANCELED'))::int AS chamados_ativos
-     FROM usuarios u
-     LEFT JOIN chamados c ON c.responsavel_id = u.id
-     WHERE ${filtros.join(" AND ")}
-     GROUP BY u.id, u.nome, u.email, u.departamento
-     ORDER BY 
-       CASE WHEN LOWER(COALESCE(u.departamento,'')) = LOWER($1) THEN 0 ELSE 1 END,
-       chamados_ativos ASC,
-       u.id ASC
-     LIMIT 1`,
-    [departamento || ""]
-  ).catch(() => ({ rows: [] }));
-
-  return result.rows[0] || null;
-}
-
 async function adicionarFotosParticipantes(req, chamado) {
   if (!chamado) return chamado;
 
@@ -480,7 +454,6 @@ module.exports = {
   assinaturaPermitida,
   podeModificarChamado,
   bloquearMutacaoNaoAutorizada,
-  escolherResponsavelAutomatico,
   adicionarFotosParticipantes,
   notificarUsuarioVinculadoAoAtivo,
   buscarUsuarioVinculadoAoAtivo,

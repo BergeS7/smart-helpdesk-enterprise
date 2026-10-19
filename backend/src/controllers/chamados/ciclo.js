@@ -6,18 +6,18 @@ const { decidirPrioridadeChamado } = require("../../services/prioridadeIAService
 const { enviarEmailAvaliacao, enviarEmailChamado } = require("../../services/ticketRatingEmailService");
 const { usuarioPodeAvaliarChamado } = require("../../services/ticketEvaluationAccessService");
 const { normalizarPerfil, ehAdmin, ehEquipe } = require("../../utils/permissoes");
-const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY, distributeTicket } = require("../../services/distributionService");
+const { ACTIVE_STATUSES, TECHNICIAN_CAPACITY } = require("../../services/distributionService");
 const { STATUS, canonicalize: canonicalizeStatus, label: statusLabel, isFinal: statusFinalizado, canTransition, REOPEN_WINDOW_DAYS, reopenDeadline, isReopenWindowOpen } = require("../../domain/ticketStatus");
 const { criarNotificacao, notificarStatus, notificarAvaliacao, notificarInteracao } = require("../../services/ticketNotificationService");
 const { registrarAuditoria, registrarMovimentacao } = require("./registro");
 const { vincularChamado } = require("../../services/knowledgeRecommendationService");
 const { notificarNovoChamadoNaFila } = require("../../services/queueNotificationService");
 const { calcularSLAConfiguravel, sincronizarSlaChamadosAtivosUmaVez, verificarAlertasSla } = require("./sla");
-const { adicionarFotosParticipantes, bloquearMutacaoNaoAutorizada, buscarChamadoAutorizado, carregarDetalhesChamado, consultarChamados, detectarDuplicidade, escolherResponsavelAutomatico, gerarNumeroChamado, normalizarEmail, normalizarTexto, normalizarCanalAbertura, notificarUsuarioVinculadoAoAtivo, obterUsuarioAtual, resolverSolicitante, usuarioEhAdmin, usuarioEhEquipe, validarCamposCriacao } = require("./comum");
+const { adicionarFotosParticipantes, bloquearMutacaoNaoAutorizada, buscarChamadoAutorizado, carregarDetalhesChamado, consultarChamados, detectarDuplicidade, gerarNumeroChamado, normalizarEmail, normalizarTexto, normalizarCanalAbertura, notificarUsuarioVinculadoAoAtivo, obterUsuarioAtual, resolverSolicitante, usuarioEhAdmin, usuarioEhEquipe, validarCamposCriacao } = require("./comum");
 
-// Criação transacional: classifica, calcula SLA, detecta duplicidade e distribui.
+// Criação transacional: classifica, calcula SLA, detecta duplicidade e envia para a fila.
 // A equipe pode abrir em nome do usuário atendido: ele vira o solicitante, a equipe segue o setor dele
-// e o chamado fica delegado a quem o registrou, sem passar pela distribuição automática.
+// e o chamado fica delegado a quem o registrou, sem passar pela fila.
 const criarChamado = async (req, res) => {
   let chamadoCriado = null;
   try {
@@ -47,12 +47,9 @@ const criarChamado = async (req, res) => {
     }
 
     const analiseIA = decidirPrioridadeChamado({ setor: usuario.departamento, titulo, descricao });
-    let responsavelAutomatico = emNomeDe
-      ? { id: autor.id, nome: autor.nome }
-      : await escolherResponsavelAutomatico({
-        departamento: usuario.departamento,
-        categoria: analiseIA.categoria,
-      });
+    // Todo chamado novo entra na fila sem responsável; a equipe assume por lá. Só o aberto em nome
+    // do usuário já nasce com quem o registrou.
+    const responsavelAutomatico = emNomeDe ? { id: autor.id, nome: autor.nome } : null;
     const sla = await calcularSLAConfiguravel(analiseIA.prioridade);
     const duplicidade = await detectarDuplicidade({
       setor: usuario.departamento,
@@ -137,7 +134,7 @@ const criarChamado = async (req, res) => {
       chamado = semSlaOperacional.rows[0];
       chamadoCriado = chamado;
     }
-    // Backwards-compatible routing: a department-named team wins over the legacy technician picker.
+    // A equipe do setor (ou "Geral") é registrada, mas não distribui: o chamado aguarda na fila.
     const teamResult = await pool.query(
       `SELECT id, distribution_mode FROM teams
        WHERE active = TRUE AND (LOWER(name) = LOWER($1) OR LOWER(name) = 'geral')
@@ -146,7 +143,6 @@ const criarChamado = async (req, res) => {
     );
     const team = teamResult.rows[0];
     if (team && !tipoDesenvolvimento) {
-      if (!emNomeDe) responsavelAutomatico = await distributeTicket({ teamId: team.id, distributionMode: team.distribution_mode });
       const routed = await pool.query(
         `UPDATE chamados SET team_id=$1, responsavel_id=$2, responsavel=$3, atualizado_em=CURRENT_TIMESTAMP
          WHERE id=$4 RETURNING *`,
@@ -167,11 +163,6 @@ const criarChamado = async (req, res) => {
     await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "ia_prioridade", `Prioridade IA: ${analiseIA.prioridade}. Categoria: ${analiseIA.categoria}. Responsável sugerido: ${analiseIA.responsavel_sugerido}. Motivo: ${analiseIA.motivo}`);
     if (duplicidade) {
       await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "ia_duplicidade", duplicidade.motivo);
-    }
-    if (responsavelAutomatico && !emNomeDe) {
-      await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "atribuicao_automatica", `Responsável atribuído automaticamente para ${responsavelAutomatico.nome}.`);
-      await criarNotificacao(responsavelAutomatico.id, "Chamado atribuído a você", `${chamado.titulo} — ${chamado.numero_chamado}`, "info", `/chamados/${chamado.id}`);
-      await criarNotificacao(chamado.usuario_id, "Chamado assumido", `${chamado.titulo} — Seu atendimento ficará com ${responsavelAutomatico.nome}.`, "info", `/chamados/${chamado.id}`);
     }
     // Recomendações da base vistas no formulário: o chamado aberto mesmo assim entra nas métricas.
     await vincularChamado({ chamadoId: chamado.id, usuarioId: autor.id, ids: req.body.recomendacoes_ids })

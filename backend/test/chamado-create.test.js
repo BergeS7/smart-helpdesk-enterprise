@@ -155,11 +155,23 @@ test('em nome do usuário, a equipe do setor é registrada mas a distribuição 
   assert.deepEqual(calls.roteamento.slice(0, 3), [3, 7, 'Tiago']);
 });
 
-test('aberto pelo próprio usuário continua passando pela distribuição da equipe', async () => {
+test('aberto pelo próprio usuário vai para a fila mesmo com equipe em distribuição automática', async () => {
   const { c, calls } = controller({ equipe: { id: 3, distribution_mode: 'round_robin' } });
   const res = response();
   await c.criarChamado(request(ANA), res);
   assert.equal(res.code, 201);
-  assert.equal(calls.distribuicoes, 1);
-  assert.deepEqual(calls.roteamento.slice(0, 3), [3, 8, 'Outro Técnico']);
+  assert.equal(calls.distribuicoes, 0);
+  assert.deepEqual(calls.roteamento.slice(0, 3), [3, null, null]);
+  assert.deepEqual(calls.fila.map((chamado) => chamado.id), [99]);
+  assert.equal(calls.insert[16], null, 'não escolhe técnico na abertura');
+  assert.ok(!calls.notificacoes.some((n) => /atribuído a você|assumido/i.test(n.titulo)));
+});
+
+test('aberto em nome do usuário não entra na fila', async () => {
+  const { c, calls } = controller({ logado: TECNICO, outros: [ANA] });
+  const res = response();
+  await c.criarChamado(request(TECNICO, { solicitante_id: 5, canal_abertura: 'telefone' }), res);
+  assert.equal(res.code, 201);
+  assert.equal(calls.insert[16], 7);
+  assert.deepEqual(calls.fila, []);
 });
