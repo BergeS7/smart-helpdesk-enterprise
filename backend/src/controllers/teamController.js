@@ -3,7 +3,6 @@
  */
 const pool = require("../config/database");
 
-const MODES = new Set(["manual", "round_robin", "least_load"]);
 const TEAM_PROFILES = new Set(["tecnico", "admin"]);
 
 function text(value, max = 255) { return String(value || "").trim().slice(0, max); }
@@ -52,15 +51,15 @@ exports.create = async (req, res) => {
   try {
     const name = text(req.body.name, 120); const description = text(req.body.description, 1000);
     const managerId = id(req.body.manager_id); const color = /^#[0-9a-f]{6}$/i.test(text(req.body.color, 7)) ? text(req.body.color, 7) : "#2563eb";
-    const distributionMode = MODES.has(req.body.distribution_mode) ? req.body.distribution_mode : "manual";
     if (!name) return res.status(400).json({ erro: "Nome da equipe é obrigatório" });
     if (managerId) {
       const manager = await pool.query("SELECT perfil FROM usuarios WHERE id = $1", [managerId]);
       if (!manager.rows[0] || !TEAM_PROFILES.has(manager.rows[0].perfil)) return res.status(400).json({ erro: "Gerente deve ser um atendente ativo" });
     }
     const created = await pool.query(
+      // Chamados novos sempre entram pela fila; a coluna fica só por compatibilidade.
       `INSERT INTO teams (name, description, color, manager_id, distribution_mode)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`, [name, description || null, color, managerId, distributionMode]
+       VALUES ($1,$2,$3,$4,'manual') RETURNING id`, [name, description || null, color, managerId]
     );
     if (managerId) await pool.query("INSERT INTO team_users (team_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING", [created.rows[0].id, managerId]);
     res.status(201).json(await getTeam(created.rows[0].id));
@@ -74,12 +73,10 @@ exports.update = async (req, res) => {
     const current = await getTeam(teamId); if (!current) return res.status(404).json({ erro: "Equipe não encontrada" });
     const name = req.body.name === undefined ? current.name : text(req.body.name, 120);
     if (!name) return res.status(400).json({ erro: "Nome da equipe é obrigatório" });
-    const mode = req.body.distribution_mode === undefined ? current.distribution_mode : req.body.distribution_mode;
-    if (!MODES.has(mode)) return res.status(400).json({ erro: "Modo de distribuição inválido" });
     const managerId = req.body.manager_id === undefined ? current.manager_id : id(req.body.manager_id);
     await pool.query(
-      `UPDATE teams SET name=$1, description=$2, color=$3, manager_id=$4, active=$5, distribution_mode=$6, updated_at=CURRENT_TIMESTAMP WHERE id=$7`,
-      [name, req.body.description === undefined ? current.description : text(req.body.description, 1000) || null, req.body.color === undefined ? current.color : (/^#[0-9a-f]{6}$/i.test(text(req.body.color, 7)) ? text(req.body.color, 7) : current.color), managerId, req.body.active === undefined ? current.active : Boolean(req.body.active), mode, teamId]
+      `UPDATE teams SET name=$1, description=$2, color=$3, manager_id=$4, active=$5, updated_at=CURRENT_TIMESTAMP WHERE id=$6`,
+      [name, req.body.description === undefined ? current.description : text(req.body.description, 1000) || null, req.body.color === undefined ? current.color : (/^#[0-9a-f]{6}$/i.test(text(req.body.color, 7)) ? text(req.body.color, 7) : current.color), managerId, req.body.active === undefined ? current.active : Boolean(req.body.active), teamId]
     );
     if (managerId) await pool.query("INSERT INTO team_users (team_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING", [teamId, managerId]);
     res.json(await getTeam(teamId));

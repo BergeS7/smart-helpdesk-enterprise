@@ -36,7 +36,7 @@ export function AbaConfiguracoesAtalhos({ painel }: { painel: PainelAdmin }) {
           <span>
             <b className="block text-sm">Equipes</b>
             <span className="text-xs text-zinc-500">
-              Estrutura e distribuição
+              Estrutura e membros
             </span>
           </span>
         </button>

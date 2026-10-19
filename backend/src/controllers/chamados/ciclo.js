@@ -136,7 +136,7 @@ const criarChamado = async (req, res) => {
     }
     // A equipe do setor (ou "Geral") é registrada, mas não distribui: o chamado aguarda na fila.
     const teamResult = await pool.query(
-      `SELECT id, distribution_mode FROM teams
+      `SELECT id FROM teams
        WHERE active = TRUE AND (LOWER(name) = LOWER($1) OR LOWER(name) = 'geral')
        ORDER BY CASE WHEN LOWER(name) = LOWER($1) THEN 0 ELSE 1 END, id LIMIT 1`,
       [usuario.departamento || ""]

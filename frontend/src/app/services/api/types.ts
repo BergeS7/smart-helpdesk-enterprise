@@ -454,8 +454,6 @@ export type MyPerformanceDashboard = PerformanceScore & {
   }[];
 };
 
-export type TeamDistributionMode = "manual" | "round_robin" | "least_load";
-
 export type ApiTeam = {
   id: number;
   name: string;
@@ -464,7 +462,6 @@ export type ApiTeam = {
   manager_id?: number | null;
   manager_name?: string | null;
   active: boolean;
-  distribution_mode: TeamDistributionMode;
   members_count?: number;
   created_at?: string;
   updated_at?: string;

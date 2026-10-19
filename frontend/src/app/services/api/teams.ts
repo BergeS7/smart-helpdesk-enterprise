@@ -15,7 +15,7 @@ export function buscarTeam(id: number | string) {
 export function criarTeam(
   dados: Pick<
     ApiTeam,
-    "name" | "description" | "color" | "manager_id" | "distribution_mode"
+    "name" | "description" | "color" | "manager_id"
   >,
 ) {
   return request<ApiTeam>("/teams", {

@@ -1,8 +1,7 @@
 /**
- * Responsabilidade: aba Equipes: criação, membros, gerente e distribuição automática.
+ * Responsabilidade: aba Equipes: criação, membros e gerente. Chamados novos entram pela fila, sem distribuição automática.
  */
-import { Badge, Button, Card, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
-import { type ApiTeam } from "../../../services/api";
+import { Button, Card, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
 import type { PainelAdmin } from "../useAdminPanel";
 
 export function AbaEquipes({ painel }: { painel: PainelAdmin }) {
@@ -51,22 +50,6 @@ export function AbaEquipes({ painel }: { painel: PainelAdmin }) {
               ))}
             </Select>
           </Field>
-          <Field label="Distribuição">
-            <Select
-              value={novaTeam.distribution_mode}
-              onChange={(e) =>
-                setNovaTeam({
-                  ...novaTeam,
-                  distribution_mode: e.target
-                    .value as ApiTeam["distribution_mode"],
-                })
-              }
-            >
-              <option value="manual">Manual</option>
-              <option value="round_robin">Round robin</option>
-              <option value="least_load">Menor carga</option>
-            </Select>
-          </Field>
           <Field label="Cor">
             <Input
               type="color"
@@ -100,9 +83,6 @@ export function AbaEquipes({ painel }: { painel: PainelAdmin }) {
               <p className="mt-2 text-sm text-zinc-600">
                 {team.description || "Sem descrição"}
               </p>
-              <Badge className="mt-3">
-                {team.distribution_mode.replace("_", " ")}
-              </Badge>
             </div>
           ))}
           {teams.length === 0 && (

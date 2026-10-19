@@ -69,7 +69,6 @@ export function useAdminPanel({
     description: "",
     manager_id: "",
     color: "#2563eb",
-    distribution_mode: "manual" as ApiTeam["distribution_mode"],
   });
   const [departamentos, setDepartamentos] = useState<CatalogoItem[]>([]);
   const [tipos, setTipos] = useState<CatalogoItem[]>([]);
@@ -341,7 +340,6 @@ export function useAdminPanel({
         description: "",
         manager_id: "",
         color: "#2563eb",
-        distribution_mode: "manual",
       });
       toast.success("Equipe criada.");
       await carregar();

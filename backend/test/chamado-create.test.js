@@ -8,7 +8,7 @@ const BRUNO_INATIVO = { id: 9, nome: 'Bruno', email: 'bruno@x.test', perfil: 'us
 // Carrega o controller com banco, fila e e-mail falsos para observar o que criarChamado dispara.
 // `logado` é quem faz a requisição; `outros` são os usuários da mesma empresa que podem ser solicitantes.
 function controller({ logado = ANA, outros = [], donoDoAtivo = null, equipe = null } = {}) {
-  const calls = { fila: [], emails: [], insert: null, setores: [], notificacoes: [], movimentacoes: [], roteamento: null, distribuicoes: 0 };
+  const calls = { fila: [], emails: [], insert: null, setores: [], notificacoes: [], movimentacoes: [], roteamento: null };
   const ticket = { id: 99, numero_chamado: '#HD-2026-0099', titulo: 'Impressora parada', usuario_id: logado.id, responsavel_id: null, status: 'OPEN', prioridade: 'Media' };
   const query = async (sql, params = []) => {
     if (/FROM usuarios\s+WHERE id = \$1/.test(sql)) return { rows: [logado] };
@@ -39,9 +39,6 @@ function controller({ logado = ANA, outros = [], donoDoAtivo = null, equipe = nu
   stub('../src/config/database', { query, connect: async () => ({ query, release() {} }) });
   stub('../src/services/queueNotificationService', { notificarNovoChamadoNaFila: async (chamado) => { calls.fila.push(chamado); } });
   stub('../src/services/emailService', { enviarEmail: async (email) => { calls.emails.push(email); } });
-  // Distribuição automática falsa: devolve sempre outro técnico, para provar quando ela é ignorada.
-  const distribuicao = require('../src/services/distributionService');
-  stub('../src/services/distributionService', { ...distribuicao, distributeTicket: async () => { calls.distribuicoes += 1; return { id: 8, nome: 'Outro Técnico' }; } });
   for (const key of Object.keys(require.cache)) if (/controllers[\/\\]chamado|ticketNotificationService|ticketRatingEmailService/.test(key)) delete require.cache[key];
   return { c: require('../src/controllers/chamadoController'), calls };
 }
@@ -151,7 +148,6 @@ test('em nome do usuário, a equipe do setor é registrada mas a distribuição 
   const res = response();
   await c.criarChamado(request(TECNICO, { solicitante_id: 5, canal_abertura: 'telefone' }), res);
   assert.equal(res.code, 201);
-  assert.equal(calls.distribuicoes, 0);
   assert.deepEqual(calls.roteamento.slice(0, 3), [3, 7, 'Tiago']);
 });
 
@@ -160,7 +156,6 @@ test('aberto pelo próprio usuário vai para a fila mesmo com equipe em distribu
   const res = response();
   await c.criarChamado(request(ANA), res);
   assert.equal(res.code, 201);
-  assert.equal(calls.distribuicoes, 0);
   assert.deepEqual(calls.roteamento.slice(0, 3), [3, null, null]);
   assert.deepEqual(calls.fila.map((chamado) => chamado.id), [99]);
   assert.equal(calls.insert[16], null, 'não escolhe técnico na abertura');
