@@ -2,9 +2,10 @@
  * Responsabilidade: modal de abertura de chamado pelo solicitante.
  */
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
-import { ArrowRight, BookOpen, CheckCircle2, FileText, PlayCircle, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, BookOpen, CheckCircle2, FileText, PlayCircle, Star, X } from "lucide-react";
 import { Button, Field, Input, Select, Textarea } from "../../../components/shared/FormPrimitives";
-import { registrarCliqueRecomendacao, responderRecomendacao, type ApiUsuario, type ArtigoSugerido, type CatalogoItem, type UsuarioLogado } from "../../../services/api";
+import { registrarCliqueRecomendacao, responderRecomendacao, type ApiUsuario, type ArtigoSugerido, type BloqueioAbertura, type CatalogoItem, type UsuarioLogado } from "../../../services/api";
+import { MODULO_DESENVOLVIMENTO_ATIVO, ehTipoDesenvolvimento, tiposParaAbertura } from "../../../domain/desenvolvimento";
 import { ArtigoDetalhe } from "./ArtigoDetalhe";
 
 const NIVEL_SUGESTAO = {
@@ -22,6 +23,9 @@ export function UsuarioNovoChamadoModal({
   onClose,
   onSubmit,
   onResolvido,
+  bloqueio = null,
+  verificandoAbertura = false,
+  onResolverBloqueio,
 }: {
   perfil: UsuarioLogado | ApiUsuario;
   tipos: CatalogoItem[];
@@ -32,6 +36,12 @@ export function UsuarioNovoChamadoModal({
   sugestoes: ArtigoSugerido[];
   loading: boolean;
   onClose: () => void;
+  /** Motivo de não poder abrir agora (um chamado por vez / avaliação pendente); some com o formulário. */
+  bloqueio?: BloqueioAbertura | null;
+  /** Enquanto a API confirma se pode abrir, o botão de criar fica desabilitado. */
+  verificandoAbertura?: boolean;
+  /** Leva à avaliação pendente ou ao chamado em andamento. */
+  onResolverBloqueio?: () => void;
   onSubmit: (event: FormEvent) => void;
   onResolvido: () => void;
 }) {
@@ -46,7 +56,8 @@ export function UsuarioNovoChamadoModal({
           "Acesso",
           "Equipamento",
         ];
-  const allTypes=Array.from(new Set([...tiposDisponiveis,"Bug","Melhoria","Automação","Integração","Dashboard / Relatório","Novo Sistema"]));
+  // Com o módulo de desenvolvimento oculto, os tipos dele não são oferecidos (ver domain/desenvolvimento).
+  const allTypes = tiposParaAbertura(tiposDisponiveis);
   const [artigoAberto, setArtigoAberto] = useState<ArtigoSugerido | null>(null);
   const [resposta, setResposta] = useState<"sim" | "nao" | null>(null);
 
@@ -61,7 +72,7 @@ export function UsuarioNovoChamadoModal({
     setResposta(resolveu ? "sim" : "nao");
     setArtigoAberto(null);
   }
-  const developmentType=["Bug","Melhoria","Automação","Integração","Dashboard / Relatório","Novo Sistema"].includes(novo.tipo_chamado);
+  const developmentType = MODULO_DESENVOLVIMENTO_ATIVO && ehTipoDesenvolvimento(novo.tipo_chamado);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
@@ -89,6 +100,9 @@ export function UsuarioNovoChamadoModal({
           </button>
         </div>
 
+        {bloqueio ? (
+          <AvisoBloqueioAbertura bloqueio={bloqueio} onClose={onClose} onResolver={onResolverBloqueio} />
+        ) : (
         <form
           onSubmit={onSubmit}
           className="max-h-[78vh] overflow-auto px-6 py-6"
@@ -212,14 +226,39 @@ export function UsuarioNovoChamadoModal({
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button disabled={loading}>
+            <Button disabled={loading || verificandoAbertura}>
               {loading ? "Criando..." : "Criar chamado"}
               {!loading && <ArrowRight size={17} />}
             </Button>
           </div>
         </form>
+        )}
       </div>
       {artigoAberto && <ArtigoDetalhe artigoId={artigoAberto.id} onClose={() => setArtigoAberto(null)} onResposta={responder} />}
+    </div>
+  );
+}
+
+// Ocupa o lugar do formulário: explica por que não dá para abrir agora e leva ao que destrava.
+function AvisoBloqueioAbertura({ bloqueio, onClose, onResolver }: { bloqueio: BloqueioAbertura; onClose: () => void; onResolver?: () => void }) {
+  const avaliacao = bloqueio.codigo === "AVALIACAO_PENDENTE";
+  return (
+    <div className="px-6 py-8" role="alert">
+      <div className="flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+        <AlertTriangle size={24} className="mt-0.5 shrink-0 text-amber-600" />
+        <div>
+          <p className="text-lg font-black">{avaliacao ? "Avalie o atendimento anterior" : "Você já tem um chamado em andamento"}</p>
+          <p className="mt-1 text-sm leading-6">{bloqueio.erro}</p>
+        </div>
+      </div>
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+        <Button type="button" variant="secondary" onClick={onClose}>Fechar</Button>
+        {onResolver && (
+          <Button type="button" onClick={onResolver}>
+            {avaliacao ? <><Star size={17} /> Avaliar agora</> : <>Ver chamado {bloqueio.numero_chamado || ""}<ArrowRight size={17} /></>}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

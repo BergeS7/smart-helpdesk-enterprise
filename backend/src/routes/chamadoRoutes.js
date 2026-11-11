@@ -6,6 +6,7 @@ const router = express.Router();
 
 const {
   criarChamado,
+  verificarAberturaDoUsuario,
   listarChamados,
   listarChamadosDoUsuario,
   buscarChamadoPorId,
@@ -60,6 +61,7 @@ function exigirPermissaoDeExportacao(req, res, next) {
 router.post("/", authMiddleware, criarChamado);
 router.get("/", authMiddleware, exigirPerfis(["admin", "supervisor", "tecnico"]), listarChamados);
 router.get("/usuario/me", authMiddleware, listarChamadosDoUsuario);
+router.get("/usuario/me/abertura", authMiddleware, verificarAberturaDoUsuario);
 router.get("/relatorios/resumo/metricas", authMiddleware, exigirPermissao("visualizar_relatorios"), obterResumoRelatorio);
 router.get("/relatorios/:formato", authMiddleware, exigirPermissaoDeExportacao, exportarRelatorio);
 router.get("/respostas-rapidas/lista", authMiddleware, exigirPerfis(["admin", "tecnico"]), listarRespostasRapidas);

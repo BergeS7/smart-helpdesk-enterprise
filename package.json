@@ -4,7 +4,10 @@
   "scripts": {
     "install:all": "npm install --prefix backend && npm install --prefix frontend",
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "build": "npm run build --prefix frontend"
+    "build": "npm run build --prefix frontend",
+    "dev:infra": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:infra:down": "docker compose -f docker-compose.dev.yml down",
+    "test": "npm test --prefix backend && npm test --prefix frontend"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

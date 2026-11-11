@@ -110,3 +110,17 @@ test("supervisor entra pelo login geral e pelo da equipe", async () => {
     assert.ok(res.body.token);
   }
 });
+
+test("a conta \"Equipamentos compartilhados\" não faz login nem com a senha certa", async () => {
+  const senha = "senha-que-alguem-descobriu";
+  usuarios = [{
+    id: 50, nome: "Equipamentos compartilhados", email: "equipamentos.compartilhados.e1@sistema.invalid",
+    senha: await bcrypt.hash(senha, 4), perfil: "usuario", status: "ativo", conta_compartilhada: true,
+    email_verificado_em: new Date().toISOString(), empresa_status: "ativa",
+  }];
+  const res = resposta();
+  await login({ body: { email: "equipamentos.compartilhados.e1@sistema.invalid", senha } }, res);
+  assert.equal(res.statusCode, 401);
+  assert.deepEqual(res.body, { erro: "Credenciais inválidas" }, "mesma resposta de e-mail inexistente");
+  assert.ok(consultas.some((c) => /conta_compartilhada/.test(c.sql)), "o login lê a marca da conta");
+});

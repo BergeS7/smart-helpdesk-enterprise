@@ -66,3 +66,25 @@ Os dados de cada empresa são separados pelo próprio PostgreSQL (Row Level Secu
 O usuário configurado em `DB_USER`/`DATABASE_URL` precisa poder criar o papel `helpdesk_empresa` e assumi-lo (a migration faz `GRANT helpdesk_empresa` para ele).
 
 Ao criar uma tabela nova com dados de empresa, a migration precisa incluir `empresa_id`, ligar a RLS e criar a política `isolamento_empresa` (veja `backend/migrations/1791000000000_isolamento_por_empresa.js`). Sem RLS ligada, todas as empresas enxergam todas as linhas da tabela.
+
+## Regras de abertura de chamado
+
+Pelo portal, o usuário tem **um chamado aberto por vez** e precisa **avaliar o chamado concluído** antes de abrir o próximo. As mensagens explicam o motivo e levam direto ao chamado em andamento ou à avaliação. A regra fica em `backend/src/services/aberturaChamadoService.js`.
+
+- A equipe (técnico, supervisor, admin) não passa por essas regras, nem abrindo em nome de um usuário.
+- Cancelado não exige avaliação. Chamados de desenvolvimento ficam fora das duas regras.
+- Só os chamados finalizados **depois da implantação** exigem avaliação. A data de corte de cada empresa fica em `configuracoes_sistema` (chave `avaliacaoObrigatoriaDesde`), gravada pela migration `1791700000000_regras_abertura_chamado.js`.
+
+## Equipamentos compartilhados
+
+Para equipamento sem responsável específico (PCs da oficina, recepção), a equipe escolhe **Equipamentos compartilhados** como solicitante no "Novo chamado em nome do usuário". Pelo mapa de patrimônio, um ativo sem dono identificado também usa essa conta. O chamado fica delegado a quem o abriu.
+
+A conta é criada sozinha, uma por empresa, na primeira vez que alguém a usa. Ela não faz login, não recebe e-mail (domínio `.invalid`) e não aparece nem pode ser alterada na gestão de usuários.
+
+## Módulo de desenvolvimento (oculto)
+
+As telas de Demandas/Projetos e os tipos Bug, Melhoria, Automação, Integração, Dashboard / Relatório e Novo Sistema estão ocultos, mas nada foi apagado: código, rotas da API e dados continuam no lugar. Para voltar a exibir, defina `VITE_MODULO_DESENVOLVIMENTO=true` nas variáveis de ambiente do frontend no Vercel e publique de novo.
+
+## Ordem de implantação
+
+O Render aplica as migrations ao iniciar; a API do Vercel não aplica. O código novo funciona mesmo que o Vercel publique antes da migration: o login e a lista de usuários não dependem da coluna nova, e a data de corte é gravada na primeira consulta. Até a migration rodar, só a opção "Equipamentos compartilhados" responde "tente novamente em alguns minutos".

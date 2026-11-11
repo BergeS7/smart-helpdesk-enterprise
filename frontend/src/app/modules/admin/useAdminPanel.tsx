@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus, kanbanDropStatus, ticketStatusLabel } from "../../domain/ticketStatus";
 import { useModuleRoute } from "../../routes/useModuleRoute";
 import { ADMIN_ROUTES, buildAdminNavigation } from "../../navigation/adminNavigation";
+import { MODULO_DESENVOLVIMENTO_ATIVO } from "../../domain/desenvolvimento";
 import { assumirChamado, atualizarChamado, atualizarMeuPerfil, atualizarUsuarioAdmin, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, atualizarAvisoSistema, buscarChamado, atualizarArtigoBase, criarArtigoBase, enviarImagemArtigo, listarProblemasRecorrentes, listarLacunasAssistente, obterArtigoBase, criarAvisoSistema, criarCatalogo, criarRespostaRapida, criarTeam, excluirAvisoSistema, listarAvisosSistemaAdmin, listarAvisosSistemaAtivos, listarBaseConhecimento, listarCatalogo, listarFiltrosSalvos, listarChamados, listarNotificacoes, listarRespostasRapidas, listarTeams, listarUsuariosAdmin, marcarNotificacoesLidas, obterDashboard, obterMinhasPermissoes, obterConfiguracoesSistema, salvarConfiguracoesSistema, atualizarLogoSistema1, removerMinhaFotoPerfil, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type PassoArtigo, type ProblemaRecorrente, type LacunaAssistente, type LacunasAssistente, type StatusArtigo, type VisibilidadeArtigo, type CatalogoItem, type DashboardResumo, type FiltrosChamados, type Notificacao, type RespostaRapida, type FiltroSalvo, type ConfiguracoesSistema, type ApiTeam, type UsuarioLogado, type PermissionKey } from "../../services/api";
 import { CONFIG_SISTEMA_PADRAO, chamadoIdFromNotification, isAdminApp, isDonoPlataformaApp, isEquipeApp, logoSistema1, nomeSistema, normalizarPerfilApp, normalizeStatus, temRecursoApp, ticketFiltersFromUrl } from "../comum/appShared";
 import { comConfirmacaoDeTecnicoExtra } from "../../components/shared/ConfirmacaoTecnicoExtra";
@@ -386,7 +387,7 @@ export function useAdminPanel({
     const deniedAnalytics=analyticsTabs.includes(tab)&&!administrador&&!permissoesAtuais.includes("visualizar_relatorios")&&!permissoesAtuais.includes("baixar_relatorios");
     const deniedAssets=tab==="patrimonio"&&!permissoesAtuais.includes("visualizar_patrimonio");
     const deniedKnowledge=tab==="base"&&!permissoesAtuais.includes("gerenciar_base");
-    const deniedDevelopment=["desenvolvimento","projetos"].includes(tab)&&!administrador&&!permissoesAtuais.includes("desenvolvimento_visualizar");
+    const deniedDevelopment=["desenvolvimento","projetos"].includes(tab)&&(!MODULO_DESENVOLVIMENTO_ATIVO||(!administrador&&!permissoesAtuais.includes("desenvolvimento_visualizar")));
     if(deniedDashboard||deniedTeam||deniedAdmin||deniedPlatform||deniedCatalog||deniedAnalytics||deniedAssets||deniedKnowledge||deniedDevelopment)setTab("fila");
   }, [administrador,plataforma,permissoesAtuais,permissoesCarregadas,tab]);
 
@@ -901,14 +902,14 @@ export function useAdminPanel({
       icon: BrainCircuit,
       label: "Demandas",
       title: "Desenvolvimento",
-      show: administrador || permissoesAtuais.includes("desenvolvimento_visualizar"),
+      show: MODULO_DESENVOLVIMENTO_ATIVO && (administrador || permissoesAtuais.includes("desenvolvimento_visualizar")),
     },
     {
       key: "projetos" as AdminTab,
       icon: ListChecks,
       label: "Projetos",
       title: "Projetos de desenvolvimento",
-      show: administrador || permissoesAtuais.includes("desenvolvimento_visualizar"),
+      show: MODULO_DESENVOLVIMENTO_ATIVO && (administrador || permissoesAtuais.includes("desenvolvimento_visualizar")),
     },
     ...(["indicadores_operacao","indicadores_sla","indicadores_tecnicos","indicadores_ativos"] as AdminTab[]).map((key)=>({
       key,

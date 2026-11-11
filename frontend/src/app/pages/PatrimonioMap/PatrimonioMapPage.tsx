@@ -216,7 +216,8 @@ export function PatrimonioMapPage({ dark = false }: { dark?: boolean }) {
           titulo: `[Ativo ${device.patrimonio}] ${device.hostname} requer atendimento`,
           descricao: `Chamado aberto pelo Monitoramento de Ativos.\n\nUsuário do equipamento: ${device.usuario || "Não identificado"}\nIP: ${device.ip}\nStatus: ${device.status}\nCPU: ${device.cpuUsage == null ? "Não informado" : Math.round(device.cpuUsage) + "%"} | RAM: ${device.ramUsage == null ? "Não informado" : Math.round(device.ramUsage) + "%"} | Disco: ${device.diskUsage == null ? "Não informado" : Math.round(device.diskUsage) + "%"}`,
           tipo_chamado: "Incidente",
-          // O dono do equipamento vira o solicitante e acompanha pelo portal; sem dono identificado, fica com a equipe.
+          // O dono do equipamento vira o solicitante e acompanha pelo portal; sem dono identificado, o
+          // solicitante é a conta "Equipamentos compartilhados" e o chamado fica com quem abriu.
           solicitante_do_ativo: true,
           canal_abertura: "monitoramento",
         });

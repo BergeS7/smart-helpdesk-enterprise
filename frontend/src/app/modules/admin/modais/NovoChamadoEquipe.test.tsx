@@ -80,3 +80,26 @@ it("mostra o erro da API sem fechar o modal", async () => {
   expect(container.textContent).toContain("Solicitante não encontrado nesta empresa");
   expect(onCriado).not.toHaveBeenCalled();
 });
+
+// --- Equipamentos compartilhados (PCs da oficina e outros sem responsável) ---------------------
+
+it("\"Equipamentos compartilhados\" abre o chamado sem solicitante_id", async () => {
+  const { onCriado } = await renderizar();
+  await act(async () => botao("Equipamentos compartilhados").click());
+  expect(container.textContent).toContain("Equipamento sem responsável específico");
+  expect(container.textContent).toContain("O chamado ficará delegado a você.");
+  await digitar(container.querySelector<HTMLInputElement>('input[placeholder^="Ex.: Usuário"]')!, "PC 02 da oficina sem rede");
+  await digitar(container.querySelector("textarea")!, "Cabo verificado, continua sem rede.");
+  await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+
+  expect(criarChamado).toHaveBeenCalledWith({ titulo: "PC 02 da oficina sem rede", descricao: "Cabo verificado, continua sem rede.", tipo_chamado: "Incidente", equipamento_compartilhado: true, canal_abertura: "telefone" });
+  expect(onCriado).toHaveBeenCalledOnce();
+});
+
+it("\"Trocar\" desfaz a escolha de equipamentos compartilhados", async () => {
+  await renderizar();
+  await act(async () => botao("Equipamentos compartilhados").click());
+  await act(async () => botao("Trocar").click());
+  expect(container.querySelector('input[aria-label="Buscar solicitante"]')).not.toBeNull();
+  expect(botao("Abrir chamado").disabled).toBe(true);
+});

@@ -53,3 +53,14 @@ test("sem remetente o Resend não conta como configurado; sem chave vale o SMTP"
   assert.equal(emailConfigurado(), true);
   assert.deepEqual(await enviarEmail({ para: "", assunto: "x" }), { enviado: false, motivo: "Destinatário não informado" });
 }));
+
+test("não envia para endereço .invalid (contas de sistema, como Equipamentos compartilhados)", comAmbiente(
+  { RESEND_API_KEY: "re_teste", EMAIL_FROM: "Help <help@empresa.com>" },
+  async () => {
+    let chamou = false;
+    global.fetch = async () => { chamou = true; return { ok: true, json: async () => ({}) }; };
+    const resultado = await enviarEmail({ para: "equipamentos.compartilhados.e1@sistema.invalid", assunto: "Oi", texto: "t" });
+    assert.equal(resultado.enviado, false);
+    assert.equal(chamou, false, "nenhuma chamada ao provedor");
+  }
+));

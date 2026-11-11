@@ -13,6 +13,7 @@ const { normalizarPerfil, ehDonoPlataforma } = require("../utils/permissoes");
 const { dadosPlanoPublico } = require("../domain/planos");
 const { senhaValida } = require("../utils/passwordPolicy");
 const { recordError } = require("../services/systemDiagnosticsService");
+const { sqlEhContaCompartilhada } = require("../services/contaCompartilhadaService");
 
 // Hash de uma senha qualquer: e-mail inexistente também passa por uma conferência do bcrypt,
 // para o tempo da resposta não revelar quais e-mails têm conta.
@@ -125,12 +126,15 @@ async function executarLogin(req, res, perfisPermitidos) {
           ,foto_perfil
           ,(SELECT e.status FROM empresas e WHERE e.id = usuarios.empresa_id) AS empresa_status
           ,(SELECT e.plano FROM empresas e WHERE e.id = usuarios.empresa_id) AS empresa_plano
+          ,${sqlEhContaCompartilhada("usuarios")} AS conta_compartilhada
        FROM usuarios
        WHERE LOWER(email) = LOWER($1)`,
       [String(email).trim()]
     );
 
-    if (result.rows.length === 0) {
+    // A conta "Equipamentos compartilhados" não faz login: responde igual a e-mail inexistente,
+    // inclusive no tempo de resposta, para não revelar que o endereço existe.
+    if (result.rows.length === 0 || result.rows[0].conta_compartilhada) {
       await bcrypt.compare(String(senha), HASH_FICTICIO);
       return res.status(401).json({
         erro: "Credenciais inválidas",

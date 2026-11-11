@@ -472,6 +472,9 @@ export function UserPortal(props: UserPortalProps) {
           loading={loading}
           onClose={() => setModalChamadoAberto(false)}
           onSubmit={abrirChamado}
+          bloqueio={portal.bloqueioAbertura}
+          verificandoAbertura={portal.verificandoAbertura}
+          onResolverBloqueio={portal.resolverBloqueioAbertura}
         />
       )}
 
