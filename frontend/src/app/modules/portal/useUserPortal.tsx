@@ -8,7 +8,7 @@ import { BarChart3, Bell, BookOpen, Download, LayoutDashboard, MapPinned, Shield
 import { toast } from "sonner";
 import { TICKET_STATUS, canonicalTicketStatus } from "../../domain/ticketStatus";
 import { PORTAL_ROUTES, useModuleRoute } from "../../routes/useModuleRoute";
-import { atualizarChamado, atualizarMeuPerfil, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, baixarRelatorio, buscarChamado, criarChamado, criarDemandaDesenvolvimento, listarBaseConhecimento, listarCatalogo, listarChamadosDoUsuario, listarNotificacoes, marcarNotificacoesLidas, obterDashboard, obterMeuPerfil, obterMinhasPermissoes, reportFrontendError, removerMinhaFotoPerfil, sugerirArtigosBase, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type ArtigoSugerido, type CatalogoItem, type DashboardResumo, type Notificacao, type ConfiguracoesSistema, type UsuarioLogado, type PermissionKey } from "../../services/api";
+import { ApiError, verificarAberturaChamado, type BloqueioAbertura, atualizarChamado, atualizarMeuPerfil, atualizarMinhaFotoPerfil, atualizarUsuarioLocal, baixarRelatorio, buscarChamado, criarChamado, criarDemandaDesenvolvimento, listarBaseConhecimento, listarCatalogo, listarChamadosDoUsuario, listarNotificacoes, marcarNotificacoesLidas, obterDashboard, obterMeuPerfil, obterMinhasPermissoes, reportFrontendError, removerMinhaFotoPerfil, sugerirArtigosBase, type ApiAvisoSistema, type ApiChamado, type ApiUsuario, type ArtigoBase, type ArtigoSugerido, type CatalogoItem, type DashboardResumo, type Notificacao, type ConfiguracoesSistema, type UsuarioLogado, type PermissionKey } from "../../services/api";
 import { STATUS_COLUNAS, chamadoIdFromNotification, emailSuporteSistema, logoSistema1, nomeSistema, normalizeStatus, temRecursoApp } from "../comum/appShared";
 import type { UsuarioTab } from "../comum/appShared";
 
@@ -59,6 +59,9 @@ export function useUserPortal({
   const chamadoSelecionadoUsuarioRef = useRef<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalChamadoAberto, setModalChamadoAberto] = useState(false);
+  // Motivo de não poder abrir chamado agora (um por vez / avaliação pendente), mostrado no formulário.
+  const [bloqueioAbertura, setBloqueioAbertura] = useState<BloqueioAbertura | null>(null);
+  const [verificandoAbertura, setVerificandoAbertura] = useState(false);
   const [busca, setBusca] = useState("");
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [notificacoesAberta, setNotificacoesAberta] = useState(false);
@@ -531,6 +534,28 @@ export function useUserPortal({
     }
   }
 
+  // Ao abrir o formulário, pergunta à API se o usuário pode abrir chamado agora, para avisar antes de
+  // ele escrever tudo. Se a consulta falhar, o formulário segue liberado: a criação valida de novo.
+  useEffect(() => {
+    if (!modalChamadoAberto) { setBloqueioAbertura(null); return; }
+    let ativo = true;
+    setVerificandoAbertura(true);
+    verificarAberturaChamado()
+      .then((situacao) => { if (ativo) setBloqueioAbertura(situacao.pode_abrir ? null : (situacao as BloqueioAbertura)); })
+      .catch(() => { if (ativo) setBloqueioAbertura(null); })
+      .finally(() => { if (ativo) setVerificandoAbertura(false); });
+    return () => { ativo = false; };
+  }, [modalChamadoAberto]);
+
+  // Leva o usuário direto ao que destrava a abertura: a avaliação pendente ou o chamado em andamento.
+  async function resolverBloqueioAbertura() {
+    if (!bloqueioAbertura) return;
+    const { codigo, chamado_id } = bloqueioAbertura;
+    setModalChamadoAberto(false);
+    if (codigo === "AVALIACAO_PENDENTE") await abrirAvaliacao(chamado_id);
+    else await abrirDetalhe(chamado_id);
+  }
+
   function limparFormularioChamado() {
     setNovo({ titulo: "", descricao: "", tipo_chamado: "Incidente", processo_atual:"", problema:"", resultado_esperado:"", frequencia:"", pessoas:"", tempo_minutos:"", sistemas:"", impacto_nao_execucao:"", beneficios:"" });
     setSugestoesBase([]);
@@ -567,7 +592,10 @@ export function useUserPortal({
       if (complementoPendente) toast.warning("Chamado criado. Os dados complementares serão revisados pela equipe de TI.");
       else toast.success("Chamado criado com sucesso.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao criar chamado.");
+      // Bloqueio das regras de abertura (ex.: outro chamado aberto em outra aba): mostra no formulário.
+      const bloqueio = e instanceof ApiError && e.status === 409 ? (e.dados as BloqueioAbertura | null) : null;
+      if (bloqueio?.codigo === "CHAMADO_EM_ABERTO" || bloqueio?.codigo === "AVALIACAO_PENDENTE") setBloqueioAbertura(bloqueio);
+      else toast.error(e instanceof Error ? e.message : "Erro ao criar chamado.");
     } finally {
       setLoading(false);
     }
@@ -664,6 +692,9 @@ export function useUserPortal({
     setLoading,
     modalChamadoAberto,
     setModalChamadoAberto,
+    bloqueioAbertura,
+    verificandoAbertura,
+    resolverBloqueioAbertura,
     busca,
     setBusca,
     notificacoes,

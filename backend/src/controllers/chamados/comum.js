@@ -12,6 +12,7 @@ const ticketPolicy = require("../../policies/ticketPolicy");
 const { STATUS, canonicalize: canonicalizeStatus, label: statusLabel, isFinal: statusFinalizado, canTransition, REOPEN_WINDOW_DAYS, reopenDeadline, isReopenWindowOpen } = require("../../domain/ticketStatus");
 const { criarNotificacao, notificarStatus, notificarAvaliacao, notificarInteracao } = require("../../services/ticketNotificationService");
 const { calcularIndicadoresSla, sincronizarSlaChamadosAtivosUmaVez } = require("./sla");
+const { obterContaCompartilhada } = require("../../services/contaCompartilhadaService");
 
 function normalizarEmail(email) {
   return String(email || "").trim().toLowerCase();
@@ -147,17 +148,45 @@ async function obterUsuarioAtual(req) {
 
 const CANAIS_ABERTURA = ["portal", "telefone", "presencial", "email", "whatsapp", "monitoramento", "outro"];
 
-// Solicitante do novo chamado: quem está logado ou, para a equipe, o usuário atendido da mesma empresa.
-async function resolverSolicitante(req, autor, { solicitanteId, ativoId, solicitanteDoAtivo } = {}) {
+// 42703 = coluna inexistente: a API nova entrou no ar antes da migration 1791700000000 rodar.
+const COLUNA_INEXISTENTE = "42703";
+
+// Conta "Equipamentos compartilhados" como solicitante: só a equipe usa.
+async function resolverContaCompartilhada(autor) {
+  let conta;
+  try {
+    conta = await obterContaCompartilhada(autor.id);
+  } catch (error) {
+    if (error?.code !== COLUNA_INEXISTENTE) throw error;
+    return { status: 503, erro: "A opção de equipamentos compartilhados está sendo ativada. Tente novamente em alguns minutos.", migracaoPendente: true };
+  }
+  if (!conta) return { status: 400, erro: "Não foi possível identificar a empresa para a conta de equipamentos compartilhados" };
+  return { usuario: conta, emNomeDe: true, contaCompartilhada: true };
+}
+
+// Solicitante do novo chamado: quem está logado ou, para a equipe, o usuário atendido da mesma empresa
+// ou a conta "Equipamentos compartilhados" (equipamento sem responsável específico).
+async function resolverSolicitante(req, autor, { solicitanteId, ativoId, solicitanteDoAtivo, equipamentoCompartilhado } = {}) {
+  if (equipamentoCompartilhado) {
+    if (!usuarioEhEquipe(req)) return { status: 403, erro: "Somente a equipe de atendimento pode abrir chamado para equipamentos compartilhados" };
+    return resolverContaCompartilhada(autor);
+  }
   let alvoId = solicitanteId !== undefined && solicitanteId !== null && solicitanteId !== "" ? Number(solicitanteId) : null;
   if (alvoId !== null && !Number.isInteger(alvoId)) return { status: 400, erro: "Solicitante inválido" };
   if (alvoId !== null && alvoId !== Number(autor.id) && !usuarioEhEquipe(req)) {
     return { status: 403, erro: "Somente a equipe de atendimento pode abrir chamado em nome de outro usuário" };
   }
-  // Pelo patrimônio, o chamado fica com o dono do equipamento quando ele é identificado.
+  // Pelo patrimônio, o chamado fica com o dono do equipamento quando ele é identificado; sem dono
+  // identificado, fica com a conta "Equipamentos compartilhados" em vez de cair no nome do técnico.
   if (alvoId === null && solicitanteDoAtivo && ativoId && usuarioEhEquipe(req)) {
     const vinculado = await buscarUsuarioVinculadoAoAtivo(ativoId);
-    if (vinculado) alvoId = Number(vinculado.id);
+    if (!vinculado) {
+      const compartilhada = await resolverContaCompartilhada(autor);
+      // Durante a implantação (migration ainda não aplicada) mantém o comportamento anterior:
+      // o técnico fica como solicitante, em vez de impedir a abertura pelo patrimônio.
+      return compartilhada.migracaoPendente ? { usuario: autor, emNomeDe: false } : compartilhada;
+    }
+    alvoId = Number(vinculado.id);
   }
   if (alvoId === null || alvoId === Number(autor.id)) return { usuario: autor, emNomeDe: false };
 

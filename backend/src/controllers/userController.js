@@ -18,6 +18,9 @@ const { dadosPlanoPublico } = require("../domain/planos");
 const { usoDoPlano, tecnicoExtra, confirmouExtra, avisoTecnicoExtra, descricaoTecnicoExtra } = require("../services/usoPlanoService");
 const { EMPRESA_PRINCIPAL, executarComoEmpresa } = require("../config/tenantContext");
 const { empresaAtivaPorSlug } = require("./empresaController");
+const { sqlEhContaCompartilhada, ehContaCompartilhada } = require("../services/contaCompartilhadaService");
+
+const ERRO_CONTA_COMPARTILHADA = "A conta \"Equipamentos compartilhados\" é do sistema e não pode ser alterada nem excluída.";
 
 function normalizarTexto(valor) {
   return String(valor || "").trim();
@@ -452,7 +455,8 @@ async function listarUsuarios(req, res) {
   try {
     const { status, perfil, q } = req.query;
     const params = [];
-    const where = [];
+    // A conta "Equipamentos compartilhados" é do sistema: fica fora da gestão de usuários.
+    const where = [`NOT ${sqlEhContaCompartilhada("usuarios")}`];
 
     if (status) {
       params.push(normalizarStatusUsuario(status));
@@ -564,6 +568,7 @@ async function aprovarUsuario(req, res) {
 async function rejeitarUsuario(req, res) {
   try {
     const { id } = req.params;
+    if (await ehContaCompartilhada(id)) return res.status(403).json({ erro: ERRO_CONTA_COMPARTILHADA });
 
     const result = await pool.query(
       `UPDATE usuarios
@@ -633,6 +638,7 @@ async function atualizarUsuarioAdmin(req, res) {
     if (!req.user?.plataforma && await contaDonaPlataforma(id)) {
       return res.status(403).json({ erro: "A conta da administração da plataforma não pode ser alterada por aqui." });
     }
+    if (await ehContaCompartilhada(id)) return res.status(403).json({ erro: ERRO_CONTA_COMPARTILHADA });
     if (dados.email !== undefined && ehEmailDonoPlataforma(dados.email) && !(await contaDonaPlataforma(id))) {
       return res.status(403).json({ erro: "Este e-mail é reservado à administração da plataforma." });
     }
@@ -981,6 +987,7 @@ async function excluirUsuarioAdmin(req, res) {
     if (await contaDonaPlataforma(id)) {
       return res.status(403).json({ erro: "A conta da administração da plataforma não pode ser excluída." });
     }
+    if (await ehContaCompartilhada(id)) return res.status(403).json({ erro: ERRO_CONTA_COMPARTILHADA });
 
     const result = await pool.query(
       `DELETE FROM usuarios

@@ -13,26 +13,37 @@ const { registrarAuditoria, registrarMovimentacao } = require("./registro");
 const { vincularChamado } = require("../../services/knowledgeRecommendationService");
 const { notificarNovoChamadoNaFila } = require("../../services/queueNotificationService");
 const { calcularSLAConfiguravel, sincronizarSlaChamadosAtivosUmaVez, verificarAlertasSla } = require("./sla");
+const { verificarBloqueioAbertura } = require("../../services/aberturaChamadoService");
+const { isDevelopmentTicketType } = require("../../domain/development");
 const { adicionarFotosParticipantes, bloquearMutacaoNaoAutorizada, buscarChamadoAutorizado, carregarDetalhesChamado, consultarChamados, detectarDuplicidade, gerarNumeroChamado, normalizarEmail, normalizarTexto, normalizarCanalAbertura, notificarUsuarioVinculadoAoAtivo, obterUsuarioAtual, resolverSolicitante, usuarioEhAdmin, usuarioEhEquipe, validarCamposCriacao } = require("./comum");
 
 // Criação transacional: classifica, calcula SLA, detecta duplicidade e envia para a fila.
 // A equipe pode abrir em nome do usuário atendido: ele vira o solicitante, a equipe segue o setor dele
-// e o chamado fica delegado a quem o registrou, sem passar pela fila.
+// e o chamado fica delegado a quem o registrou, sem passar pela fila. O mesmo vale para a conta
+// "Equipamentos compartilhados" (equipamento sem responsável, como os PCs da oficina).
+// Quem abre para si pelo portal passa pelas regras de aberturaChamadoService (um chamado por vez e
+// avaliação do anterior); a equipe não.
 const criarChamado = async (req, res) => {
   let chamadoCriado = null;
   try {
-    const { titulo, descricao, tipo_chamado, ativo_id, solicitante_id, solicitante_do_ativo, canal_abertura } = req.body;
-    const tipoDesenvolvimento = ["bug", "melhoria", "automação", "automacao", "integração", "integracao", "dashboard / relatório", "dashboard / relatorio", "novo sistema"].includes(normalizarTexto(tipo_chamado).toLowerCase());
+    const { titulo, descricao, tipo_chamado, ativo_id, solicitante_id, solicitante_do_ativo, equipamento_compartilhado, canal_abertura } = req.body;
+    const tipoDesenvolvimento = isDevelopmentTicketType(tipo_chamado);
     const autor = await obterUsuarioAtual(req);
     if (!autor) return res.status(404).json({ erro: "Usuário não encontrado" });
-    const solicitante = await resolverSolicitante(req, autor, { solicitanteId: solicitante_id, ativoId: ativo_id, solicitanteDoAtivo: solicitante_do_ativo === true });
+    const solicitante = await resolverSolicitante(req, autor, { solicitanteId: solicitante_id, ativoId: ativo_id, solicitanteDoAtivo: solicitante_do_ativo === true, equipamentoCompartilhado: equipamento_compartilhado === true });
     if (solicitante.erro) return res.status(solicitante.status).json({ erro: solicitante.erro });
-    const { usuario, emNomeDe } = solicitante;
+    const { usuario, emNomeDe, contaCompartilhada } = solicitante;
     const canal = normalizarCanalAbertura(canal_abertura, emNomeDe);
 
     const erros = validarCamposCriacao({ titulo, descricao, usuario, emNomeDe });
     if (erros.length > 0) {
       return res.status(400).json({ erro: "Preencha todos os campos obrigatórios", detalhes: erros });
+    }
+
+    // Regras do portal: antes de qualquer gravação, para o bloqueio não deixar nada pela metade.
+    if (!emNomeDe && !usuarioEhEquipe(req)) {
+      const bloqueio = await verificarBloqueioAbertura(usuario);
+      if (bloqueio) return res.status(409).json(bloqueio);
     }
 
     let ativo = null;
@@ -158,6 +169,9 @@ const criarChamado = async (req, res) => {
     await registrarMovimentacao(chamado.id, req, "criacao", descricaoCriacao);
     if (emNomeDe) {
       await registrarMovimentacao(chamado.id, req, "atribuicao_automatica", `Chamado delegado a ${autor.nome}, que o abriu em nome de ${usuario.nome}.`);
+    }
+    // A conta compartilhada não tem ninguém por trás para ler a notificação.
+    if (emNomeDe && !contaCompartilhada) {
       await criarNotificacao(usuario.id, "Chamado aberto em seu nome", `${chamado.titulo} — ${chamado.numero_chamado}, registrado por ${autor.nome}, que cuidará do seu atendimento.`, "info", `/chamados/${chamado.id}`);
     }
     await registrarMovimentacao(chamado.id, { user: { id: null, nome: "IA Smart HelpDesk", perfil: "sistema" } }, "ia_prioridade", `Prioridade IA: ${analiseIA.prioridade}. Categoria: ${analiseIA.categoria}. Responsável sugerido: ${analiseIA.responsavel_sugerido}. Motivo: ${analiseIA.motivo}`);
@@ -182,6 +196,19 @@ const criarChamado = async (req, res) => {
       });
     }
     return res.status(500).json({ erro: "Erro ao criar chamado", detalhe: error.message });
+  }
+};
+
+// Consulta do portal antes de mostrar o formulário: evita que o usuário escreva tudo e só então
+// descubra que não pode abrir. A criação continua validando por conta própria.
+const verificarAberturaDoUsuario = async (req, res) => {
+  try {
+    if (usuarioEhEquipe(req)) return res.json({ pode_abrir: true });
+    const bloqueio = await verificarBloqueioAbertura({ id: req.user.id, email: req.user.email });
+    return res.json(bloqueio ? { pode_abrir: false, ...bloqueio } : { pode_abrir: true });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: "Erro ao verificar se é possível abrir chamado", detalhe: error.message });
   }
 };
 
@@ -585,6 +612,7 @@ const assumirChamado = async (req, res) => {
 
 module.exports = {
   criarChamado,
+  verificarAberturaDoUsuario,
   listarChamados,
   listarChamadosDoUsuario,
   buscarChamadoPorId,

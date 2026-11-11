@@ -3,6 +3,7 @@
  */
 import { Activity, BarChart3, BookOpen, Building2, Code2, Headphones, LayoutDashboard, MapPinned, Settings, ShieldCheck, Ticket, Users } from "lucide-react";
 import type { PermissionKey } from "../services/api";
+import { MODULO_DESENVOLVIMENTO_ATIVO } from "../domain/desenvolvimento";
 
 export type AdminRouteKey =
   | "dashboard" | "satisfacao" | "fila" | "kanban" | "carteira" | "chamados"
@@ -49,7 +50,8 @@ export function buildAdminNavigation(ctx:NavigationContext):NavigationArea[]{
   const areas:NavigationArea[]=[
     {id:"home",label:"Início",title:"Visão operacional",description:"Acompanhe os principais indicadores e prioridades da operação.",icon:LayoutDashboard,defaultTab:"dashboard",tabs:["dashboard"],visible:ctx.permissions.includes("visualizar_dashboard")},
     {id:"service",label:"Atendimento",title:"Central de Atendimento",description:"Organize, distribua e acompanhe os chamados em tempo real.",icon:Headphones,defaultTab:"fila",tabs:["fila","kanban","chamados","historico"],visible:true},
-    {id:"development",label:"Desenvolvimento",title:"Desenvolvimento e Projetos",description:"Analise melhorias, automações, backlog, entregas e resultados gerados pela TI.",icon:Code2,defaultTab:"desenvolvimento",tabs:["desenvolvimento","projetos"],visible:ctx.administrador||ctx.permissions.includes("desenvolvimento_visualizar")},
+    {id:"development",label:"Desenvolvimento",title:"Desenvolvimento e Projetos",description:"Analise melhorias, automações, backlog, entregas e resultados gerados pela TI.",icon:Code2,defaultTab:"desenvolvimento",tabs:["desenvolvimento","projetos"],// Oculto enquanto MODULO_DESENVOLVIMENTO_ATIVO estiver desligado (domain/desenvolvimento.ts).
+    visible:MODULO_DESENVOLVIMENTO_ATIVO&&(ctx.administrador||ctx.permissions.includes("desenvolvimento_visualizar"))},
     {id:"team",label:"Equipe",title:"Equipe e Acessos",description:"Gerencie pessoas, capacidade, grupos e permissões de acesso.",icon:Users,defaultTab:"usuarios",tabs:["usuarios","carteira","teams","acessos"],visible:ctx.administrador},
     {id:"analytics",label:"Indicadores",title:"Indicadores",description:"Analise desempenho, SLA, satisfação e evolução do atendimento.",icon:BarChart3,defaultTab:ctx.tecnico?"satisfacao":"indicadores_operacao",tabs:ctx.tecnico?["satisfacao"]:["indicadores_operacao","indicadores_sla","indicadores_tecnicos","satisfacao","indicadores_ativos","relatorios"],visible:reports||ctx.administrador||ctx.tecnico},
     {id:"knowledge",label:"Base",title:"Base de Conhecimento",description:"Centralize orientações e soluções reutilizáveis para a equipe.",icon:BookOpen,defaultTab:"base",tabs:["base"],visible:ctx.baseConhecimento!==false&&ctx.permissions.includes("gerenciar_base")},

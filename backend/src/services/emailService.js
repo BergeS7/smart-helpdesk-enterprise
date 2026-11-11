@@ -63,8 +63,15 @@ async function enviarViaResend({ para, assunto, texto, html, anexos }) {
   return { enviado: true, id: corpo.id };
 }
 
+// Domínio reservado (RFC 2606) usado por contas de sistema, como "Equipamentos compartilhados":
+// não existe caixa postal, e tentar enviar só gera devolução e prejudica a reputação do remetente.
+function destinatarioSemCaixaPostal(para) {
+  return String(para || "").trim().toLowerCase().endsWith(".invalid");
+}
+
 async function enviarEmail({ para, assunto, texto, html, anexos }) {
   if (!para) return { enviado: false, motivo: "Destinatário não informado" };
+  if (destinatarioSemCaixaPostal(para)) return { enviado: false, motivo: "Destinatário de sistema, sem caixa postal" };
 
   if (!emailConfigurado()) {
     return { enviado: false, motivo: "Envio de e-mail não configurado" };

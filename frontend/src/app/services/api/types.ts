@@ -173,10 +173,23 @@ export type NovoChamado = {
   recomendacoes_ids?: number[];
   // Só a equipe: abre em nome do usuário atendido, que vira o solicitante.
   solicitante_id?: number;
-  // Pelo patrimônio: o dono do equipamento vira o solicitante quando identificado.
+  // Pelo patrimônio: o dono do equipamento vira o solicitante quando identificado; sem dono,
+  // a conta "Equipamentos compartilhados".
   solicitante_do_ativo?: boolean;
+  // Só a equipe: equipamento sem responsável específico (PCs da oficina, recepção...).
+  equipamento_compartilhado?: boolean;
   canal_abertura?: string;
 };
+
+/** Motivo pelo qual o usuário não pode abrir um novo chamado pelo portal (resposta 409 da API). */
+export type BloqueioAbertura = {
+  codigo: "CHAMADO_EM_ABERTO" | "AVALIACAO_PENDENTE";
+  erro: string;
+  chamado_id: number;
+  numero_chamado: string | null;
+};
+
+export type SituacaoAbertura = { pode_abrir: true } | ({ pode_abrir: false } & BloqueioAbertura);
 
 export type NovoCadastroUsuario = {
   nome: string;

@@ -1,9 +1,11 @@
 /**
  * Responsabilidade: abertura de chamado pela equipe em nome do usuário atendido (telefone, presencial, e-mail).
  * O usuário escolhido vira o solicitante: acompanha, conversa e avalia pelo portal, e o roteamento usa o setor dele.
+ * Para equipamento sem responsável específico (PCs da oficina, recepção...), a opção "Equipamentos
+ * compartilhados" usa a conta de sistema da empresa como solicitante; ninguém é avisado nem avalia.
  */
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ArrowRight, Search, UserRound } from "lucide-react";
+import { ArrowRight, Monitor, Search, UserRound } from "lucide-react";
 import { Button, Field, Input, Modal, Select, Textarea } from "../../../components/shared/FormPrimitives";
 import { criarChamado, listarCatalogo, listarUsuariosAdmin, type ApiChamado, type ApiUsuario, type UsuarioLogado } from "../../../services/api";
 
@@ -17,6 +19,7 @@ export const CANAIS_ATENDIMENTO = [
 
 const TIPOS_PADRAO = ["Incidente", "Solicitação", "Dúvida", "Acesso", "Equipamento"];
 const LIMITE_RESULTADOS = 8;
+const NOME_EQUIPAMENTOS_COMPARTILHADOS = "Equipamentos compartilhados";
 
 function normalizar(texto?: string | null) {
   return String(texto || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -35,6 +38,8 @@ export function ModalNovoChamadoEquipe({
   const [tipos, setTipos] = useState<string[]>(TIPOS_PADRAO);
   const [busca, setBusca] = useState("");
   const [solicitante, setSolicitante] = useState<ApiUsuario | null>(null);
+  // Alternativa ao solicitante: equipamento sem responsável (conta "Equipamentos compartilhados").
+  const [equipamentoCompartilhado, setEquipamentoCompartilhado] = useState(false);
   const [canal, setCanal] = useState<string>("telefone");
   const [tipo, setTipo] = useState(TIPOS_PADRAO[0]);
   const [titulo, setTitulo] = useState("");
@@ -62,10 +67,16 @@ export function ModalNovoChamadoEquipe({
   }, [busca, usuarios]);
 
   const semDepartamento = Boolean(solicitante && !solicitante.departamento);
+  const escolheuSolicitante = Boolean(solicitante) || equipamentoCompartilhado;
+
+  function trocarSolicitante() {
+    setSolicitante(null);
+    setEquipamentoCompartilhado(false);
+  }
 
   async function enviar(event: FormEvent) {
     event.preventDefault();
-    if (!solicitante) { setErro("Escolha o usuário que está sendo atendido."); return; }
+    if (!escolheuSolicitante) { setErro("Escolha o usuário atendido ou \"Equipamentos compartilhados\"."); return; }
     setErro("");
     setEnviando(true);
     try {
@@ -73,7 +84,7 @@ export function ModalNovoChamadoEquipe({
         titulo,
         descricao,
         tipo_chamado: tipo,
-        solicitante_id: solicitante.id,
+        ...(equipamentoCompartilhado ? { equipamento_compartilhado: true } : { solicitante_id: solicitante.id }),
         canal_abertura: canal,
       });
       onCriado(chamado);
@@ -88,7 +99,19 @@ export function ModalNovoChamadoEquipe({
     <Modal title="Novo chamado em nome do usuário" onClose={onClose}>
       <form onSubmit={enviar} className="space-y-4">
         <Field label="Solicitante">
-          {solicitante ? (
+          {equipamentoCompartilhado ? (
+            <div className="flex items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-700"><Monitor size={18} /></span>
+                <div className="min-w-0 text-sm">
+                  <p className="font-black text-zinc-800">{NOME_EQUIPAMENTOS_COMPARTILHADOS}</p>
+                  <p className="text-zinc-600">Equipamento sem responsável específico, como os PCs da oficina.</p>
+                  <p className="text-xs text-zinc-500">Informe no título qual é o equipamento (ex.: PC 02 da oficina).</p>
+                </div>
+              </div>
+              <Button type="button" variant="secondary" className="!h-9 shrink-0" onClick={trocarSolicitante}>Trocar</Button>
+            </div>
+          ) : solicitante ? (
             <div className="flex items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-700"><UserRound size={18} /></span>
@@ -100,7 +123,7 @@ export function ModalNovoChamadoEquipe({
                   </p>
                 </div>
               </div>
-              <Button type="button" variant="secondary" className="!h-9 shrink-0" onClick={() => setSolicitante(null)}>Trocar</Button>
+              <Button type="button" variant="secondary" className="!h-9 shrink-0" onClick={trocarSolicitante}>Trocar</Button>
             </div>
           ) : (
             <div className="rounded-xl border border-zinc-200">
@@ -116,6 +139,21 @@ export function ModalNovoChamadoEquipe({
                 />
               </div>
               <ul className="max-h-56 overflow-auto py-1" role="listbox" aria-label="Usuários encontrados">
+                <li className="border-b border-zinc-100">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    onClick={() => setEquipamentoCompartilhado(true)}
+                    className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-blue-50"
+                  >
+                    <Monitor size={16} className="shrink-0 text-blue-700" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-bold text-zinc-800">{NOME_EQUIPAMENTOS_COMPARTILHADOS}</span>
+                      <span className="block truncate text-xs text-zinc-500">Equipamento sem responsável (PCs da oficina, recepção...)</span>
+                    </span>
+                  </button>
+                </li>
                 {resultados.length === 0 && <li className="px-3 py-3 text-sm text-zinc-500">Nenhum usuário ativo encontrado.</li>}
                 {resultados.map((u) => (
                   <li key={u.id}>
@@ -168,11 +206,11 @@ export function ModalNovoChamadoEquipe({
         {erro && <p className="text-sm font-bold text-red-600" role="alert">{erro}</p>}
 
         <div className="flex flex-wrap items-center justify-end gap-3 border-t border-zinc-100 pt-4">
-          {solicitante && Number(solicitante.id) !== Number(usuarioLogado.id) && (
+          {(equipamentoCompartilhado || (solicitante && Number(solicitante.id) !== Number(usuarioLogado.id))) && (
             <p className="mr-auto text-xs text-zinc-500">O chamado ficará delegado a você.</p>
           )}
           <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button disabled={enviando || !solicitante || semDepartamento}>
+          <Button disabled={enviando || !escolheuSolicitante || semDepartamento}>
             {enviando ? "Abrindo..." : "Abrir chamado"}
             {!enviando && <ArrowRight size={17} />}
           </Button>

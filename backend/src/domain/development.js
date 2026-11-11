@@ -4,6 +4,13 @@ const DEVELOPMENT_STATUSES = Object.freeze(["nova", "em_analise", "levantamento_
 const PROJECT_STATUSES = Object.freeze(["planejamento", "aguardando_aprovacao", "aprovado", "em_desenvolvimento", "em_testes", "homologacao", "implantacao", "concluido", "suspenso", "cancelado"]);
 const TASK_STATUSES = Object.freeze(["a_fazer", "em_andamento", "bloqueado", "em_testes", "concluido"]);
 const EFFORTS = Object.freeze(["muito_pequeno", "pequeno", "medio", "grande", "muito_grande"]);
+// Tipos de chamado (como gravados em chamados.tipo_chamado, em minúsculas) que viram demanda de
+// desenvolvimento: ficam sem SLA operacional e fora da fila de atendimento.
+const DEVELOPMENT_TICKET_TYPES = Object.freeze(["bug", "melhoria", "automação", "automacao", "integração", "integracao", "dashboard / relatório", "dashboard / relatorio", "novo sistema"]);
+
+function isDevelopmentTicketType(tipo) {
+  return DEVELOPMENT_TICKET_TYPES.includes(String(tipo || "").trim().toLowerCase());
+}
 
 function scoreDevelopment(input = {}, thresholds = { baixa: 7, media: 11, alta: 15 }) {
   const values = [input.impacto, input.alcance, input.ganho, input.urgencia].map(Number);
@@ -18,4 +25,4 @@ function calculateSavings({ tempo_antes_minutos = 0, tempo_depois_minutos = 0, e
   return { horas_mes: Number((monthlyMinutes / 60).toFixed(2)), horas_ano: Number((monthlyMinutes * 12 / 60).toFixed(2)) };
 }
 
-module.exports = { DEVELOPMENT_TYPES, DEVELOPMENT_STATUSES, PROJECT_STATUSES, TASK_STATUSES, EFFORTS, scoreDevelopment, calculateSavings };
+module.exports = { DEVELOPMENT_TYPES, DEVELOPMENT_TICKET_TYPES, isDevelopmentTicketType, DEVELOPMENT_STATUSES, PROJECT_STATUSES, TASK_STATUSES, EFFORTS, scoreDevelopment, calculateSavings };

@@ -2,7 +2,7 @@
  * Responsabilidade: chamados: listagem, criação, atualização, comentários, anexos, respostas rápidas, filtros e avaliação.
  */
 import { API_URL, getToken, request } from "./http";
-import type { ApiAnexo, ApiAvaliacao, ApiChamado, ApiComentario, DashboardResumo, FiltroSalvo, FiltrosChamados, NovoChamado, RespostaRapida } from "./types";
+import type { ApiAnexo, ApiAvaliacao, ApiChamado, ApiComentario, DashboardResumo, FiltroSalvo, FiltrosChamados, NovoChamado, RespostaRapida, SituacaoAbertura } from "./types";
 
 export function obterDashboard(periodo?: number) {
   return request<DashboardResumo>(
@@ -20,6 +20,11 @@ export function listarChamados(filtros: FiltrosChamados = {}) {
 
 export function listarChamadosDoUsuario() {
   return request<ApiChamado[]>("/chamados/usuario/me");
+}
+
+/** Se o usuário logado pode abrir chamado agora (um por vez e avaliação do anterior). */
+export function verificarAberturaChamado() {
+  return request<SituacaoAbertura>("/chamados/usuario/me/abertura");
 }
 
 export function buscarChamado(id: number | string) {

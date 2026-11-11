@@ -7,6 +7,7 @@ import { BrainCircuit, CheckCircle2, Clock3, Download, FileText, History, LockKe
 import { toast } from "sonner";
 import { PerformanceRatingCard } from "../../components/PerformanceRatingCard";
 import { isFinalTicketStatus, ticketStatusLabel } from "../../domain/ticketStatus";
+import { MODULO_DESENVOLVIMENTO_ATIVO } from "../../domain/desenvolvimento";
 import { Badge, Button, Card, Field, Input, Modal, Select, Textarea } from "../../components/shared/FormPrimitives";
 import { ReopenTicketCard } from "../../components/chamados/ReopenTicketCard";
 import { SugestaoArtigoCard } from "../../components/chamados/SugestaoArtigoCard";
@@ -282,7 +283,7 @@ export function ChamadoDetalhe({
               </div>
             </div>
           </Card>
-          {chamado.demanda_desenvolvimento && (() => {
+          {MODULO_DESENVOLVIMENTO_ATIVO && chamado.demanda_desenvolvimento && (() => {
             const demanda = chamado.demanda_desenvolvimento;
             const frequencias: Record<string, string> = { varias_dia: "Várias vezes ao dia", diaria: "Diariamente", semanal: "Semanalmente", mensal: "Mensalmente", ocasional: "Ocasionalmente", outro: "Outro" };
             const naturezas: Record<string, string> = { bug: "Bug", melhoria: "Melhoria", automacao: "Automação", integracao: "Integração", dashboard_relatorio: "Dashboard / Relatório", novo_sistema: "Novo sistema" };
