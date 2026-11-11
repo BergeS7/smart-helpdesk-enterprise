@@ -8,6 +8,8 @@ O projeto está preparado para executar em três containers:
 - **backend**: Node.js/Express;
 - **database**: PostgreSQL 16 com inicialização automática do schema.
 
+Para desenvolver e testar sem recompilar containers, veja [docs/DESENVOLVIMENTO_LOCAL.md](docs/DESENVOLVIMENTO_LOCAL.md).
+
 ## Requisitos
 
 - Docker Desktop com Docker Compose;

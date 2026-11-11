@@ -1,0 +1,58 @@
+# Responsabilidade: infraestrutura para desenvolvimento local (banco, banco de testes e Redis).
+# Backend e frontend rodam fora do Docker com `npm run dev`. Portas abertas só em 127.0.0.1.
+# Uso: docker compose -f docker-compose.dev.yml up -d
+# Senha fixa de desenvolvimento: nunca use este arquivo em produção.
+name: smart-helpdesk-dev
+
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: smart-helpdesk-dev-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smart_helpdesk
+      POSTGRES_USER: smart_helpdesk
+      POSTGRES_PASSWORD: helpdesk_dev_local
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smart_helpdesk -d smart_helpdesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Banco descartável para os testes *.postgres.test.js. Sem volume: zera ao recriar o container.
+  database-test:
+    image: postgres:16-alpine
+    container_name: smart-helpdesk-dev-database-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smart_helpdesk_test
+      POSTGRES_USER: smart_helpdesk
+      POSTGRES_PASSWORD: helpdesk_dev_local
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smart_helpdesk -d smart_helpdesk_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: smart-helpdesk-dev-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+
+volumes:
+  dev_postgres_data:
+    name: smart-helpdesk-dev-postgres-data
